@@ -27,4 +27,4 @@ func physics(delta: float) -> StringName:
 	if _t > 0.0:
 		return &""
 	p.velocity = p.velocity.limit_length(p.run_speed)
-	return p.landed_state() if p.is_on_floor() else &"jump"
+	return p.recover_state()

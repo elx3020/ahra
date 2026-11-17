@@ -17,7 +17,7 @@ func exit() -> void:
 
 func physics(delta: float) -> StringName:
 	var anchor := p.swing_point.global_position
-	p.velocity += p.gravity_dir * p.gravity * p.env.gravity_mult * delta
+	p.velocity += (p.gravity_dir * p.gravity * p.env.gravity_mult + p.env.wind) * delta
 	p.velocity += p.move_input() * p.swing_force * p.mult(&"swing") * delta
 	p.velocity -= p.velocity * minf(p.env.drag * delta, 1.0)
 	p.move_and_slide()

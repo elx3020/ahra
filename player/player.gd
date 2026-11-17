@@ -10,6 +10,8 @@ extends CharacterBody3D
 
 signal puppet_arrived
 
+const HEAD := 0.8 ## head height above the body center, for breathing checks
+
 @export_group("Ground")
 @export var walk_speed := 4.5
 @export var run_speed := 8.5
@@ -25,31 +27,55 @@ signal puppet_arrived
 @export_range(0.0, 1.0) var jump_cut := 0.45 ## vertical speed kept when jump is released early
 @export var coyote_time := 0.1
 @export var jump_buffer_time := 0.12
+@export_group("Wind")
+## Wind push becomes a drift speed the player steers against: drift = wind * response.
+@export var wind_response_ground := 0.2
+@export var wind_response_air := 0.4
 @export_group("Dash")
 @export var dash_speed := 20.0
 @export var dash_time := 0.16
 @export var dash_cooldown := 0.3
 @export var air_dashes := 1
-@export_group("Climb & Swing")
+@export_group("Climb, Swing & Swim")
 @export var climb_speed := 3.5
 @export var swing_force := 14.0
+@export var swim_speed := 4.0
+@export var swim_accel := 20.0
+@export var swim_sink := 1.0 ## sink speed when not swimming up/down
+@export var float_depth := 0.5 ## body center depth when floating at the surface
 @export_group("Stats")
 @export var max_health := 100.0
 @export var max_stamina := 100.0
 @export var run_cost := 18.0 ## stamina/s while running
 @export var stamina_regen := 30.0
+@export var exhaust_time := 2.0 ## seconds running is locked after stamina hits 0
+@export var max_oxygen := 12.0 ## seconds of breath underwater
+@export var oxygen_regen := 6.0 ## per second while breathing
 @export var mood_window := 20 ## mood = hit ratio over the last N attacks
+@export_group("Damage")
+@export var invuln_time := 1.0 ## i-frames after a hit
+@export var hurt_time := 0.35 ## stun duration of the hurt state
+@export var knockback := 6.0
+@export var knockback_up := 4.0
+@export var respawn_invuln := 1.5
+@export_group("")
 @export var ambient: EnvProfile ## environment used outside of any EnvZone
 @export var progression := StatMods.new() ## permanent % bonuses earned in play; this is what gets saved
 
 var health := 0.0
 var stamina := 0.0
+var oxygen := 0.0
 var exhausted := false
+var exhaust_t := 0.0
+var invuln := 0.0
+var death_cause: StringName ## &"fall", &"drown", &"hit": picks the death animation
+var checkpoint := Vector3.ZERO ## respawn point; level start for now
 var mood := 0.5
 var gravity_dir := Vector3.DOWN
 var facing := Vector3.FORWARD
 var anim: StringName = &"idle"
 var envs: Array[EnvProfile] = [] ## pushed/popped by EnvZones; the last one entered wins
+var water_zone: EnvZone ## set by water EnvZones; gives the surface height
 var interactable: Interactable
 var swing_point: SwingPoint
 var puppet_target: Variant = null
@@ -71,8 +97,11 @@ var states: Dictionary[StringName, PlayerState] = {
 	&"jump": preload("states/jump.gd").new(),
 	&"climb": preload("states/climb.gd").new(),
 	&"swing": preload("states/swing.gd").new(),
+	&"swim": preload("states/swim.gd").new(),
 	&"interact": preload("states/interact.gd").new(),
 	&"puppet": preload("states/puppet.gd").new(),
+	&"hurt": preload("states/hurt.gd").new(),
+	&"death": preload("states/death.gd").new(),
 }
 var state: PlayerState
 var state_name: StringName
@@ -87,6 +116,8 @@ func _ready() -> void:
 		ambient = EnvProfile.new()
 	health = max_hp()
 	stamina = max_sp()
+	oxygen = max_o2()
+	checkpoint = global_position
 	for s in states.values():
 		s.p = self
 	change_state(&"idle")
@@ -109,18 +140,31 @@ func _physics_process(delta: float) -> void:
 		coyote -= delta
 	jump_buffer = jump_buffer_time if Input.is_action_just_pressed(&"jump") else jump_buffer - delta
 	dash_cd -= delta
-	if state_name != &"run":
-		stamina += stamina_regen * mult(&"stamina_regen") * delta
-	stamina = minf(stamina, max_sp())
-	health = minf(health, max_hp())
-	if exhausted and stamina > max_sp() * 0.3:
-		exhausted = false
+	invuln -= delta
+	_tick_stats(delta)
 
 	var next := state.physics(delta)
 	if next:
 		change_state(next)
 	_orient(delta)
 	_animate(delta)
+
+
+func _tick_stats(delta: float) -> void:
+	if state_name != &"run":
+		stamina += stamina_regen * mult(&"stamina_regen") * delta
+	stamina = minf(stamina, max_sp())
+	health = minf(health, max_hp())
+	if exhausted:
+		exhaust_t -= delta
+		exhausted = exhaust_t > 0.0
+	if water_depth() > HEAD:
+		oxygen -= delta
+		if oxygen <= 0.0:
+			oxygen = 0.0
+			die(&"drown")
+	else:
+		oxygen = minf(oxygen + oxygen_regen * delta, max_o2())
 
 
 # --- input ---------------------------------------------------------------
@@ -167,31 +211,38 @@ func set_vspeed(v: float) -> void:
 	velocity = planar() + up_direction * v
 
 
-func move_planar(dir: Vector3, speed: float, rate: float, delta: float) -> void:
+func move_planar(dir: Vector3, speed: float, rate: float, delta: float, drift := Vector3.ZERO) -> void:
 	if dir.length() > 0.1:
 		facing = dir.normalized()
-	velocity = planar().move_toward(dir * speed, rate * delta) + up_direction * vspeed()
+	velocity = planar().move_toward(dir * speed + drift, rate * delta) + up_direction * vspeed()
 
 
 func move_ground(dir: Vector3, speed: float, delta: float) -> void:
-	move_planar(dir, speed * mult(&"speed"), (accel if dir != Vector3.ZERO else decel) * mult(&"traction"), delta)
+	var rate := (accel if dir != Vector3.ZERO else decel) * mult(&"traction")
+	move_planar(dir, speed * mult(&"speed"), rate, delta, wind_drift(wind_response_ground))
 
 
 func move_air(dir: Vector3, delta: float) -> void:
-	move_planar(dir, air_speed, air_accel if dir != Vector3.ZERO else air_decel, delta)
+	move_planar(dir, air_speed, air_accel if dir != Vector3.ZERO else air_decel, delta, wind_drift(wind_response_air))
 
 
+## Wind along the walking plane as a drift velocity (always on: ground and air).
+func wind_drift(response: float) -> Vector3:
+	return env.wind.slide(up_direction) * response
+
+
+## Gravity, wind lift (the part of the wind along up) and drag.
 func apply_gravity(delta: float) -> void:
 	var e := env
 	var g := gravity * e.gravity_mult * (fall_gravity_mult if vspeed() < 0.0 else 1.0)
-	set_vspeed(maxf(vspeed() - g * delta, -max_fall_speed))
-	if not is_on_floor():
-		velocity += e.wind * delta
+	set_vspeed(maxf(vspeed() + (e.wind.dot(up_direction) - g) * delta, -max_fall_speed))
 	velocity -= velocity * minf(e.drag * delta, 1.0)
 
 
-func jump_velocity() -> float:
-	return sqrt(2.0 * gravity * env.gravity_mult * jump_height * mult(&"jump"))
+func jump_velocity(e: EnvProfile = null) -> float:
+	if e == null:
+		e = env
+	return sqrt(2.0 * gravity * e.gravity_mult * jump_height * mult(&"jump", e))
 
 
 func wants_jump() -> bool:
@@ -204,12 +255,26 @@ func do_jump() -> void:
 	coyote = 0.0
 
 
+## Distance of the body center below the water surface. -INF when not in water.
+func water_depth() -> float:
+	if water_zone == null:
+		return -INF
+	return water_zone.surface_height(up_direction) - global_position.dot(up_direction)
+
+
+func deep_water() -> bool:
+	return water_depth() > float_depth
+
+
 ## Shared move + transitions for idle/walk/run. Returns the next state or &"".
 func ground_step(dir: Vector3, speed: float, delta: float) -> StringName:
 	move_ground(dir, speed, delta)
 	apply_gravity(delta)
 	move_and_slide()
 	if wants_jump():
+		if deep_water(): # jump on the bottom = start swimming up
+			jump_buffer = 0.0
+			return &"swim"
 		do_jump()
 		return &"jump"
 	if not is_on_floor():
@@ -227,6 +292,13 @@ func landed_state() -> StringName:
 	if raw_input() == Vector2.ZERO:
 		return &"idle"
 	return &"run" if can_run() else &"walk"
+
+
+## Where to go when a non-controllable state (hurt, dash...) ends.
+func recover_state() -> StringName:
+	if deep_water():
+		return &"swim"
+	return landed_state() if is_on_floor() else &"jump"
 
 
 func can_climb() -> bool:
@@ -277,12 +349,62 @@ func end_puppet() -> void:
 		change_state(&"idle")
 
 
+# --- damage, death, respawn -------------------------------------------------------
+
+## Hurts the player: hurt state + knockback + i-frames. Health 0 = death by hit.
+## Ignored while invulnerable, dead or in a cinematic. `from`: hit source position.
+func damage(amount: float, from: Variant = null) -> void:
+	if amount <= 0.0 or invuln > 0.0 or state_name in [&"death", &"puppet"]:
+		return
+	health = maxf(health - amount, 0.0)
+	if health <= 0.0:
+		die(&"hit")
+		return
+	invuln = invuln_time
+	var away := -facing
+	if from != null:
+		var d: Vector3 = (global_position - from).slide(up_direction)
+		if d.length() > 0.01:
+			away = d.normalized()
+	velocity = away * knockback + up_direction * knockback_up
+	change_state(&"hurt")
+
+
+func heal(amount: float) -> void:
+	health = minf(health + amount, max_hp())
+
+
+## cause: &"fall" (pits/void), &"drown" (out of oxygen), &"hit" (health 0).
+## The death state plays the matching animation, then respawns at the checkpoint.
+func die(cause: StringName) -> void:
+	if state_name == &"death":
+		return
+	death_cause = cause
+	health = 0.0
+	change_state(&"death")
+
+
+## Back to life at `at` (default: checkpoint) with full health/stamina/oxygen.
+func respawn(at: Variant = null) -> void:
+	set_gravity_dir(Vector3.DOWN)
+	velocity = Vector3.ZERO
+	teleport(checkpoint if at == null else at)
+	health = max_hp()
+	stamina = max_sp()
+	oxygen = max_o2()
+	exhausted = false
+	invuln = respawn_invuln
+	change_state(&"idle")
+
+
 # --- stats -------------------------------------------------------------------
 
-## Multiplier for a StatMods stat: 1 + progression% + current environment%.
+## Multiplier for a StatMods stat: 1 + progression% + environment% (current env by default).
 ## Additive: +20% progression and -30% environment => x0.9 of base.
-func mult(stat: StringName) -> float:
-	return maxf(0.0, 1.0 + progression.get(stat) + env.mods.get(stat))
+func mult(stat: StringName, e: EnvProfile = null) -> float:
+	if e == null:
+		e = env
+	return maxf(0.0, 1.0 + progression.get(stat) + e.mods.get(stat))
 
 
 ## Permanent upgrade (pickups, level-ups). pct is a fraction: 0.1 = +10%.
@@ -299,12 +421,8 @@ func max_sp() -> float:
 	return max_stamina * mult(&"max_stamina")
 
 
-func damage(amount: float) -> void:
-	health = clampf(health - amount, 0.0, max_hp())
-
-
-func heal(amount: float) -> void:
-	damage(-amount)
+func max_o2() -> float:
+	return max_oxygen * mult(&"max_oxygen")
 
 
 func register_attack(hit: bool) -> void:
@@ -325,9 +443,10 @@ static func _tier(v: float, lo: String, mid: String, hi: String) -> String:
 
 
 func debug_text() -> String:
-	return "state: %s\nanim: %s\nenv: %s\nhp: %d  mood: %d%%  stamina: %d%s\ngravity: %s\nspeed: %.1f" % [
+	return "state: %s\nanim: %s\nenv: %s\nhp: %d%s  mood: %d%%\nstamina: %d%s  oxygen: %.1fs\ngravity: %s\nspeed: %.1f" % [
 		state_name, anim, env.resource_name if env.resource_name else "ambient",
-		health, mood * 100, stamina, " (exhausted)" if exhausted else "",
+		health, " (invulnerable)" if invuln > 0.0 else "", mood * 100,
+		stamina, " (exhausted %.1fs)" % exhaust_t if exhausted else "", oxygen,
 		gravity_dir, velocity.length()] + _stats_text()
 
 
@@ -337,10 +456,8 @@ func _stats_text() -> String:
 		var prog: float = progression.get(s)
 		var e: float = env.mods.get(s)
 		if prog != 0.0 or e != 0.0:
-			out += "
-  %s: %+d%% prog %+d%% env = x%.2f" % [s, roundi(prog * 100), roundi(e * 100), mult(s)]
-	return "
-stats:" + (out if out else " all base")
+			out += "\n  %s: %+d%% prog %+d%% env = x%.2f" % [s, roundi(prog * 100), roundi(e * 100), mult(s)]
+	return "\nstats:" + (out if out else " all base")
 
 
 # --- presentation --------------------------------------------------------------
@@ -373,8 +490,13 @@ func _animate(delta: float) -> void:
 		&"climb": off.y = sin(t * 8.0) * 0.08
 		&"hang": sc = Vector3(0.95, 1.06, 0.95)
 		&"swing": tilt = 0.4
+		&"swim": tilt = -0.9; off.y = sin(t * 4.0) * 0.06
 		&"interact": sc.y = 1.0 + sin(t * 20.0) * 0.1; tilt = -0.4
 		&"puppet": sc.y = 1.0 + sin(t * 2.0) * 0.02
+		&"hurt": sc = Vector3(1.2, 0.75, 1.2); tilt = 0.5
+		&"death_fall": sc = Vector3(0.6, 1.5, 0.6); off.x = sin(t * 30.0) * 0.1 # flailing
+		&"death_drown": sc = Vector3(1.0, 0.9, 1.0); tilt = 1.4 # limp, face up
+		&"death_hit": sc = Vector3(1.3, 0.35, 1.3); tilt = -1.2 # collapse
 		_: # idle_<temp>_<health>_<mood>
 			var temp := env.temperature
 			sc.y = lerpf(0.8, 1.0, hp) + sin(t * [5.0, 2.5, 1.2][temp]) * [0.02, 0.03, 0.06][temp]
@@ -386,4 +508,6 @@ func _animate(delta: float) -> void:
 	_visual.position = _visual_base + off
 	_visual.scale = _visual.scale.lerp(sc, k)
 	_visual.rotation.x = lerpf(_visual.rotation.x, tilt, k)
-	_mat.albedo_color = Color(0.35, 0.45, 0.85).lerp(Color(1.0, 0.75, 0.2), mood)
+	_visual.visible = invuln <= 0.0 or fmod(t, 0.1) < 0.05 # blink during i-frames
+	var col := Color(0.35, 0.45, 0.85).lerp(Color(1.0, 0.75, 0.2), mood)
+	_mat.albedo_color = col.darkened(0.6) if state_name == &"death" else col

@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://world/interactable.gd" id="inter"]
 [ext_resource type="Script" path="res://world/cutscene_trigger.gd" id="cut"]
 [ext_resource type="Script" path="res://world/swing_point.gd" id="swing"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="kill"]
 
 [sub_resource type="Environment" id="world_env"]
 background_mode = 1
@@ -109,6 +110,7 @@ dash = -0.4
 [sub_resource type="Resource" id="e_water"]
 script = ExtResource("env")
 resource_name = "Underwater"
+water = true
 gravity_mult = 0.3
 drag = 1.2
 mods = SubResource("e_water_mods")
@@ -146,6 +148,12 @@ use_collision = true
 size = Vector3(260, 1, 16)
 material = SubResource("m_floor")
 
+[node name="Void" type="Area3D" parent="."]
+position = Vector3(100, -14, 0)
+script = ExtResource("kill")
+size = Vector3(400, 4, 120)
+color = Color(1, 0, 0, 0.06)
+
 [node name="Bays" type="Node3D" parent="."]
 
 [node name="Basics" type="Node3D" parent="Bays"]
@@ -158,7 +166,7 @@ no_depth_test = true
 pixel_size = 0.01
 font_size = 56
 outline_size = 14
-text = "BASICS\nsteps 1 / 2 / 2.5 / 3.5 m\n8 m gap: run-jump + dash"
+text = "BASICS\nsteps 1 / 2 / 2.5 / 3.5 m\n8 m gap: run-jump + dash\nwalk off the edge = fall death"
 
 [node name="Step0" type="CSGBox3D" parent="Bays/Basics"]
 position = Vector3(-6, 0.5, -4)
@@ -270,7 +278,7 @@ no_depth_test = true
 pixel_size = 0.01
 font_size = 56
 outline_size = 14
-text = "WIND\nleft: gale pushes -x, lower jumps\nright: updraft, clear the 3.5 m wall"
+text = "WIND (always pushing)\nleft: gale pushes -x, lower jumps\nright: updraft, clear the 3.5 m wall"
 
 [node name="Gale" type="Area3D" parent="Bays/Wind"]
 script = ExtResource("env_zone")
@@ -302,7 +310,7 @@ no_depth_test = true
 pixel_size = 0.01
 font_size = 56
 outline_size = 14
-text = "UNDERWATER\nlow gravity, drag, slow\nplatforms 2.5 / 4 m"
+text = "UNDERWATER\nhold Space = swim up, hold C/Ctrl = swim down\nSpace at the surface = leap out\nwatch the oxygen bar (drowning)"
 
 [node name="Water" type="Area3D" parent="Bays/Underwater"]
 script = ExtResource("env_zone")

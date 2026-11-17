@@ -12,8 +12,10 @@ extends Resource
 @export var dash := 0.0 ## dash_time (= dash distance)
 @export var climb := 0.0 ## climb_speed
 @export var swing := 0.0 ## swing_force
+@export var swim := 0.0 ## swim_speed
 @export var max_health := 0.0
 @export var max_stamina := 0.0
+@export var max_oxygen := 0.0
 @export var stamina_regen := 0.0
 @export var stamina_cost := 0.0 ## run_cost; positive = more tiring
 

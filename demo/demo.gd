@@ -1,15 +1,13 @@
 extends Node3D
-## Mechanics test level: iso camera follow, debug HUD, debug keys, bay warps, respawn.
+## Mechanics test level: iso camera follow, debug HUD, debug keys, bay warps.
 
-const HELP := "WASD move | Shift run | Space jump | Q dash | E interact | F grab (hold, swing)\n1/2 hurt/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace respawn\n\n"
+const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing)\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
 
 @onready var player: Player = $Player
 @onready var cam: Camera3D = $Camera
 @onready var hud: Label = $HUD/Label
 @onready var door: CSGBox3D = $Bays/Interact/Door
 @onready var bays: Array[Node] = $Bays.get_children()
-
-var _bay := 0
 
 
 func _ready() -> void:
@@ -26,8 +24,8 @@ func _process(delta: float) -> void:
 	else:
 		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * delta))
 	if player.global_position.distance_to(Vector3(100, 0, 0)) > 200.0:
-		warp(_bay)
-	hud.text = HELP + "bay: %s\n" % bays[_bay].name + player.debug_text()
+		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
+	hud.text = HELP + "bay: %s\n" % bays[_bay()].name + player.debug_text()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -42,17 +40,22 @@ func _unhandled_input(e: InputEvent) -> void:
 			for stat in StatMods.names():
 				player.grant(stat, 0.1)
 		KEY_6: player.progression = StatMods.new()
-		KEY_BRACKETRIGHT: warp(_bay + 1)
-		KEY_BRACKETLEFT: warp(_bay - 1)
-		KEY_BACKSPACE: warp(_bay)
+		KEY_BRACKETRIGHT: warp(_bay() + 1)
+		KEY_BRACKETLEFT: warp(_bay() - 1)
+		KEY_BACKSPACE: warp(_bay())
 
 
+## Debug warp (not a checkpoint: deaths still respawn at the level start).
 func warp(i: int) -> void:
-	_bay = wrapi(i, 0, bays.size())
-	player.end_puppet()
-	player.set_gravity_dir(Vector3.DOWN)
-	player.velocity = Vector3.ZERO
-	player.teleport(bays[_bay].global_position + Vector3(0, 1, 6))
+	player.respawn(bays[wrapi(i, 0, bays.size())].global_position + Vector3(0, 1, 6))
+
+
+func _bay() -> int:
+	var best := 0
+	for i in bays.size():
+		if absf(bays[i].global_position.x - player.global_position.x) < absf(bays[best].global_position.x - player.global_position.x):
+			best = i
+	return best
 
 
 func _on_lever_used(_p: Player) -> void:

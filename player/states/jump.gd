@@ -1,6 +1,6 @@
 extends PlayerState
 ## Airborne (rising or falling). Variable jump height, coyote jump, air dash,
-## grab swing points, grab climbable walls. Air speed carries incoming momentum.
+## grab swing points, grab climbable walls, fall into water. Air speed carries incoming momentum.
 
 var _cut := false
 
@@ -30,6 +30,8 @@ func physics(delta: float) -> StringName:
 			return &"swing"
 	if p.can_climb():
 		return &"climb"
+	if p.vspeed() <= 0.0 and p.deep_water(): # only on the way down, so leaping out works
+		return &"swim"
 	if p.is_on_floor():
 		return p.landed_state()
 	return &""

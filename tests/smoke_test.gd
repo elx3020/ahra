@@ -59,7 +59,7 @@ func _run() -> void:
 	var hot := EnvProfile.new()
 	hot.temperature = EnvProfile.Temp.HOT
 	p.envs.append(hot)
-	p.damage(80)
+	p.health = p.max_hp() * 0.2
 	for i in 10:
 		p.register_attack(false)
 	await _wait(2)
@@ -114,15 +114,91 @@ func _run() -> void:
 	_check(p.state_name == &"swing", "grab swing point in air")
 	Input.action_release(&"grab")
 
+	# --- wind, stamina ---
+	await _place(p, Vector3(-28, 1, 6))
+	var gale := EnvProfile.new()
+	gale.wind = Vector3(-10, 0, 0)
+	p.envs.append(gale)
+	await _wait(30)
+	_check(p.is_on_floor() and is_equal_approx(p.velocity.x, -10.0 * p.wind_response_ground), "wind pushes on the ground too")
+	p.envs.erase(gale)
+
+	await _place(p, Vector3(-28, 1, 6))
+	p.stamina = 1.0
+	Input.action_press(&"move_right")
+	Input.action_press(&"move_down")
+	Input.action_press(&"run")
+	await _wait(20)
+	_check(p.exhausted and p.state_name == &"walk", "empty stamina forces walk")
+	await _wait(roundi(p.exhaust_time * 60.0) - 30)
+	_check(p.state_name == &"walk", "still walking during exhaustion timeout")
+	await _wait(20)
+	_check(not p.exhausted and p.state_name == &"run", "runs again after timeout")
+	Input.action_release(&"run")
+	Input.action_release(&"move_right")
+	Input.action_release(&"move_down")
+
+	# --- swimming, oxygen ---
+	await _place(p, Vector3(100, 1, 3)) # Underwater bay floor; surface at y = 8
+	await _wait(10)
+	Input.action_press(&"jump")
+	await _wait(5)
+	_check(p.state_name == &"swim" and p.vspeed() > 0.0, "jump in deep water swims up")
+	await _wait(150)
+	_check(p.state_name == &"swim" and absf(p.water_depth() - p.float_depth) < 0.05, "swim up stops at the surface")
+	Input.action_release(&"jump")
+	Input.action_press(&"descend")
+	await _wait(40)
+	_check(p.water_depth() > 2.0, "descend swims down")
+	Input.action_release(&"descend")
+	Input.action_press(&"jump")
+	await _wait(150)
+	Input.action_release(&"jump")
+	await _wait(2)
+	Input.action_press(&"jump")
+	await _wait(10)
+	Input.action_release(&"jump")
+	_check(p.state_name == &"jump" and p.global_position.y > 8.0, "jump at the surface leaps out")
+	await _wait(60)
+
+	await _place(p, Vector3(100, 1, 3))
+	_check(p.water_depth() > Player.HEAD, "standing on the bottom is underwater")
+	var o2 := p.oxygen
+	await _wait(30)
+	_check(p.oxygen < o2, "oxygen drains underwater")
+	p.oxygen = 0.1
+	await _wait(10)
+	_check(p.state_name == &"death" and p.anim == &"death_drown", "no oxygen = drown death")
+	await _wait(200)
+	_check(p.state_name == &"idle" and p.global_position.distance_to(p.checkpoint) < 1.0, "respawn at checkpoint after drowning")
+
+	# --- damage, i-frames, death ---
+	await _place(p, Vector3(-28, 1, 6))
+	p.invuln = 0.0
+	var hp := p.health
+	p.damage(10, p.global_position + Vector3(1, 0, 0))
+	_check(p.state_name == &"hurt" and p.velocity.x < 0.0 and p.health == hp - 10.0, "damage = hurt state + knockback")
+	p.damage(10)
+	_check(p.health == hp - 10.0, "invulnerable right after a hit")
+	await _wait(80)
+	_check(p.invuln <= 0.0 and p.state_name == &"idle", "hurt and i-frames wear off")
+	p.damage(p.health)
+	_check(p.state_name == &"death" and p.anim == &"death_hit", "health 0 = hit death")
+	await _wait(120)
+	_check(p.state_name == &"idle" and p.health == p.max_hp(), "respawn with full health")
+
+	await _place(p, Vector3(-20, -6, 0)) # above the void kill zone
+	await _wait(30)
+	_check(p.state_name == &"death" and p.anim == &"death_fall", "falling into the void = fall death")
+	await _wait(80)
+	_check(p.state_name == &"idle" and p.global_position.distance_to(p.checkpoint) < 1.0, "respawn at checkpoint after falling")
+
 	print("SMOKE: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 
 
 func _place(p: Player, pos: Vector3) -> void:
-	p.set_gravity_dir(Vector3.DOWN)
-	p.velocity = Vector3.ZERO
-	p.change_state(&"idle")
-	p.teleport(pos)
+	p.respawn(pos)
 	await _wait(2)
 
 
