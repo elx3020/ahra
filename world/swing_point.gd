@@ -31,7 +31,9 @@ func show_rope(to: Vector3) -> void:
 	var y := d.normalized()
 	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
 	_rope.global_transform = Transform3D(Basis(x, y * d.length(), x.cross(y)), global_position + d * 0.5)
-	_rope.visible = true
+	if not _rope.visible:
+		_rope.reset_physics_interpolation()
+		_rope.visible = true
 
 
 func hide_rope() -> void:

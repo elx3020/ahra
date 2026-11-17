@@ -18,6 +18,7 @@ func physics(_delta: float) -> StringName:
 	if side.dot(p.cam_basis().x) < 0.0:
 		side = -side
 	var i := p.raw_input()
+	p.anim = &"climb" if i != Vector2.ZERO else &"hang"
 	p.velocity = (up * -i.y + side * i.x) * p.climb_speed * p.mult(&"climb") - _n * 2.0
 	p.move_and_slide()
 

@@ -15,10 +15,12 @@ var _bay := 0
 func _ready() -> void:
 	cam.rotation_degrees = Vector3(-35.264, 45.0, 0.0) # true isometric
 	cam.global_position = player.global_position + cam.global_basis.z * 40.0
+	# camera moves every render frame itself, following the player's interpolated position
+	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 
 func _process(delta: float) -> void:
-	var target := player.global_position + cam.global_basis.z * 40.0
+	var target := player.get_global_transform_interpolated().origin + cam.global_basis.z * 40.0
 	if cam.global_position.distance_to(target) > 8.0: # snap after teleports
 		cam.global_position = target
 	else:

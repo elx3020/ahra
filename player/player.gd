@@ -120,6 +120,7 @@ func _physics_process(delta: float) -> void:
 	if next:
 		change_state(next)
 	_orient(delta)
+	_animate(delta)
 
 
 # --- input ---------------------------------------------------------------
@@ -254,6 +255,7 @@ func find_swing_point() -> SwingPoint:
 ## Instant relocation. Velocity is kept (optionally rotated, e.g. portal-style).
 func teleport(pos: Vector3, rotate_by := Basis.IDENTITY) -> void:
 	global_position = pos
+	reset_physics_interpolation() # no smear across the jump
 	velocity = rotate_by * velocity
 	facing = rotate_by * facing
 
@@ -355,8 +357,9 @@ func _orient(delta: float) -> void:
 
 
 ## Placeholder "animation" on the capsule so state/anim variants are visible.
+## Runs in the physics tick (not _process) so physics interpolation smooths it too.
 ## ponytail: procedural squash/tilt stand-in, replace with AnimationTree keyed by `anim`.
-func _process(delta: float) -> void:
+func _animate(delta: float) -> void:
 	var t := Time.get_ticks_msec() * 0.001
 	var hp := health / max_hp()
 	var sc := Vector3.ONE
@@ -368,6 +371,7 @@ func _process(delta: float) -> void:
 		&"dash": sc = Vector3(0.7, 0.7, 1.6)
 		&"jump": sc = Vector3(0.85, 1.2, 0.85)
 		&"climb": off.y = sin(t * 8.0) * 0.08
+		&"hang": sc = Vector3(0.95, 1.06, 0.95)
 		&"swing": tilt = 0.4
 		&"interact": sc.y = 1.0 + sin(t * 20.0) * 0.1; tilt = -0.4
 		&"puppet": sc.y = 1.0 + sin(t * 2.0) * 0.02
