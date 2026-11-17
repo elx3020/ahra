@@ -38,7 +38,10 @@ const HEAD := 0.8 ## head height above the body center, for breathing checks
 @export var air_dashes := 1
 @export_group("Climb, Swing & Swim")
 @export var climb_speed := 3.5
+@export var climb_accel := 40.0
+@export var climb_slip := 3.0 ## slide-down speed on a wall with 0% traction
 @export var swing_force := 14.0
+@export var swing_launch := 0.6 ## jump-release boost, fraction of a dry-land jump's speed
 @export var swim_speed := 4.0
 @export var swim_accel := 20.0
 @export var swim_sink := 1.0 ## sink speed when not swimming up/down
@@ -74,7 +77,8 @@ var mood := 0.5
 var gravity_dir := Vector3.DOWN
 var facing := Vector3.FORWARD
 var anim: StringName = &"idle"
-var envs: Array[EnvProfile] = [] ## pushed/popped by EnvZones; the last one entered wins
+var env: EnvProfile ## ambient + every zone the player is in, blended (EnvProfile.combine)
+var _envs: Array[EnvProfile] = []
 var water_zone: EnvZone ## set by water EnvZones; gives the surface height
 var interactable: Interactable
 var swing_point: SwingPoint
@@ -83,11 +87,10 @@ var air_speed := 0.0
 var air_dashes_left := 0
 var coyote := 0.0
 var jump_buffer := 0.0
+var variable_jump := false ## set by do_jump: only real jumps get cut short on release
+var launched := false ## slingshot release: ignores drag (water) until the apex
 var dash_cd := 0.0
 var _attacks: Array[bool] = []
-
-var env: EnvProfile:
-	get: return envs.back() if not envs.is_empty() else ambient
 
 var states: Dictionary[StringName, PlayerState] = {
 	&"idle": preload("states/idle.gd").new(),
@@ -114,6 +117,7 @@ var state_name: StringName
 func _ready() -> void:
 	if ambient == null:
 		ambient = EnvProfile.new()
+	env = EnvProfile.combine(ambient, _envs)
 	health = max_hp()
 	stamina = max_sp()
 	oxygen = max_o2()
@@ -236,7 +240,11 @@ func apply_gravity(delta: float) -> void:
 	var e := env
 	var g := gravity * e.gravity_mult * (fall_gravity_mult if vspeed() < 0.0 else 1.0)
 	set_vspeed(maxf(vspeed() + (e.wind.dot(up_direction) - g) * delta, -max_fall_speed))
-	velocity -= velocity * minf(e.drag * delta, 1.0)
+	if launched and vspeed() <= 0.0:
+		launched = false
+	var damp := 0.0 if launched else minf(e.drag * delta, 1.0)
+	velocity -= velocity * damp
+	air_speed -= air_speed * damp # carried air momentum is slowed by water/thick air too
 
 
 func jump_velocity(e: EnvProfile = null) -> float:
@@ -253,6 +261,7 @@ func do_jump() -> void:
 	set_vspeed(jump_velocity())
 	jump_buffer = 0.0
 	coyote = 0.0
+	variable_jump = true
 
 
 ## Distance of the body center below the water surface. -INF when not in water.
@@ -347,6 +356,17 @@ func start_puppet(target: Variant = null) -> void:
 func end_puppet() -> void:
 	if state_name == &"puppet":
 		change_state(&"idle")
+
+
+## Called by EnvZones on enter/exit. Overlapping zones all apply at once.
+func add_env(e: EnvProfile) -> void:
+	_envs.append(e)
+	env = EnvProfile.combine(ambient, _envs)
+
+
+func remove_env(e: EnvProfile) -> void:
+	_envs.erase(e)
+	env = EnvProfile.combine(ambient, _envs)
 
 
 # --- damage, death, respawn -------------------------------------------------------

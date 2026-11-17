@@ -7,13 +7,13 @@ extends Zone
 
 
 func _player_entered(p: Player) -> void:
-	p.envs.append(profile)
+	p.add_env(profile)
 	if profile.water:
 		p.water_zone = self
 
 
 func _player_exited(p: Player) -> void:
-	p.envs.erase(profile)
+	p.remove_env(profile)
 	if p.water_zone == self:
 		p.water_zone = null
 

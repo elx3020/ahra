@@ -115,6 +115,21 @@ gravity_mult = 0.3
 drag = 1.2
 mods = SubResource("e_water_mods")
 
+[sub_resource type="Resource" id="e_icywall_mods"]
+script = ExtResource("mods")
+traction = -0.6
+
+[sub_resource type="Resource" id="e_icywall"]
+script = ExtResource("env")
+resource_name = "Icy wall"
+temperature = 0
+mods = SubResource("e_icywall_mods")
+
+[sub_resource type="Resource" id="e_crosswind"]
+script = ExtResource("env")
+resource_name = "Crosswind"
+wind = Vector3(5, 0, 0)
+
 [node name="Demo" type="Node3D"]
 script = ExtResource("demo")
 
@@ -143,9 +158,9 @@ theme_override_constants/outline_size = 6
 position = Vector3(0, 1, 6)
 
 [node name="Floor" type="CSGBox3D" parent="."]
-position = Vector3(100, -0.5, 0)
+position = Vector3(120, -0.5, 0)
 use_collision = true
-size = Vector3(260, 1, 16)
+size = Vector3(300, 1, 16)
 material = SubResource("m_floor")
 
 [node name="Void" type="Area3D" parent="."]
@@ -520,5 +535,71 @@ position = Vector3(4, 4, -6.5)
 size = Vector3(2, 2, 1)
 color = Color(1, 1, 1, 0.4)
 gravity_dir = Vector3(0, -1, 0)
+
+[node name="MixClimb" type="Node3D" parent="Bays"]
+position = Vector3(240, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/MixClimb"]
+position = Vector3(0, 8, -6)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.01
+font_size = 56
+outline_size = 14
+text = "MIX: icy climbable wall + crosswind
+idle = slide down, wind drifts you right
+start at the left end, climb to the top"
+
+[node name="IceWall" type="CSGBox3D" parent="Bays/MixClimb" groups=["climbable"]]
+position = Vector3(0, 4, -5.5)
+use_collision = true
+size = Vector3(10, 8, 3)
+material = SubResource("m_climb")
+
+[node name="Icy" type="Area3D" parent="Bays/MixClimb"]
+position = Vector3(0, 4, -3.5)
+script = ExtResource("env_zone")
+size = Vector3(10, 8, 2)
+color = Color(0.7, 0.95, 1, 0.3)
+profile = SubResource("e_icywall")
+
+[node name="Crosswind" type="Area3D" parent="Bays/MixClimb"]
+position = Vector3(0, 5, -3)
+script = ExtResource("env_zone")
+size = Vector3(12, 10, 4)
+color = Color(0.8, 0.8, 0.8, 0.1)
+profile = SubResource("e_crosswind")
+
+[node name="MixSwing" type="Node3D" parent="Bays"]
+position = Vector3(260, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/MixSwing"]
+position = Vector3(0, 8, -6)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.01
+font_size = 56
+outline_size = 14
+text = "MIX: underwater swing catapult
+swim to the ball, hold F, pump left/right
+release (Space) on the upswing toward the ledge"
+
+[node name="Pool" type="Area3D" parent="Bays/MixSwing"]
+position = Vector3(-2, 3, 0)
+script = ExtResource("env_zone")
+size = Vector3(12, 6, 12)
+color = Color(0.2, 0.45, 0.9, 0.2)
+profile = SubResource("e_water")
+
+[node name="Point" type="Node3D" parent="Bays/MixSwing"]
+position = Vector3(-2, 4, 0)
+script = ExtResource("swing")
+grab_radius = 4.0
+
+[node name="Ledge" type="CSGBox3D" parent="Bays/MixSwing"]
+position = Vector3(7, 4.5, 0)
+use_collision = true
+size = Vector3(4, 9, 6)
+material = SubResource("m_block")
 
 [connection signal="used" from="Bays/Interact/Lever" to="." method="_on_lever_used"]

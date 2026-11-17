@@ -1,6 +1,7 @@
 extends PlayerState
 ## Pendulum on a SwingPoint while "grab" is held. Rope length fixed at grab time.
-## Input pumps the swing; jump releases with a boost, letting go keeps momentum.
+## Input pumps the swing; jump = slingshot release (dry-land strength, so it also works
+## underwater), letting go of grab keeps momentum only.
 
 var _len := 0.0
 
@@ -31,9 +32,13 @@ func physics(delta: float) -> StringName:
 		p.facing = p.planar().normalized()
 	p.swing_point.show_rope(p.global_position)
 
-	if p.jump_buffer > 0.0:
+	if p.jump_buffer > 0.0: # slingshot along the swing, never into the ground
 		p.jump_buffer = 0.0
-		p.set_vspeed(maxf(p.vspeed(), 0.0) + p.jump_velocity() * 0.6)
+		var dir := p.velocity.normalized() if p.velocity.length() > 0.5 else p.up_direction
+		if dir.dot(p.up_direction) < 0.0:
+			dir = dir.slide(p.up_direction).normalized()
+		p.velocity += dir * p.jump_velocity(p.ambient) * p.swing_launch
+		p.launched = true
 		return &"jump"
 	if not Input.is_action_pressed(&"grab"):
 		return &"jump"

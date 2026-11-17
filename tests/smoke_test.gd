@@ -35,13 +35,13 @@ func _run() -> void:
 	_check(p.state_name == &"run" and absf(p.planar().length() - p.run_speed) < 0.1, "run speed")
 	var mud := EnvProfile.new()
 	mud.mods.speed = -0.5
-	p.envs.append(mud)
+	p.add_env(mud)
 	await _wait(30)
 	_check(absf(p.planar().length() - p.run_speed * 0.5) < 0.1, "env -50% speed halves run speed")
 	p.grant(&"speed", 0.2) # progression and env % add up against base: 1 + 0.2 - 0.5
 	await _wait(30)
 	_check(is_equal_approx(p.mult(&"speed"), 0.7) and absf(p.planar().length() - p.run_speed * 0.7) < 0.1, "progression +20% stacks with env -50%")
-	p.envs.erase(mud)
+	p.remove_env(mud)
 	await _wait(30)
 	_check(absf(p.planar().length() - p.run_speed * 1.2) < 0.1, "progression bonus stays after leaving env")
 	p.progression = StatMods.new()
@@ -58,13 +58,13 @@ func _run() -> void:
 
 	var hot := EnvProfile.new()
 	hot.temperature = EnvProfile.Temp.HOT
-	p.envs.append(hot)
+	p.add_env(hot)
 	p.health = p.max_hp() * 0.2
 	for i in 10:
 		p.register_attack(false)
 	await _wait(2)
 	_check(p.anim == &"idle_hot_low_sad", "idle anim follows env/health/mood (got %s)" % p.anim)
-	p.envs.erase(hot)
+	p.remove_env(hot)
 	p.heal(100)
 
 	p.velocity = Vector3(5, 3, 0)
@@ -118,10 +118,10 @@ func _run() -> void:
 	await _place(p, Vector3(-28, 1, 6))
 	var gale := EnvProfile.new()
 	gale.wind = Vector3(-10, 0, 0)
-	p.envs.append(gale)
+	p.add_env(gale)
 	await _wait(30)
 	_check(p.is_on_floor() and is_equal_approx(p.velocity.x, -10.0 * p.wind_response_ground), "wind pushes on the ground too")
-	p.envs.erase(gale)
+	p.remove_env(gale)
 
 	await _place(p, Vector3(-28, 1, 6))
 	p.stamina = 1.0
@@ -192,6 +192,51 @@ func _run() -> void:
 	_check(p.state_name == &"death" and p.anim == &"death_fall", "falling into the void = fall death")
 	await _wait(80)
 	_check(p.state_name == &"idle" and p.global_position.distance_to(p.checkpoint) < 1.0, "respawn at checkpoint after falling")
+
+	# --- mixed: icy climbable wall + crosswind (MixClimb bay, wall x 235..245, top y 8) ---
+	await _place(p, Vector3(237, 1, -3.3))
+	Input.action_press(&"move_up")
+	await _wait(30)
+	_check(p.state_name == &"climb" and p.mult(&"traction") < 1.0 and p.env.wind.x > 0.0, "overlapping zones combine (icy + crosswind) while climbing")
+	var x0 := p.global_position.x
+	Input.action_release(&"move_up")
+	var y0 := p.global_position.y
+	await _wait(20)
+	_check(p.state_name == &"climb" and p.global_position.y < y0 and p.global_position.x > x0, "hanging on icy wall slides down, wind drifts sideways")
+	await _place(p, Vector3(244.4, 3, -3.3))
+	Input.action_press(&"move_up")
+	Input.action_press(&"move_right")
+	for i in 120:
+		await _wait(1)
+		if p.state_name != &"climb" and i > 5:
+			break
+	_check(p.state_name == &"jump" and p.vspeed() < 5.0, "blown off a side edge falls (no fake ledge hop)")
+	Input.action_release(&"move_up")
+	Input.action_release(&"move_right")
+
+	# --- mixed: underwater swing (MixSwing bay, pool x 252..264, anchor y 4) ---
+	await _place(p, Vector3(258, 2, 0))
+	await _wait(10)
+	Input.action_press(&"grab")
+	await _wait(4)
+	_check(p.state_name == &"swing", "grab a swing point while swimming")
+	var spd := p.velocity.length()
+	Input.action_press(&"jump")
+	await _wait(4)
+	_check(p.state_name == &"jump" and p.velocity.length() > spd + 5.0, "slingshot release underwater")
+	Input.action_release(&"jump")
+	Input.action_release(&"grab")
+	await _wait(60)
+
+	await _place(p, Vector3(263.3, 3, 0))
+	Input.action_press(&"jump")
+	Input.action_press(&"move_right")
+	Input.action_press(&"move_down")
+	await _wait(60)
+	_check(p.global_position.is_finite() and p.water_zone == null, "swimming up out through a pool side stays sane")
+	Input.action_release(&"jump")
+	Input.action_release(&"move_right")
+	Input.action_release(&"move_down")
 
 	print("SMOKE: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)

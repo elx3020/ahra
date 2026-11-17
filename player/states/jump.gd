@@ -8,7 +8,9 @@ var _cut := false
 func enter(_prev: StringName) -> void:
 	p.anim = &"jump"
 	p.air_speed = maxf(p.planar().length(), p.walk_speed)
-	_cut = not Input.is_action_pressed(&"jump") # only a held jump can be cut short
+	# only a real, still-held jump can be cut short (not swing launches, wall jumps, falls)
+	_cut = not (p.variable_jump and Input.is_action_pressed(&"jump"))
+	p.variable_jump = false
 
 
 func physics(delta: float) -> StringName:
@@ -21,6 +23,7 @@ func physics(delta: float) -> StringName:
 
 	if p.wants_jump(): # coyote
 		p.do_jump()
+		p.variable_jump = false
 		_cut = false
 	if Input.is_action_just_pressed(&"dash") and p.dash_cd <= 0.0 and p.air_dashes_left > 0:
 		return &"dash"

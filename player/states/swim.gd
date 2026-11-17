@@ -1,6 +1,7 @@
 extends PlayerState
 ## In deep water. Hold jump = swim up (stops at the surface), hold descend = swim down,
 ## neither = float at the surface / slowly sink below it. Jump at the surface = leap out.
+## Grab works underwater too (swing points below the surface).
 
 
 func enter(_prev: StringName) -> void:
@@ -8,6 +9,8 @@ func enter(_prev: StringName) -> void:
 
 
 func physics(delta: float) -> StringName:
+	if p.water_zone == null: # left the water (e.g. swam out through a side)
+		return &"jump"
 	var depth := p.water_depth()
 	var at_surface := depth <= p.float_depth + 0.3
 	var target := 0.0 if at_surface else -p.swim_sink
@@ -29,8 +32,10 @@ func physics(delta: float) -> StringName:
 		return &"jump"
 	if Input.is_action_just_pressed(&"dash") and p.dash_cd <= 0.0:
 		return &"dash"
-	if p.water_zone == null:
-		return &"jump"
+	if Input.is_action_just_pressed(&"grab"):
+		p.swing_point = p.find_swing_point()
+		if p.swing_point:
+			return &"swing"
 	if p.is_on_floor() and target <= 0.0:
 		return p.landed_state()
 	return &""
