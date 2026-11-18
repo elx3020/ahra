@@ -1,15 +1,14 @@
 [gd_scene format=3 uid="uid://rh00dtm11fdh"]
 
-[ext_resource type="Script" path="res://world/area.gd" id="1_ns0vu"]
+[ext_resource type="Script" uid="uid://b8xdry2ovq5kx" path="res://world/area.gd" id="1_ns0vu"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_xnmje"]
-[ext_resource type="Script" path="res://player/player.gd" id="3_emkxm"]
-[ext_resource type="Script" path="res://player/stat_mods.gd" id="4_e64hd"]
-[ext_resource type="Script" path="res://world/moving_platform.gd" id="5_qwj2d"]
-[ext_resource type="Script" path="res://world/platform_sequence.gd" id="6_ygd4d"]
-[ext_resource type="Script" path="res://world/platform_switch.gd" id="7_a6hic"]
-[ext_resource type="Script" path="res://world/env_profile.gd" id="8_omwl0"]
-[ext_resource type="Script" path="res://world/scene_door.gd" id="9_q5mm2"]
-[ext_resource type="Script" path="res://world/gravity_zone.gd" id="10_llfbc"]
+[ext_resource type="Script" uid="uid://dtpvbr5vi2vlr" path="res://player/stat_mods.gd" id="4_e64hd"]
+[ext_resource type="Script" uid="uid://bukqeypryc24m" path="res://world/moving_platform.gd" id="5_qwj2d"]
+[ext_resource type="Script" uid="uid://b0s1eycar27vk" path="res://world/platform_sequence.gd" id="6_ygd4d"]
+[ext_resource type="Script" uid="uid://0l2cbfrajomc" path="res://world/platform_switch.gd" id="7_a6hic"]
+[ext_resource type="Script" uid="uid://d4dxuewqome1v" path="res://world/env_profile.gd" id="8_omwl0"]
+[ext_resource type="Script" uid="uid://bkw8gop28gk2v" path="res://world/scene_door.gd" id="9_q5mm2"]
+[ext_resource type="Script" uid="uid://jw3wimhy577v" path="res://world/gravity_zone.gd" id="10_llfbc"]
 
 [sub_resource type="Environment" id="Environment_6rssy"]
 background_mode = 1
@@ -17,9 +16,6 @@ background_color = Color(0.11, 0.12, 0.15, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.62, 0.7, 1)
 ambient_light_energy = 0.7
-
-[sub_resource type="Resource" id="Resource_5eswl"]
-script = ExtResource("4_e64hd")
 
 [sub_resource type="Curve3D" id="Curve3D_xb70m"]
 _data = {
@@ -262,6 +258,7 @@ outline_size = 14
 curve = SubResource("Curve3D_xb70m")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/PingPong/Path" unique_id=618048914]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6700001, -0.25, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 channel = &"pingpong"
@@ -308,6 +305,7 @@ outline_size = 14
 curve = SubResource("Curve3D_rv2d2")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Elevator/Path" unique_id=535512351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 channel = &"elevator"
@@ -358,6 +356,7 @@ outline_size = 14
 curve = SubResource("Curve3D_vj07i")
 
 [node name="Platform1" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=1287973371]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 channel = &"loop"
@@ -367,6 +366,7 @@ script = ExtResource("6_ygd4d")
 lap_wait = 0.0
 
 [node name="Platform2" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=2030401755]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0.41666698, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 offset = 4.333333333333333
@@ -377,6 +377,7 @@ script = ExtResource("6_ygd4d")
 lap_wait = 0.0
 
 [node name="Platform3" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=908940360]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16666412, 4.75, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 offset = 8.666666666666666
@@ -427,6 +428,7 @@ outline_size = 14
 curve = SubResource("Curve3D_4gp6y")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/IcePath" unique_id=717260638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -5)
 script = ExtResource("5_qwj2d")
 color = Color(0.7, 0.9, 1, 1)
 surface = SubResource("Resource_g86ah")
@@ -441,6 +443,7 @@ lap_wait = 1.0
 curve = SubResource("Curve3D_8en47")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/MudPath" unique_id=1731014848]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.45, 0.32, 0.2, 1)
 surface = SubResource("Resource_qkylp")
@@ -455,6 +458,7 @@ lap_wait = 1.0
 curve = SubResource("Curve3D_wrx12")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/WindPath" unique_id=627014600]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 5)
 script = ExtResource("5_qwj2d")
 color = Color(0.85, 0.85, 0.85, 1)
 surface = SubResource("Resource_j225p")
@@ -485,6 +489,7 @@ outline_size = 14
 curve = SubResource("Curve3D_q64e8")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/BackPath" unique_id=169570246]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -3)
 script = ExtResource("5_qwj2d")
 color = Color(0.7, 0.5, 0.9, 1)
 repeat = 2
@@ -501,6 +506,7 @@ lap_wait = 0.0
 curve = SubResource("Curve3D_xl8uk")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/FrontPath" unique_id=1174316889]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.75, -0.25, 3)
 script = ExtResource("5_qwj2d")
 color = Color(0.7, 0.5, 0.9, 1)
 repeat = 2
@@ -563,6 +569,7 @@ outline_size = 10
 curve = SubResource("Curve3D_lhg64")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path1" unique_id=2096928631]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, -3.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.9, 0.7, 0.3, 1)
 repeat = 2
@@ -578,6 +585,7 @@ lap_wait = 1.0
 curve = SubResource("Curve3D_uyueq")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path2" unique_id=2011596392]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, -3.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.9, 0.7, 0.3, 1)
 repeat = 2
@@ -594,6 +602,7 @@ lap_wait = 1.0
 curve = SubResource("Curve3D_qt1wv")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path3" unique_id=131278437]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -3.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.9, 0.7, 0.3, 1)
 repeat = 2
@@ -643,6 +652,7 @@ outline_size = 10
 curve = SubResource("Curve3D_6le18")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/TimedSwitch/Path" unique_id=2113874191]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.9, 0.4, 0.3, 1)
 repeat = 2
@@ -675,6 +685,7 @@ outline_size = 14
 curve = SubResource("Curve3D_xarpt")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Sequences/Path" unique_id=1120247918]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -4)
 script = ExtResource("5_qwj2d")
 color = Color(0.4, 0.75, 0.95, 1)
 repeat = 2
@@ -847,8 +858,10 @@ curve = SubResource("Curve3D_5jhuf")
 curve = SubResource("Curve3D_7s4ne")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Circuit" unique_id=442943820]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -5)
 script = ExtResource("5_qwj2d")
 color = Color(0.95, 0.6, 0.85, 1)
+preview = true
 
 [node name="Sequence1" type="Node" parent="Bays/Circuit/Platform" unique_id=1163943336 node_paths=PackedStringArray("path")]
 script = ExtResource("6_ygd4d")
@@ -928,6 +941,7 @@ outline_size = 10
 curve = SubResource("Curve3D_6kj8u")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/RunOnce/Path" unique_id=282179891]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.85, 0.75, 0.4, 1)
 repeat = 0
@@ -957,6 +971,7 @@ outline_size = 14
 curve = SubResource("Curve3D_8ccx1")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Remote/Path" unique_id=67195827]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.3, 0.8, 0.6, 1)
 repeat = 2
@@ -1011,6 +1026,7 @@ material = SubResource("StandardMaterial3D_cmw2b")
 curve = SubResource("Curve3D_bx1x1")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Ceiling/Path" unique_id=1068733325]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 6.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.55, 0.6, 0.75, 0.5)
 repeat = 2
@@ -1071,6 +1087,7 @@ material = SubResource("StandardMaterial3D_4ynua")
 curve = SubResource("Curve3D_uxm6p")
 
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Wall/Path" unique_id=2069555297]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3, -8.25)
 script = ExtResource("5_qwj2d")
 size = Vector3(3, 5.5, 0.5)
 repeat = 2
@@ -1172,7 +1189,7 @@ size = Vector3(45, 1, 16)
 material = SubResource("StandardMaterial3D_amqgn")
 
 [node name="PitFloor" type="CSGBox3D" parent="." unique_id=1791858657]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -4.5, -3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120.0298, -4.5, -3.0154457)
 use_collision = true
 size = Vector3(260, 1, 22)
 material = SubResource("StandardMaterial3D_4ynua")

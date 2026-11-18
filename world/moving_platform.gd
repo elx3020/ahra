@@ -56,12 +56,16 @@ var _duration := 0.0
 var _rates := Vector3.ONE ## channel multipliers: speed, lap wait, sequence wait
 var _shift := 0.0 ## program clock shift that keeps motion continuous across rate changes
 var _rebased := -1 ## channel rate changes folded into _shift
+var _cs := CollisionShape3D.new()
+var _warmup := 2 ## physics frames with collision off while the body travels from the scene origin to its place
 
 
 func _ready() -> void:
-	var cs := CollisionShape3D.new()
-	cs.shape = _shape
-	add_child(cs)
+	_cs.shape = _shape
+	# the body starts at the scene origin and its first placement is a physics move (Jolt
+	# moves kinematic bodies): keep collision off for it, or it carries whatever stands there
+	_cs.disabled = not Engine.is_editor_hint()
+	add_child(_cs)
 	var mi := MeshInstance3D.new()
 	mi.mesh = _mesh
 	add_child(mi)
@@ -86,6 +90,9 @@ func _physics_process(_delta: float) -> void:
 		_compile() # pick up inspector edits
 		if before != _duration:
 			update_configuration_warnings()
+	elif _warmup > 0:
+		_warmup -= 1
+		_cs.disabled = _warmup > 0
 	_follow()
 
 

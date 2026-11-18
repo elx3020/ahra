@@ -36,7 +36,7 @@ func _process(delta: float) -> void:
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
 	var bay := "bay: %s\n" % bays[_bay()].name if bays else ""
-	hud.text = HELP + bay + player.debug_text() + World.debug_text()
+	hud.text = help() + bay + player.debug_text() + World.debug_text()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -54,6 +54,11 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_BRACKETRIGHT: warp(_bay() + 1)
 		KEY_BRACKETLEFT: warp(_bay() - 1)
 		KEY_BACKSPACE: warp(_bay())
+
+
+## Controls shown at the top of the HUD.
+func help() -> String:
+	return HELP
 
 
 ## Debug warp to a bay's "Start" marker, or 6 m in front of its origin.
