@@ -1,16 +1,16 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://d0iyqtdg027n1"]
 
-[ext_resource type="Script" path="res://demo/demo.gd" id="demo"]
+[ext_resource type="Script" uid="uid://bb7mgmee7e71x" path="res://world/cutscene_trigger.gd" id="cut"]
+[ext_resource type="Script" uid="uid://kuumo6tsrgp1" path="res://demo/demo.gd" id="demo"]
+[ext_resource type="Script" uid="uid://d4dxuewqome1v" path="res://world/env_profile.gd" id="env"]
+[ext_resource type="Script" uid="uid://dl7jfy8iotm13" path="res://world/env_zone.gd" id="env_zone"]
+[ext_resource type="Script" uid="uid://jw3wimhy577v" path="res://world/gravity_zone.gd" id="grav"]
+[ext_resource type="Script" uid="uid://br5wjmsf5awc3" path="res://world/interactable.gd" id="inter"]
+[ext_resource type="Script" uid="uid://bov0gifdq24yy" path="res://world/kill_zone.gd" id="kill"]
+[ext_resource type="Script" uid="uid://dtpvbr5vi2vlr" path="res://player/stat_mods.gd" id="mods"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="player"]
-[ext_resource type="Script" path="res://world/env_profile.gd" id="env"]
-[ext_resource type="Script" path="res://player/stat_mods.gd" id="mods"]
-[ext_resource type="Script" path="res://world/env_zone.gd" id="env_zone"]
-[ext_resource type="Script" path="res://world/gravity_zone.gd" id="grav"]
-[ext_resource type="Script" path="res://world/teleporter.gd" id="tele"]
-[ext_resource type="Script" path="res://world/interactable.gd" id="inter"]
-[ext_resource type="Script" path="res://world/cutscene_trigger.gd" id="cut"]
-[ext_resource type="Script" path="res://world/swing_point.gd" id="swing"]
-[ext_resource type="Script" path="res://world/kill_zone.gd" id="kill"]
+[ext_resource type="Script" uid="uid://bxerfvr0tmsm8" path="res://world/swing_point.gd" id="swing"]
+[ext_resource type="Script" uid="uid://duddksltrx8bt" path="res://world/teleporter.gd" id="tele"]
 
 [sub_resource type="Environment" id="world_env"]
 background_mode = 1
@@ -25,6 +25,86 @@ albedo_color = Color(0.42, 0.42, 0.45, 1)
 [sub_resource type="StandardMaterial3D" id="m_block"]
 albedo_color = Color(0.28, 0.28, 0.32, 1)
 
+[sub_resource type="Resource" id="e_cold_mods"]
+script = ExtResource("mods")
+stamina_cost = 0.3
+
+[sub_resource type="Resource" id="e_cold"]
+resource_name = "Cold"
+script = ExtResource("env")
+temperature = 0
+mods = SubResource("e_cold_mods")
+
+[sub_resource type="Resource" id="e_hot_mods"]
+script = ExtResource("mods")
+stamina_regen = -0.3
+stamina_cost = 0.6
+
+[sub_resource type="Resource" id="e_hot"]
+resource_name = "Hot"
+script = ExtResource("env")
+temperature = 2
+mods = SubResource("e_hot_mods")
+
+[sub_resource type="Resource" id="e_mud_mods"]
+script = ExtResource("mods")
+speed = -0.55
+traction = -0.4
+jump = -0.3
+dash = -0.5
+stamina_cost = 2.0
+
+[sub_resource type="Resource" id="e_mud"]
+resource_name = "Mud"
+script = ExtResource("env")
+mods = SubResource("e_mud_mods")
+
+[sub_resource type="Resource" id="e_ice_mods"]
+script = ExtResource("mods")
+speed = 0.15
+traction = -0.94
+dash = 0.3
+
+[sub_resource type="Resource" id="e_ice"]
+resource_name = "Ice"
+script = ExtResource("env")
+temperature = 0
+mods = SubResource("e_ice_mods")
+
+[sub_resource type="Resource" id="e_gale_mods"]
+script = ExtResource("mods")
+jump = -0.2
+
+[sub_resource type="Resource" id="e_gale"]
+resource_name = "Gale"
+script = ExtResource("env")
+mods = SubResource("e_gale_mods")
+wind = Vector3(-16, 0, 0)
+
+[sub_resource type="Resource" id="e_updraft_mods"]
+script = ExtResource("mods")
+jump = 0.6
+
+[sub_resource type="Resource" id="e_updraft"]
+resource_name = "Updraft"
+script = ExtResource("env")
+mods = SubResource("e_updraft_mods")
+wind = Vector3(0, 4, 0)
+
+[sub_resource type="Resource" id="e_water_mods"]
+script = ExtResource("mods")
+speed = -0.4
+jump = 0.6
+dash = -0.4
+
+[sub_resource type="Resource" id="e_water"]
+resource_name = "Underwater"
+script = ExtResource("env")
+mods = SubResource("e_water_mods")
+water = true
+gravity_mult = 0.3
+drag = 1.2
+
 [sub_resource type="StandardMaterial3D" id="m_climb"]
 albedo_color = Color(0.3, 0.62, 0.32, 1)
 
@@ -35,569 +115,511 @@ albedo_color = Color(0.75, 0.2, 0.2, 1)
 transparency = 1
 albedo_color = Color(0.55, 0.55, 0.65, 0.25)
 
-[sub_resource type="Resource" id="e_cold_mods"]
-script = ExtResource("mods")
-stamina_cost = 0.3
-
-[sub_resource type="Resource" id="e_cold"]
-script = ExtResource("env")
-resource_name = "Cold"
-temperature = 0
-mods = SubResource("e_cold_mods")
-
-[sub_resource type="Resource" id="e_hot_mods"]
-script = ExtResource("mods")
-stamina_cost = 0.6
-stamina_regen = -0.3
-
-[sub_resource type="Resource" id="e_hot"]
-script = ExtResource("env")
-resource_name = "Hot"
-temperature = 2
-mods = SubResource("e_hot_mods")
-
-[sub_resource type="Resource" id="e_mud_mods"]
-script = ExtResource("mods")
-speed = -0.55
-traction = -0.4
-stamina_cost = 2.0
-jump = -0.3
-dash = -0.5
-
-[sub_resource type="Resource" id="e_mud"]
-script = ExtResource("env")
-resource_name = "Mud"
-mods = SubResource("e_mud_mods")
-
-[sub_resource type="Resource" id="e_ice_mods"]
-script = ExtResource("mods")
-speed = 0.15
-traction = -0.94
-dash = 0.3
-
-[sub_resource type="Resource" id="e_ice"]
-script = ExtResource("env")
-resource_name = "Ice"
-temperature = 0
-mods = SubResource("e_ice_mods")
-
-[sub_resource type="Resource" id="e_gale_mods"]
-script = ExtResource("mods")
-jump = -0.2
-
-[sub_resource type="Resource" id="e_gale"]
-script = ExtResource("env")
-resource_name = "Gale"
-wind = Vector3(-16, 0, 0)
-mods = SubResource("e_gale_mods")
-
-[sub_resource type="Resource" id="e_updraft_mods"]
-script = ExtResource("mods")
-jump = 0.6
-
-[sub_resource type="Resource" id="e_updraft"]
-script = ExtResource("env")
-resource_name = "Updraft"
-wind = Vector3(0, 4, 0)
-mods = SubResource("e_updraft_mods")
-
-[sub_resource type="Resource" id="e_water_mods"]
-script = ExtResource("mods")
-jump = 0.6
-speed = -0.4
-dash = -0.4
-
-[sub_resource type="Resource" id="e_water"]
-script = ExtResource("env")
-resource_name = "Underwater"
-water = true
-gravity_mult = 0.3
-drag = 1.2
-mods = SubResource("e_water_mods")
-
 [sub_resource type="Resource" id="e_icywall_mods"]
 script = ExtResource("mods")
 traction = -0.6
 
 [sub_resource type="Resource" id="e_icywall"]
-script = ExtResource("env")
 resource_name = "Icy wall"
+script = ExtResource("env")
 temperature = 0
 mods = SubResource("e_icywall_mods")
 
 [sub_resource type="Resource" id="e_crosswind"]
-script = ExtResource("env")
 resource_name = "Crosswind"
+script = ExtResource("env")
 wind = Vector3(5, 0, 0)
 
-[node name="Demo" type="Node3D"]
+[node name="Demo" type="Node3D" unique_id=944746598]
 script = ExtResource("demo")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2054665995]
 environment = SubResource("world_env")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
-rotation_degrees = Vector3(-55, -30, 0)
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1356271644]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
 shadow_enabled = true
 
-[node name="Camera" type="Camera3D" parent="."]
+[node name="Camera" type="Camera3D" parent="." unique_id=2002541084]
 projection = 1
 current = true
 size = 20.0
 far = 500.0
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1169301797]
 
-[node name="Label" type="Label" parent="HUD"]
+[node name="Label" type="Label" parent="HUD" unique_id=273191684]
 offset_left = 12.0
 offset_top = 8.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 
-[node name="Player" parent="." instance=ExtResource("player")]
-position = Vector3(0, 1, 6)
+[node name="Player" parent="." unique_id=715936191 instance=ExtResource("player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
-[node name="Floor" type="CSGBox3D" parent="."]
-position = Vector3(120, -0.5, 0)
+[node name="Floor" type="CSGBox3D" parent="." unique_id=2087801906]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -0.5, 0)
 use_collision = true
 size = Vector3(300, 1, 16)
 material = SubResource("m_floor")
 
-[node name="Void" type="Area3D" parent="."]
-position = Vector3(100, -14, 0)
+[node name="Void" type="Area3D" parent="." unique_id=1009379926]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, -14, 0)
 script = ExtResource("kill")
 size = Vector3(400, 4, 120)
 color = Color(1, 0, 0, 0.06)
 
-[node name="Bays" type="Node3D" parent="."]
+[node name="Bays" type="Node3D" parent="." unique_id=1660876360]
 
-[node name="Basics" type="Node3D" parent="Bays"]
-position = Vector3(0, 0, 0)
+[node name="Basics" type="Node3D" parent="Bays" unique_id=983072816]
 
-[node name="Label" type="Label3D" parent="Bays/Basics"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Basics" unique_id=1202811183]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "BASICS
+steps 1 / 2 / 2.5 / 3.5 m
+8 m gap: run-jump + dash
+walk off the edge = fall death"
 font_size = 56
 outline_size = 14
-text = "BASICS\nsteps 1 / 2 / 2.5 / 3.5 m\n8 m gap: run-jump + dash\nwalk off the edge = fall death"
 
-[node name="Step0" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(-6, 0.5, -4)
+[node name="Step0" type="CSGBox3D" parent="Bays/Basics" unique_id=154090438]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.5, -4)
 use_collision = true
 size = Vector3(2, 1, 2)
 material = SubResource("m_block")
 
-[node name="Step1" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(-3, 1.0, -4)
+[node name="Step1" type="CSGBox3D" parent="Bays/Basics" unique_id=1627281337]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1, -4)
 use_collision = true
 size = Vector3(2, 2, 2)
 material = SubResource("m_block")
 
-[node name="Step2" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(0, 1.25, -4)
+[node name="Step2" type="CSGBox3D" parent="Bays/Basics" unique_id=1138728294]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -4)
 use_collision = true
 size = Vector3(2, 2.5, 2)
 material = SubResource("m_block")
 
-[node name="Step3" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(3, 1.75, -4)
+[node name="Step3" type="CSGBox3D" parent="Bays/Basics" unique_id=2043254859]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.75, -4)
 use_collision = true
 size = Vector3(2, 3.5, 2)
 material = SubResource("m_block")
 
-[node name="GapA" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(-7, 0.5, 2.5)
+[node name="GapA" type="CSGBox3D" parent="Bays/Basics" unique_id=1854248607]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 2.5)
 use_collision = true
 size = Vector3(3, 1, 3)
 material = SubResource("m_block")
 
-[node name="GapB" type="CSGBox3D" parent="Bays/Basics"]
-position = Vector3(4, 0.5, 2.5)
+[node name="GapB" type="CSGBox3D" parent="Bays/Basics" unique_id=1429588804]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, 2.5)
 use_collision = true
 size = Vector3(3, 1, 3)
 material = SubResource("m_block")
 
-[node name="Temperature" type="Node3D" parent="Bays"]
-position = Vector3(20, 0, 0)
+[node name="Temperature" type="Node3D" parent="Bays" unique_id=17574244]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Temperature"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Temperature" unique_id=424149055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "IDLE VARIANTS
+blue = cold, red = hot, middle = mild
+1/2 health, 3/4 mood, then stand still"
 font_size = 56
 outline_size = 14
-text = "IDLE VARIANTS\nblue = cold, red = hot, middle = mild\n1/2 health, 3/4 mood, then stand still"
 
-[node name="Cold" type="Area3D" parent="Bays/Temperature"]
+[node name="Cold" type="Area3D" parent="Bays/Temperature" unique_id=1783933870]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1.5, 0)
 script = ExtResource("env_zone")
-position = Vector3(-5, 1.5, 0)
+profile = SubResource("e_cold")
 size = Vector3(6, 3, 8)
 color = Color(0.3, 0.5, 1, 0.25)
-profile = SubResource("e_cold")
 
-[node name="Hot" type="Area3D" parent="Bays/Temperature"]
+[node name="Hot" type="Area3D" parent="Bays/Temperature" unique_id=1659286375]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.5, 0)
 script = ExtResource("env_zone")
-position = Vector3(5, 1.5, 0)
+profile = SubResource("e_hot")
 size = Vector3(6, 3, 8)
 color = Color(1, 0.3, 0.2, 0.25)
-profile = SubResource("e_hot")
 
-[node name="Mud" type="Node3D" parent="Bays"]
-position = Vector3(40, 0, 0)
+[node name="Mud" type="Node3D" parent="Bays" unique_id=2139402725]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Mud"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Mud" unique_id=1149231930]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "MUD (back lane)
+slow, tiring, weak jump/dash
+front lane = normal"
 font_size = 56
 outline_size = 14
-text = "MUD (back lane)\nslow, tiring, weak jump/dash\nfront lane = normal"
 
-[node name="Mud" type="Area3D" parent="Bays/Mud"]
+[node name="Mud" type="Area3D" parent="Bays/Mud" unique_id=740615202]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -3.5)
 script = ExtResource("env_zone")
-position = Vector3(0, 1, -3.5)
+profile = SubResource("e_mud")
 size = Vector3(16, 2, 6)
 color = Color(0.45, 0.3, 0.15, 0.45)
-profile = SubResource("e_mud")
 
-[node name="Ice" type="Node3D" parent="Bays"]
-position = Vector3(60, 0, 0)
+[node name="Ice" type="Node3D" parent="Bays" unique_id=1742022417]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Ice"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Ice" unique_id=607782763]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "ICE (back lane)
+slippery: low control
+front lane = normal"
 font_size = 56
 outline_size = 14
-text = "ICE (back lane)\nslippery: low control\nfront lane = normal"
 
-[node name="Ice" type="Area3D" parent="Bays/Ice"]
+[node name="Ice" type="Area3D" parent="Bays/Ice" unique_id=1294714061]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -3.5)
 script = ExtResource("env_zone")
-position = Vector3(0, 1, -3.5)
+profile = SubResource("e_ice")
 size = Vector3(16, 2, 6)
 color = Color(0.7, 0.95, 1, 0.35)
-profile = SubResource("e_ice")
 
-[node name="Wind" type="Node3D" parent="Bays"]
-position = Vector3(80, 0, 0)
+[node name="Wind" type="Node3D" parent="Bays" unique_id=1135620523]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Wind"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Wind" unique_id=420328771]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "WIND (always pushing)
+left: gale pushes -x, lower jumps
+right: updraft, clear the 3.5 m wall"
 font_size = 56
 outline_size = 14
-text = "WIND (always pushing)\nleft: gale pushes -x, lower jumps\nright: updraft, clear the 3.5 m wall"
 
-[node name="Gale" type="Area3D" parent="Bays/Wind"]
+[node name="Gale" type="Area3D" parent="Bays/Wind" unique_id=1305775894]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 3, 0)
 script = ExtResource("env_zone")
-position = Vector3(-5, 3, 0)
+profile = SubResource("e_gale")
 size = Vector3(8, 6, 14)
 color = Color(0.8, 0.8, 0.8, 0.12)
-profile = SubResource("e_gale")
 
-[node name="Updraft" type="Area3D" parent="Bays/Wind"]
+[node name="Updraft" type="Area3D" parent="Bays/Wind" unique_id=1991956718]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 3, 0)
 script = ExtResource("env_zone")
-position = Vector3(5, 3, 0)
+profile = SubResource("e_updraft")
 size = Vector3(8, 6, 14)
 color = Color(0.6, 1, 0.6, 0.12)
-profile = SubResource("e_updraft")
 
-[node name="Wall" type="CSGBox3D" parent="Bays/Wind"]
-position = Vector3(6, 1.75, -4)
+[node name="Wall" type="CSGBox3D" parent="Bays/Wind" unique_id=1310432439]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.75, -4)
 use_collision = true
 size = Vector3(1, 3.5, 6)
 material = SubResource("m_block")
 
-[node name="Underwater" type="Node3D" parent="Bays"]
-position = Vector3(100, 0, 0)
+[node name="Underwater" type="Node3D" parent="Bays" unique_id=101569774]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Underwater"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Underwater" unique_id=355043809]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "UNDERWATER
+hold Space = swim up, hold C/Ctrl = swim down
+Space at the surface = leap out
+watch the oxygen bar (drowning)"
 font_size = 56
 outline_size = 14
-text = "UNDERWATER\nhold Space = swim up, hold C/Ctrl = swim down\nSpace at the surface = leap out\nwatch the oxygen bar (drowning)"
 
-[node name="Water" type="Area3D" parent="Bays/Underwater"]
+[node name="Water" type="Area3D" parent="Bays/Underwater" unique_id=269110188]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 0)
 script = ExtResource("env_zone")
-position = Vector3(0, 4, 0)
+profile = SubResource("e_water")
 size = Vector3(14, 8, 14)
 color = Color(0.2, 0.45, 0.9, 0.2)
-profile = SubResource("e_water")
 
-[node name="Low" type="CSGBox3D" parent="Bays/Underwater"]
-position = Vector3(-3, 1.25, -4)
+[node name="Low" type="CSGBox3D" parent="Bays/Underwater" unique_id=695656314]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.25, -4)
 use_collision = true
 size = Vector3(3, 2.5, 3)
 material = SubResource("m_block")
 
-[node name="High" type="CSGBox3D" parent="Bays/Underwater"]
-position = Vector3(3, 2, -4)
+[node name="High" type="CSGBox3D" parent="Bays/Underwater" unique_id=103042495]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -4)
 use_collision = true
 size = Vector3(3, 4, 3)
 material = SubResource("m_block")
 
-[node name="Climb" type="Node3D" parent="Bays"]
-position = Vector3(120, 0, 0)
+[node name="Climb" type="Node3D" parent="Bays" unique_id=1754167109]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Climb"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Climb" unique_id=904762644]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "CLIMB
+green = climbable (push into it)
+up/down/left/right, jump = wall jump"
 font_size = 56
 outline_size = 14
-text = "CLIMB\ngreen = climbable (push into it)\nup/down/left/right, jump = wall jump"
 
-[node name="ClimbWall" type="CSGBox3D" parent="Bays/Climb" groups=["climbable"]]
-position = Vector3(-4, 3, -5.5)
+[node name="ClimbWall" type="CSGBox3D" parent="Bays/Climb" unique_id=1206476053 groups=["climbable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3, -5.5)
 use_collision = true
 size = Vector3(6, 6, 3)
 material = SubResource("m_climb")
 
-[node name="PlainWall" type="CSGBox3D" parent="Bays/Climb"]
-position = Vector3(4, 3, -5.5)
+[node name="PlainWall" type="CSGBox3D" parent="Bays/Climb" unique_id=1792889436]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3, -5.5)
 use_collision = true
 size = Vector3(6, 6, 3)
 material = SubResource("m_block")
 
-[node name="Swing" type="Node3D" parent="Bays"]
-position = Vector3(140, 0, 0)
+[node name="Swing" type="Node3D" parent="Bays" unique_id=226173387]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Swing"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Swing" unique_id=659859540]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "SWING
+jump off a platform, hold F near the ball
+move to pump, jump/release to let go"
 font_size = 56
 outline_size = 14
-text = "SWING\njump off a platform, hold F near the ball\nmove to pump, jump/release to let go"
 
-[node name="Left" type="CSGBox3D" parent="Bays/Swing"]
-position = Vector3(-7, 1.5, 0)
+[node name="Left" type="CSGBox3D" parent="Bays/Swing" unique_id=2116403159]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.5, 0)
 use_collision = true
 size = Vector3(4, 3, 6)
 material = SubResource("m_block")
 
-[node name="Right" type="CSGBox3D" parent="Bays/Swing"]
-position = Vector3(7, 1.5, 0)
+[node name="Right" type="CSGBox3D" parent="Bays/Swing" unique_id=899538817]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, 0)
 use_collision = true
 size = Vector3(4, 3, 6)
 material = SubResource("m_block")
 
-[node name="Point" type="Node3D" parent="Bays/Swing"]
+[node name="Point" type="Node3D" parent="Bays/Swing" unique_id=880011560]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
 script = ExtResource("swing")
-position = Vector3(0, 8, 0)
 
-[node name="Interact" type="Node3D" parent="Bays"]
-position = Vector3(160, 0, 0)
+[node name="Interact" type="Node3D" parent="Bays" unique_id=58323997]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Interact"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Interact" unique_id=1647366209]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "INTERACT
+stand in yellow, press E
+toggles the red door"
 font_size = 56
 outline_size = 14
-text = "INTERACT\nstand in yellow, press E\ntoggles the red door"
 
-[node name="Lever" type="Area3D" parent="Bays/Interact"]
+[node name="Lever" type="Area3D" parent="Bays/Interact" unique_id=681163755]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1, 0)
 script = ExtResource("inter")
-position = Vector3(-3, 1, 0)
 size = Vector3(2, 2, 2)
 color = Color(1, 0.9, 0.2, 0.35)
 
-[node name="Door" type="CSGBox3D" parent="Bays/Interact"]
-position = Vector3(3, 2, -3)
+[node name="Door" type="CSGBox3D" parent="Bays/Interact" unique_id=897812395]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -3)
 use_collision = true
 size = Vector3(1, 4, 10)
 material = SubResource("m_door")
 
-[node name="Cinematic" type="Node3D" parent="Bays"]
-position = Vector3(180, 0, 0)
+[node name="Cinematic" type="Node3D" parent="Bays" unique_id=2134508414]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 180, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Cinematic"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Cinematic" unique_id=1286776217]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "PUPPET
+step in purple: player is walked
+to the marker, then released"
 font_size = 56
 outline_size = 14
-text = "PUPPET\nstep in purple: player is walked\nto the marker, then released"
 
-[node name="Trigger" type="Area3D" parent="Bays/Cinematic" node_paths=PackedStringArray("walk_to")]
+[node name="Trigger" type="Area3D" parent="Bays/Cinematic" unique_id=967461940 node_paths=PackedStringArray("walk_to")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.5, 0)
 script = ExtResource("cut")
-position = Vector3(-6, 1.5, 0)
+walk_to = NodePath("../WalkTo")
 size = Vector3(3, 3, 3)
 color = Color(0.7, 0.3, 1, 0.3)
-walk_to = NodePath("../WalkTo")
 
-[node name="WalkTo" type="Marker3D" parent="Bays/Cinematic"]
-position = Vector3(6, 1, -3)
+[node name="WalkTo" type="Marker3D" parent="Bays/Cinematic" unique_id=412318475]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, -3)
 
-[node name="Teleport" type="Node3D" parent="Bays"]
-position = Vector3(200, 0, 0)
+[node name="Teleport" type="Node3D" parent="Bays" unique_id=520625851]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Teleport"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Teleport" unique_id=1910047032]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "TELEPORT (momentum kept)
+back pad: run in heading +x
+front pad: momentum rotated 90 deg"
 font_size = 56
 outline_size = 14
-text = "TELEPORT (momentum kept)\nback pad: run in heading +x\nfront pad: momentum rotated 90 deg"
 
-[node name="PadA" type="Area3D" parent="Bays/Teleport" node_paths=PackedStringArray("target")]
+[node name="PadA" type="Area3D" parent="Bays/Teleport" unique_id=647611428 node_paths=PackedStringArray("target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, -3)
 script = ExtResource("tele")
-position = Vector3(-6, 1, -3)
+target = NodePath("../ExitA")
 size = Vector3(2, 2, 2)
 color = Color(0.2, 1, 0.8, 0.35)
-target = NodePath("../ExitA")
 
-[node name="ExitA" type="Marker3D" parent="Bays/Teleport"]
-position = Vector3(1, 7, -3)
+[node name="ExitA" type="Marker3D" parent="Bays/Teleport" unique_id=469136577]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 7, -3)
 
-[node name="HighLedge" type="CSGBox3D" parent="Bays/Teleport"]
-position = Vector3(7, 5, -3)
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Teleport" unique_id=215746678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 5, -3)
 use_collision = true
 size = Vector3(6, 1, 4)
 material = SubResource("m_block")
 
-[node name="PadB" type="Area3D" parent="Bays/Teleport" node_paths=PackedStringArray("target")]
+[node name="PadB" type="Area3D" parent="Bays/Teleport" unique_id=1868210301 node_paths=PackedStringArray("target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 3)
 script = ExtResource("tele")
-position = Vector3(-6, 1, 3)
-size = Vector3(2, 2, 2)
-color = Color(0.2, 0.6, 1, 0.35)
 target = NodePath("../ExitB")
 rotate_momentum = true
+size = Vector3(2, 2, 2)
+color = Color(0.2, 0.6, 1, 0.35)
 
-[node name="ExitB" type="Marker3D" parent="Bays/Teleport"]
-position = Vector3(4, 1, 3)
-rotation_degrees = Vector3(0, 90, 0)
+[node name="ExitB" type="Marker3D" parent="Bays/Teleport" unique_id=59351446]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 4, 1, 3)
 
-[node name="Gravity" type="Node3D" parent="Bays"]
-position = Vector3(220, 0, 0)
+[node name="Gravity" type="Node3D" parent="Bays" unique_id=1593051161]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 220, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/Gravity"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/Gravity" unique_id=1917312650]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
+text = "GRAVITY
+left pad: ceiling (+y), middle pad: back wall (-z)
+white pads reset to normal"
 font_size = 56
 outline_size = 14
-text = "GRAVITY\nleft pad: ceiling (+y), middle pad: back wall (-z)\nwhite pads reset to normal"
 
-[node name="Ceiling" type="CSGBox3D" parent="Bays/Gravity"]
-position = Vector3(0, 7.5, 0)
+[node name="Ceiling" type="CSGBox3D" parent="Bays/Gravity" unique_id=1785029963]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, 0)
 use_collision = true
 size = Vector3(14, 1, 14)
 material = SubResource("m_glass")
 
-[node name="BackWall" type="CSGBox3D" parent="Bays/Gravity"]
-position = Vector3(0, 3.5, -7.5)
+[node name="BackWall" type="CSGBox3D" parent="Bays/Gravity" unique_id=1465688402]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -7.5)
 use_collision = true
 size = Vector3(14, 8, 1)
 material = SubResource("m_block")
 
-[node name="ToCeiling" type="Area3D" parent="Bays/Gravity"]
+[node name="ToCeiling" type="Area3D" parent="Bays/Gravity" unique_id=1061143981]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, 3)
 script = ExtResource("grav")
-position = Vector3(-4, 0.5, 3)
+gravity_dir = Vector3(0, 1, 0)
 size = Vector3(2, 1, 2)
 color = Color(1, 0.4, 1, 0.4)
-gravity_dir = Vector3(0, 1, 0)
 
-[node name="ToWall" type="Area3D" parent="Bays/Gravity"]
+[node name="ToWall" type="Area3D" parent="Bays/Gravity" unique_id=1020125885]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 3)
 script = ExtResource("grav")
-position = Vector3(0, 0.5, 3)
+gravity_dir = Vector3(0, 0, -1)
 size = Vector3(2, 1, 2)
 color = Color(1, 0.6, 0.2, 0.4)
-gravity_dir = Vector3(0, 0, -1)
 
-[node name="ResetCeiling" type="Area3D" parent="Bays/Gravity"]
+[node name="ResetCeiling" type="Area3D" parent="Bays/Gravity" unique_id=224441881]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 6.5, 3)
 script = ExtResource("grav")
-position = Vector3(4, 6.5, 3)
 size = Vector3(2, 1, 2)
 color = Color(1, 1, 1, 0.4)
-gravity_dir = Vector3(0, -1, 0)
 
-[node name="ResetWall" type="Area3D" parent="Bays/Gravity"]
+[node name="ResetWall" type="Area3D" parent="Bays/Gravity" unique_id=489487805]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, -6.5)
 script = ExtResource("grav")
-position = Vector3(4, 4, -6.5)
 size = Vector3(2, 2, 1)
 color = Color(1, 1, 1, 0.4)
-gravity_dir = Vector3(0, -1, 0)
 
-[node name="MixClimb" type="Node3D" parent="Bays"]
-position = Vector3(240, 0, 0)
+[node name="MixClimb" type="Node3D" parent="Bays" unique_id=1691985694]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/MixClimb"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/MixClimb" unique_id=673394824]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
-font_size = 56
-outline_size = 14
 text = "MIX: icy climbable wall + crosswind
 idle = slide down, wind drifts you right
 start at the left end, climb to the top"
+font_size = 56
+outline_size = 14
 
-[node name="IceWall" type="CSGBox3D" parent="Bays/MixClimb" groups=["climbable"]]
-position = Vector3(0, 4, -5.5)
+[node name="IceWall" type="CSGBox3D" parent="Bays/MixClimb" unique_id=803830513 groups=["climbable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -5.5)
 use_collision = true
 size = Vector3(10, 8, 3)
 material = SubResource("m_climb")
 
-[node name="Icy" type="Area3D" parent="Bays/MixClimb"]
-position = Vector3(0, 4, -3.5)
+[node name="Icy" type="Area3D" parent="Bays/MixClimb" unique_id=80180398]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -3.5)
 script = ExtResource("env_zone")
+profile = SubResource("e_icywall")
 size = Vector3(10, 8, 2)
 color = Color(0.7, 0.95, 1, 0.3)
-profile = SubResource("e_icywall")
 
-[node name="Crosswind" type="Area3D" parent="Bays/MixClimb"]
-position = Vector3(0, 5, -3)
+[node name="Crosswind" type="Area3D" parent="Bays/MixClimb" unique_id=1631627022]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -3)
 script = ExtResource("env_zone")
+profile = SubResource("e_crosswind")
 size = Vector3(12, 10, 4)
 color = Color(0.8, 0.8, 0.8, 0.1)
-profile = SubResource("e_crosswind")
 
-[node name="MixSwing" type="Node3D" parent="Bays"]
-position = Vector3(260, 0, 0)
+[node name="MixSwing" type="Node3D" parent="Bays" unique_id=1882432435]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, 0)
 
-[node name="Label" type="Label3D" parent="Bays/MixSwing"]
-position = Vector3(0, 8, -6)
+[node name="Label" type="Label3D" parent="Bays/MixSwing" unique_id=119744105]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-pixel_size = 0.01
-font_size = 56
-outline_size = 14
 text = "MIX: underwater swing catapult
 swim to the ball, hold F, pump left/right
 release (Space) on the upswing toward the ledge"
+font_size = 56
+outline_size = 14
 
-[node name="Pool" type="Area3D" parent="Bays/MixSwing"]
-position = Vector3(-2, 3, 0)
+[node name="Pool" type="Area3D" parent="Bays/MixSwing" unique_id=1007635711]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 3, 0)
 script = ExtResource("env_zone")
+profile = SubResource("e_water")
 size = Vector3(12, 6, 12)
 color = Color(0.2, 0.45, 0.9, 0.2)
-profile = SubResource("e_water")
 
-[node name="Point" type="Node3D" parent="Bays/MixSwing"]
-position = Vector3(-2, 4, 0)
+[node name="Point" type="Node3D" parent="Bays/MixSwing" unique_id=1045396187]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 4, 0)
 script = ExtResource("swing")
 grab_radius = 4.0
 
-[node name="Ledge" type="CSGBox3D" parent="Bays/MixSwing"]
-position = Vector3(7, 4.5, 0)
+[node name="Ledge" type="CSGBox3D" parent="Bays/MixSwing" unique_id=1194890834]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 4.5, 0)
 use_collision = true
 size = Vector3(4, 9, 6)
 material = SubResource("m_block")
