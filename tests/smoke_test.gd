@@ -238,8 +238,67 @@ func _run() -> void:
 	Input.action_release(&"move_right")
 	Input.action_release(&"move_down")
 
+	# --- gravity -x: wall along z (Gravity bay, left wall surface at x 213) ---
+	await _place(p, Vector3(216, 1, -2))
+	await _wait(60)
+	_check(p.is_on_floor() and p.up_direction.is_equal_approx(Vector3.RIGHT) and p.global_position.x < 214.5, "-x gravity pad: standing on the left wall")
+	Input.action_press(&"move_up")
+	for i in 120:
+		await _wait(1)
+		if p.gravity_dir == Vector3.DOWN:
+			break
+	Input.action_release(&"move_up")
+	await _wait(60)
+	_check(p.is_on_floor() and p.up_direction == Vector3.UP, "walk up the left wall onto the reset pad, drop to the floor")
+
+	# --- mixed: swing across a gap while on the ceiling / on a -x wall ---
+	var r := await _swing_cross(p, Vector3(273, 1, 0), [&"move_right", &"move_down"], Vector3(280, 4, 0), Vector3.RIGHT, 275.0)
+	_check(r.up.is_equal_approx(Vector3.DOWN) and r.hang > 0.5, "ceiling: pad flips gravity, swing hangs toward the ceiling (+y) (%.2f)" % r.hang)
+	_check(r.landed and r.pos.x > 284.6 and r.up.is_equal_approx(Vector3.DOWN), "ceiling: slingshot lands on the far ceiling slab")
+	r = await _swing_cross(p, Vector3(297, 1, -6), [&"move_left"], Vector3(299, 2.5, 0), Vector3.BACK, -4.0)
+	_check(r.up.is_equal_approx(Vector3.RIGHT) and r.hang > 0.5, "wall: pad sets -x gravity, swing hangs toward the wall (-x) (%.2f)" % r.hang)
+	_check(r.landed and r.pos.z > 3.6 and r.up.is_equal_approx(Vector3.RIGHT), "wall: slingshot lands on the far wall")
+
 	print("SMOKE: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
+
+
+## Walks off a platform edge (any gravity), grabs `anchor`, pumps toward the far side and
+## releases on the upswing. Returns {up, hang (best offset·gravity while swinging), landed, pos}.
+func _swing_cross(p: Player, start: Vector3, acts: Array, anchor: Vector3, axis: Vector3, edge: float) -> Dictionary:
+	await _place(p, start)
+	await _wait(60) # gravity pad drops the player onto its surface
+	var r := {up = p.up_direction, hang = -1.0, landed = false, pos = Vector3.ZERO}
+	for a in acts:
+		Input.action_press(a)
+	var phase := 0
+	for i in 600:
+		await _wait(1)
+		var along := p.global_position.dot(axis)
+		if phase == 0 and along > edge - 0.3:
+			Input.action_press(&"jump")
+			phase = 1
+		elif phase == 1:
+			Input.action_release(&"jump")
+			if p.global_position.distance_to(anchor) < 6.0:
+				Input.action_press(&"grab")
+				phase = 2
+		elif phase == 2 and p.state_name == &"swing":
+			r.hang = maxf(r.hang, (p.global_position - anchor).normalized().dot(p.gravity_dir))
+			if along > anchor.dot(axis) + 1.0 and p.vspeed() > 0.0:
+				Input.action_press(&"jump")
+				phase = 3
+		elif phase == 3:
+			Input.action_release(&"jump")
+			Input.action_release(&"grab")
+			if p.is_on_floor():
+				r.landed = true
+				r.pos = p.global_position
+				r.up = p.up_direction
+				break
+	for a in acts + [&"jump", &"grab"]:
+		Input.action_release(a)
+	return r
 
 
 func _place(p: Player, pos: Vector3) -> void:

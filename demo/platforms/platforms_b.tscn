@@ -1,0 +1,83 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/area.gd" id="1_0t7uh"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_3e1oo"]
+[ext_resource type="Script" path="res://player/player.gd" id="3_m3f4c"]
+[ext_resource type="Script" path="res://player/stat_mods.gd" id="4_mwsgm"]
+[ext_resource type="Script" path="res://world/platform_switch.gd" id="5_b5aqb"]
+[ext_resource type="Script" path="res://world/scene_door.gd" id="6_htgi3"]
+
+[sub_resource type="Environment" id="Environment_wdj35"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="Resource" id="Resource_5ivgt"]
+script = ExtResource("4_mwsgm")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_270qv"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[node name="PlatformsB" type="Node3D" unique_id=832241744]
+script = ExtResource("1_0t7uh")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=127572987]
+environment = SubResource("Environment_wdj35")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2142347077]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="." unique_id=124384962]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1480244803]
+
+[node name="Label" type="Label" parent="HUD" unique_id=1277044037]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." unique_id=847320845 instance=ExtResource("2_3e1oo")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1, 3)
+
+[node name="Label" type="Label3D" parent="." unique_id=1890749930]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "AREA B
+E at the green box toggles channel \"remote\" (the platform in area A)
+the door on the left goes back"
+font_size = 56
+outline_size = 14
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1314685973]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(24, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Switch" type="Area3D" parent="." unique_id=149252124]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1, -3)
+script = ExtResource("5_b5aqb")
+channel = &"remote"
+size = Vector3(2, 2, 2)
+color = Color(0.3, 0.8, 0.6, 0.35)
+
+[node name="DoorToA" type="Area3D" parent="." unique_id=469821912]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1, 0)
+script = ExtResource("6_htgi3")
+scene = "res://demo/platforms/platforms_a.tscn"
+spawn = &"Bays/Remote/FromB"
+size = Vector3(2, 2, 4)
+color = Color(0.3, 0.8, 0.6, 0.4)
+
+[node name="FromA" type="Marker3D" parent="." unique_id=1924876909]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1, 3)

@@ -132,6 +132,8 @@ wind = Vector3(5, 0, 0)
 
 [node name="Demo" type="Node3D" unique_id=944746598]
 script = ExtResource("demo")
+bounds_center = Vector3(150, 0, 0)
+bounds_radius = 220.0
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2054665995]
 environment = SubResource("world_env")
@@ -158,15 +160,15 @@ theme_override_constants/outline_size = 6
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
 [node name="Floor" type="CSGBox3D" parent="." unique_id=2087801906]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -0.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, -0.5, 0)
 use_collision = true
-size = Vector3(300, 1, 16)
+size = Vector3(340, 1, 16)
 material = SubResource("m_floor")
 
 [node name="Void" type="Area3D" parent="." unique_id=1009379926]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, -14, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, -14, 0)
 script = ExtResource("kill")
-size = Vector3(400, 4, 120)
+size = Vector3(440, 4, 120)
 color = Color(1, 0, 0, 0.06)
 
 [node name="Bays" type="Node3D" parent="." unique_id=1660876360]
@@ -516,7 +518,7 @@ billboard = 1
 no_depth_test = true
 text = "GRAVITY
 left pad: ceiling (+y), middle pad: back wall (-z)
-white pads reset to normal"
+back-left pad: left wall (-x), white pads reset to normal"
 font_size = 56
 outline_size = 14
 
@@ -556,6 +558,25 @@ color = Color(1, 1, 1, 0.4)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, -6.5)
 script = ExtResource("grav")
 size = Vector3(2, 2, 1)
+color = Color(1, 1, 1, 0.4)
+
+[node name="LeftWall" type="CSGBox3D" parent="Bays/Gravity" unique_id=1302514877]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 3.5, 0)
+use_collision = true
+size = Vector3(1, 8, 14)
+material = SubResource("m_block")
+
+[node name="ToLeftWall" type="Area3D" parent="Bays/Gravity" unique_id=1846203391]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -2)
+script = ExtResource("grav")
+gravity_dir = Vector3(-1, 0, 0)
+size = Vector3(2, 1, 2)
+color = Color(0.3, 1, 0.4, 0.4)
+
+[node name="ResetLeftWall" type="Area3D" parent="Bays/Gravity" unique_id=730958116]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 4, -3)
+script = ExtResource("grav")
+size = Vector3(1, 2, 4)
 color = Color(1, 1, 1, 0.4)
 
 [node name="MixClimb" type="Node3D" parent="Bays" unique_id=1691985694]
@@ -623,5 +644,103 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 4.5, 0)
 use_collision = true
 size = Vector3(4, 9, 6)
 material = SubResource("m_block")
+
+[node name="MixCeilSwing" type="Node3D" parent="Bays" unique_id=1524306617]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 280, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/MixCeilSwing" unique_id=391870245]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "MIX: swing on the ceiling (gravity +y)
+pad flips you onto the left slab, jump off its edge
+hold F near the ball, pump, release (Space) toward the right slab"
+font_size = 56
+outline_size = 14
+
+[node name="SlabA" type="CSGBox3D" parent="Bays/MixCeilSwing" unique_id=1158029473]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 9.5, 0)
+use_collision = true
+size = Vector3(4, 1, 6)
+material = SubResource("m_glass")
+
+[node name="SlabB" type="CSGBox3D" parent="Bays/MixCeilSwing" unique_id=2009471632]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 9.5, 0)
+use_collision = true
+size = Vector3(4, 1, 6)
+material = SubResource("m_glass")
+
+[node name="Point" type="Node3D" parent="Bays/MixCeilSwing" unique_id=640917258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 0)
+script = ExtResource("swing")
+
+[node name="ToCeiling" type="Area3D" parent="Bays/MixCeilSwing" unique_id=1772603914]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 0)
+script = ExtResource("grav")
+gravity_dir = Vector3(0, 1, 0)
+size = Vector3(2, 1, 2)
+color = Color(1, 0.4, 1, 0.4)
+
+[node name="Reset" type="Area3D" parent="Bays/MixCeilSwing" unique_id=455120938]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 8.5, 0)
+script = ExtResource("grav")
+size = Vector3(2, 1, 2)
+color = Color(1, 1, 1, 0.4)
+
+[node name="SkyNet" type="Area3D" parent="Bays/MixCeilSwing" unique_id=1937740251]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 13, 0)
+script = ExtResource("grav")
+size = Vector3(22, 2, 12)
+color = Color(1, 1, 1, 0.05)
+
+[node name="MixWallSwing" type="Node3D" parent="Bays" unique_id=1269843305]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 300, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/MixWallSwing" unique_id=824471096]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "MIX: swing on a wall (gravity -x)
+pad drops you onto the back-left wall, jump off its edge
+hold F near the ball, pump, release (Space) toward the other wall"
+font_size = 56
+outline_size = 14
+
+[node name="WallA" type="CSGBox3D" parent="Bays/MixWallSwing" unique_id=1590246318]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 5, -6)
+use_collision = true
+size = Vector3(1, 10, 4)
+material = SubResource("m_block")
+
+[node name="WallB" type="CSGBox3D" parent="Bays/MixWallSwing" unique_id=97321564]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 5, 6)
+use_collision = true
+size = Vector3(1, 10, 4)
+material = SubResource("m_block")
+
+[node name="Point" type="Node3D" parent="Bays/MixWallSwing" unique_id=1406382947]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 2.5, 0)
+script = ExtResource("swing")
+
+[node name="ToWall" type="Area3D" parent="Bays/MixWallSwing" unique_id=318945702]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, -6)
+script = ExtResource("grav")
+gravity_dir = Vector3(-1, 0, 0)
+size = Vector3(2, 1, 2)
+color = Color(0.3, 1, 0.4, 0.4)
+
+[node name="Reset" type="Area3D" parent="Bays/MixWallSwing" unique_id=1688259014]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 3, 7)
+script = ExtResource("grav")
+size = Vector3(1, 4, 2)
+color = Color(1, 1, 1, 0.4)
+
+[node name="BackNet" type="Area3D" parent="Bays/MixWallSwing" unique_id=2141935178]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 5, 0)
+script = ExtResource("grav")
+size = Vector3(2, 12, 18)
+color = Color(1, 1, 1, 0.05)
 
 [connection signal="used" from="Bays/Interact/Lever" to="." method="_on_lever_used"]

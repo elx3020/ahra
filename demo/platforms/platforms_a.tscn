@@ -1,0 +1,669 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/area.gd" id="1_glw18"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_ns0vu"]
+[ext_resource type="Script" path="res://player/player.gd" id="3_xnmje"]
+[ext_resource type="Script" path="res://player/stat_mods.gd" id="4_emkxm"]
+[ext_resource type="Script" path="res://world/moving_platform.gd" id="5_e64hd"]
+[ext_resource type="Script" path="res://world/env_profile.gd" id="6_qwj2d"]
+[ext_resource type="Script" path="res://world/platform_switch.gd" id="7_ygd4d"]
+[ext_resource type="Script" path="res://world/scene_door.gd" id="8_a6hic"]
+[ext_resource type="Script" path="res://world/gravity_zone.gd" id="9_omwl0"]
+
+[sub_resource type="Environment" id="Environment_q5mm2"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="Resource" id="Resource_llfbc"]
+script = ExtResource("4_emkxm")
+
+[sub_resource type="Curve3D" id="Curve3D_6rssy"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_5eswl"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, 0, 0, 0, 0, 5.75, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xb70m"]
+albedo_color = Color(0.28, 0.28, 0.32, 1)
+
+[sub_resource type="Curve3D" id="Curve3D_rv2d2"]
+closed = true
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 4.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 4.5, 4.75, 0, 0, 0, 0, 0, 0, 0, -3.5, 4.75, 0),
+"tilts": PackedFloat32Array(0, 0, 0, 0)
+}
+point_count = 4
+
+[sub_resource type="Curve3D" id="Curve3D_4ynua"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, -5, 0, 0, 0, 0, 0, 0, 3.5, -0.25, -5),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Resource" id="Resource_vj07i"]
+script = ExtResource("4_emkxm")
+traction = -0.9
+
+[sub_resource type="Resource" id="Resource_4gp6y"]
+resource_name = "Ice platform"
+script = ExtResource("6_qwj2d")
+temperature = 0
+mods = SubResource("Resource_vj07i")
+
+[sub_resource type="Curve3D" id="Curve3D_wkgpd"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Resource" id="Resource_g86ah"]
+script = ExtResource("4_emkxm")
+speed = -0.5
+traction = -0.3
+jump = -0.3
+stamina_cost = 2.0
+
+[sub_resource type="Resource" id="Resource_8en47"]
+resource_name = "Mud platform"
+script = ExtResource("6_qwj2d")
+mods = SubResource("Resource_g86ah")
+
+[sub_resource type="Curve3D" id="Curve3D_bbte4"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 5, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 5),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Resource" id="Resource_qkylp"]
+script = ExtResource("4_emkxm")
+
+[sub_resource type="Resource" id="Resource_wrx12"]
+resource_name = "Windy platform"
+script = ExtResource("6_qwj2d")
+mods = SubResource("Resource_qkylp")
+wind = Vector3(0, 0, 8)
+
+[sub_resource type="Curve3D" id="Curve3D_toqsg"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, -3, 0, 0, 0, 0, 0, 0, 3.5, -0.25, -3),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_j225p"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 3, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 3),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_q64e8"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3, -3.25, 0, 0, 0, 0, 0, 0, 0, -3, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_xl8uk"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 1, -3.25, 0, 0, 0, 0, 0, 0, 0, 1, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_lhg64"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 5, -3.25, 0, 0, 0, 0, 0, 0, 0, 5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_uyueq"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 5.5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_qt1wv"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6le18"]
+transparency = 1
+albedo_color = Color(0.55, 0.55, 0.65, 0.25)
+
+[sub_resource type="Curve3D" id="Curve3D_xarpt"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, 6.25, 0, 0, 0, 0, 0, 0, 0, 3.5, 6.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_ew272"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, 3, -8.25, 0, 0, 0, 0, 0, 0, 3.5, 3, -8.25),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_270qv"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[node name="PlatformsA" type="Node3D" unique_id=1280602820]
+script = ExtResource("1_glw18")
+bounds_center = Vector3(90, 0, 0)
+bounds_radius = 150.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1812949953]
+environment = SubResource("Environment_q5mm2")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2012139325]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1371463216]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=879000576]
+
+[node name="Label" type="Label" parent="HUD" unique_id=807922248]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." unique_id=769259468 instance=ExtResource("2_ns0vu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Bays" type="Node3D" parent="." unique_id=1948591899]
+
+[node name="PingPong" type="Node3D" parent="Bays" unique_id=1533521120]
+
+[node name="Start" type="Marker3D" parent="Bays/PingPong" unique_id=1927349159]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/PingPong" unique_id=741168167]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "PING-PONG (always on), waits 1 s at each end
+jump on and ride it; jump while it moves: you keep its speed"
+font_size = 56
+outline_size = 14
+
+[node name="Path" type="Path3D" parent="Bays/PingPong" unique_id=1493759185]
+curve = SubResource("Curve3D_6rssy")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/PingPong/Path" unique_id=1403799613]
+script = ExtResource("5_e64hd")
+speed = 2.5
+wait = 1.0
+
+[node name="Elevator" type="Node3D" parent="Bays" unique_id=1488197946]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Elevator" unique_id=1169435717]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Elevator" unique_id=768380675]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "ELEVATOR (always on)
+rides up to the high ledge, waits 1.5 s at each end"
+font_size = 56
+outline_size = 14
+
+[node name="Path" type="Path3D" parent="Bays/Elevator" unique_id=8097764]
+curve = SubResource("Curve3D_5eswl")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Elevator/Path" unique_id=124780678]
+script = ExtResource("5_e64hd")
+wait = 1.5
+
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Elevator" unique_id=2075241855]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.25, 1, 0)
+use_collision = true
+size = Vector3(5.5, 10, 16)
+material = SubResource("StandardMaterial3D_xb70m")
+
+[node name="Loop" type="Node3D" parent="Bays" unique_id=2029154555]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Loop" unique_id=490994749]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Loop" unique_id=1916077895]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "LOOP: 3 platforms share one closed path
+spaced a third of a lap apart (offset), always in sync"
+font_size = 56
+outline_size = 14
+
+[node name="Path" type="Path3D" parent="Bays/Loop" unique_id=2040253364]
+curve = SubResource("Curve3D_rv2d2")
+
+[node name="Platform1" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=505976419]
+script = ExtResource("5_e64hd")
+motion = 1
+wait = 0.0
+
+[node name="Platform2" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=1746412714]
+script = ExtResource("5_e64hd")
+motion = 1
+wait = 0.0
+offset = 4.333333333333333
+
+[node name="Platform3" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=1524107297]
+script = ExtResource("5_e64hd")
+motion = 1
+wait = 0.0
+offset = 8.666666666666666
+
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Loop" unique_id=1043203337]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, 0)
+use_collision = true
+size = Vector3(4, 9, 16)
+material = SubResource("StandardMaterial3D_xb70m")
+
+[node name="Surfaces" type="Node3D" parent="Bays" unique_id=1629437194]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Surfaces" unique_id=1917145836]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Surfaces" unique_id=769253628]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "PLATFORM CLASSES: an EnvZone rides with the platform
+back: ice (slides) | middle: mud (slow, tiring) | front: crosswind (pushes you off)"
+font_size = 56
+outline_size = 14
+
+[node name="IcePath" type="Path3D" parent="Bays/Surfaces" unique_id=396970507]
+curve = SubResource("Curve3D_4ynua")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/IcePath" unique_id=791421730]
+script = ExtResource("5_e64hd")
+color = Color(0.7, 0.9, 1, 1)
+surface = SubResource("Resource_4gp6y")
+wait = 1.0
+
+[node name="MudPath" type="Path3D" parent="Bays/Surfaces" unique_id=1258358056]
+curve = SubResource("Curve3D_wkgpd")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/MudPath" unique_id=1902927654]
+script = ExtResource("5_e64hd")
+color = Color(0.45, 0.32, 0.2, 1)
+surface = SubResource("Resource_8en47")
+wait = 1.0
+
+[node name="WindPath" type="Path3D" parent="Bays/Surfaces" unique_id=335044786]
+curve = SubResource("Curve3D_bbte4")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/WindPath" unique_id=962385047]
+script = ExtResource("5_e64hd")
+color = Color(0.85, 0.85, 0.85, 1)
+surface = SubResource("Resource_wrx12")
+wait = 1.0
+
+[node name="Timed" type="Node3D" parent="Bays" unique_id=1591764537]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Timed" unique_id=784949245]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Timed" unique_id=1844315714]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "TIMED: moves 3 s, stops 2 s, repeating on the world clock
+the front one runs 2.5 s later"
+font_size = 56
+outline_size = 14
+
+[node name="BackPath" type="Path3D" parent="Bays/Timed" unique_id=1812965773]
+curve = SubResource("Curve3D_toqsg")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/BackPath" unique_id=1387770469]
+script = ExtResource("5_e64hd")
+color = Color(0.7, 0.5, 0.9, 1)
+speed = 2.5
+wait = 0.0
+activation = 1
+
+[node name="FrontPath" type="Path3D" parent="Bays/Timed" unique_id=1481647921]
+curve = SubResource("Curve3D_j225p")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/FrontPath" unique_id=1770256699]
+script = ExtResource("5_e64hd")
+color = Color(0.7, 0.5, 0.9, 1)
+speed = 2.5
+wait = 0.0
+offset = 2.5
+activation = 1
+
+[node name="Switch" type="Node3D" parent="Bays" unique_id=1241383560]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Switch" unique_id=17527703]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Switch" unique_id=830744039]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "SWITCH: E at the green box toggles channel \"bridge\"
+3 platforms rise in a wave, in sync; off = they freeze"
+font_size = 56
+outline_size = 14
+
+[node name="Switch" type="Area3D" parent="Bays/Switch" unique_id=713979041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("7_ygd4d")
+channel = &"bridge"
+size = Vector3(2, 2, 2)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Path1" type="Path3D" parent="Bays/Switch" unique_id=432973972]
+curve = SubResource("Curve3D_q64e8")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path1" unique_id=1743784586]
+script = ExtResource("5_e64hd")
+color = Color(0.9, 0.7, 0.3, 1)
+wait = 1.0
+activation = 2
+channel = &"bridge"
+
+[node name="Path2" type="Path3D" parent="Bays/Switch" unique_id=1165672481]
+curve = SubResource("Curve3D_xl8uk")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path2" unique_id=2077419822]
+script = ExtResource("5_e64hd")
+color = Color(0.9, 0.7, 0.3, 1)
+wait = 1.0
+offset = 0.5
+activation = 2
+channel = &"bridge"
+
+[node name="Path3" type="Path3D" parent="Bays/Switch" unique_id=1265641748]
+curve = SubResource("Curve3D_lhg64")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path3" unique_id=132066698]
+script = ExtResource("5_e64hd")
+color = Color(0.9, 0.7, 0.3, 1)
+wait = 1.0
+offset = 1.0
+activation = 2
+channel = &"bridge"
+
+[node name="TimedSwitch" type="Node3D" parent="Bays" unique_id=1559435556]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/TimedSwitch" unique_id=4678060]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/TimedSwitch" unique_id=1088665030]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "TIMED SWITCH: E runs channel \"rush\" for 6 s
+ride across before it stops (pressing again restarts the 6 s)"
+font_size = 56
+outline_size = 14
+
+[node name="Switch" type="Area3D" parent="Bays/TimedSwitch" unique_id=711442494]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("7_ygd4d")
+channel = &"rush"
+run_time = 6.0
+size = Vector3(2, 2, 2)
+color = Color(0.9, 0.4, 0.3, 0.35)
+
+[node name="Path" type="Path3D" parent="Bays/TimedSwitch" unique_id=588849485]
+curve = SubResource("Curve3D_uyueq")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/TimedSwitch/Path" unique_id=244861024]
+script = ExtResource("5_e64hd")
+color = Color(0.9, 0.4, 0.3, 1)
+speed = 3.0
+activation = 2
+channel = &"rush"
+
+[node name="Remote" type="Node3D" parent="Bays" unique_id=1009284865]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Remote" unique_id=1684698725]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Remote" unique_id=1527081756]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "REMOTE: this platform's switch is in area B (door at the back)
+turn it on there and come back: it kept moving while you were away"
+font_size = 56
+outline_size = 14
+
+[node name="Path" type="Path3D" parent="Bays/Remote" unique_id=1523977672]
+curve = SubResource("Curve3D_qt1wv")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Remote/Path" unique_id=2013879077]
+script = ExtResource("5_e64hd")
+color = Color(0.3, 0.8, 0.6, 1)
+wait = 1.0
+activation = 2
+channel = &"remote"
+
+[node name="DoorToB" type="Area3D" parent="Bays/Remote" unique_id=967046775]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
+script = ExtResource("8_a6hic")
+scene = "res://demo/platforms/platforms_b.tscn"
+spawn = &"FromA"
+size = Vector3(2, 2, 2)
+color = Color(0.3, 0.8, 0.6, 0.4)
+
+[node name="FromB" type="Marker3D" parent="Bays/Remote" unique_id=1381585171]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -2)
+
+[node name="Ceiling" type="Node3D" parent="Bays" unique_id=1716357734]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Ceiling" unique_id=755652261]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Ceiling" unique_id=1326700877]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "CEILING PLATFORM: pad flips gravity up onto the left slab
+ride the platform under the gap to the right slab"
+font_size = 56
+outline_size = 14
+
+[node name="SlabA" type="CSGBox3D" parent="Bays/Ceiling" unique_id=106017403]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 6.5, 0)
+use_collision = true
+size = Vector3(4, 1, 6)
+material = SubResource("StandardMaterial3D_6le18")
+
+[node name="SlabB" type="CSGBox3D" parent="Bays/Ceiling" unique_id=718424890]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 6.5, 0)
+use_collision = true
+size = Vector3(4, 1, 6)
+material = SubResource("StandardMaterial3D_6le18")
+
+[node name="Path" type="Path3D" parent="Bays/Ceiling" unique_id=234982590]
+curve = SubResource("Curve3D_xarpt")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Ceiling/Path" unique_id=1226739180]
+script = ExtResource("5_e64hd")
+color = Color(0.55, 0.6, 0.75, 0.5)
+wait = 1.0
+
+[node name="ToCeiling" type="Area3D" parent="Bays/Ceiling" unique_id=147550817]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 0)
+script = ExtResource("9_omwl0")
+gravity_dir = Vector3(0, 1, 0)
+size = Vector3(2, 1, 2)
+color = Color(1, 0.4, 1, 0.4)
+
+[node name="Reset" type="Area3D" parent="Bays/Ceiling" unique_id=1954547486]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 5.5, 0)
+script = ExtResource("9_omwl0")
+size = Vector3(2, 1, 2)
+color = Color(1, 1, 1, 0.4)
+
+[node name="SkyNet" type="Area3D" parent="Bays/Ceiling" unique_id=41471273]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+script = ExtResource("9_omwl0")
+size = Vector3(22, 2, 12)
+color = Color(1, 1, 1, 0.05)
+
+[node name="Wall" type="Node3D" parent="Bays" unique_id=1439760015]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 180, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Wall" unique_id=556964493]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Wall" unique_id=1373458128]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -4)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "WALL PLATFORM: pad sets gravity to -z (back wall)
+ride the platform across the hole in the wall"
+font_size = 56
+outline_size = 14
+
+[node name="WallA" type="CSGBox3D" parent="Bays/Wall" unique_id=340942539]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 4, -8.5)
+use_collision = true
+size = Vector3(4, 8, 1)
+material = SubResource("StandardMaterial3D_xb70m")
+
+[node name="WallB" type="CSGBox3D" parent="Bays/Wall" unique_id=1196983727]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 4, -8.5)
+use_collision = true
+size = Vector3(4, 8, 1)
+material = SubResource("StandardMaterial3D_xb70m")
+
+[node name="Path" type="Path3D" parent="Bays/Wall" unique_id=1800947273]
+curve = SubResource("Curve3D_ew272")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Wall/Path" unique_id=733466135]
+script = ExtResource("5_e64hd")
+size = Vector3(3, 5.5, 0.5)
+wait = 1.0
+
+[node name="ToWall" type="Area3D" parent="Bays/Wall" unique_id=1257215042]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, -5)
+script = ExtResource("9_omwl0")
+gravity_dir = Vector3(0, 0, -1)
+size = Vector3(2, 1, 2)
+color = Color(1, 0.6, 0.2, 0.4)
+
+[node name="Reset" type="Area3D" parent="Bays/Wall" unique_id=2015029216]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3, -7.5)
+script = ExtResource("9_omwl0")
+size = Vector3(2, 6, 1)
+color = Color(1, 1, 1, 0.4)
+
+[node name="BackNet" type="Area3D" parent="Bays/Wall" unique_id=1570095370]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -11)
+script = ExtResource("9_omwl0")
+size = Vector3(12, 12, 2)
+color = Color(1, 1, 1, 0.05)
+
+[node name="Walkway0" type="CSGBox3D" parent="." unique_id=1009033298]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -0.5, 0)
+use_collision = true
+size = Vector3(5, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway1" type="CSGBox3D" parent="." unique_id=1334138659]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.75, -0.5, 0)
+use_collision = true
+size = Vector3(13.5, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway2" type="CSGBox3D" parent="." unique_id=215310068]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.25, -0.5, 0)
+use_collision = true
+size = Vector3(13.5, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway3" type="CSGBox3D" parent="." unique_id=2108251582]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.5, -0.5, 0)
+use_collision = true
+size = Vector3(9, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway4" type="CSGBox3D" parent="." unique_id=1586863594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, -0.5, 0)
+use_collision = true
+size = Vector3(10, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway5" type="CSGBox3D" parent="." unique_id=1879236731]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -0.5, 0)
+use_collision = true
+size = Vector3(10, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway6" type="CSGBox3D" parent="." unique_id=1995547213]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 111, -0.5, 0)
+use_collision = true
+size = Vector3(8, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway7" type="CSGBox3D" parent="." unique_id=245267681]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 131, -0.5, 0)
+use_collision = true
+size = Vector3(8, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="Walkway8" type="CSGBox3D" parent="." unique_id=777592471]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 167.5, -0.5, 0)
+use_collision = true
+size = Vector3(45, 1, 16)
+material = SubResource("StandardMaterial3D_270qv")
+
+[node name="PitFloor" type="CSGBox3D" parent="." unique_id=2053499491]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -4.5, -3)
+use_collision = true
+size = Vector3(200, 1, 22)
+material = SubResource("StandardMaterial3D_xb70m")

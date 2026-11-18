@@ -89,6 +89,8 @@ var coyote := 0.0
 var jump_buffer := 0.0
 var variable_jump := false ## set by do_jump: only real jumps get cut short on release
 var launched := false ## slingshot release: ignores drag (water) until the apex
+var floor_velocity := Vector3.ZERO ## velocity of the moving platform under the player (last frame)
+var carry := Vector3.ZERO ## platform velocity kept after jumping/walking off it (air drift, like wind)
 var dash_cd := 0.0
 var _attacks: Array[bool] = []
 
@@ -122,6 +124,7 @@ func _ready() -> void:
 	stamina = max_sp()
 	oxygen = max_o2()
 	checkpoint = global_position
+	platform_on_leave = PLATFORM_ON_LEAVE_DO_NOTHING # the jump state carries it instead (see carry)
 	for s in states.values():
 		s.p = self
 	change_state(&"idle")
@@ -150,6 +153,7 @@ func _physics_process(delta: float) -> void:
 	var next := state.physics(delta)
 	if next:
 		change_state(next)
+	floor_velocity = get_platform_velocity() if is_on_floor() else Vector3.ZERO
 	_orient(delta)
 	_animate(delta)
 
@@ -227,7 +231,7 @@ func move_ground(dir: Vector3, speed: float, delta: float) -> void:
 
 
 func move_air(dir: Vector3, delta: float) -> void:
-	move_planar(dir, air_speed, air_accel if dir != Vector3.ZERO else air_decel, delta, wind_drift(wind_response_air))
+	move_planar(dir, air_speed, air_accel if dir != Vector3.ZERO else air_decel, delta, wind_drift(wind_response_air) + carry)
 
 
 ## Wind along the walking plane as a drift velocity (always on: ground and air).
@@ -408,6 +412,7 @@ func die(cause: StringName) -> void:
 func respawn(at: Variant = null) -> void:
 	set_gravity_dir(Vector3.DOWN)
 	velocity = Vector3.ZERO
+	floor_velocity = Vector3.ZERO # don't inherit the last platform's motion
 	teleport(checkpoint if at == null else at)
 	health = max_hp()
 	stamina = max_sp()

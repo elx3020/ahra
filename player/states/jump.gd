@@ -8,6 +8,10 @@ var _cut := false
 func enter(_prev: StringName) -> void:
 	p.anim = &"jump"
 	p.air_speed = maxf(p.planar().length(), p.walk_speed)
+	# leaving a moving platform keeps its motion (planar part stays on as drift, like wind;
+	# only a rising platform adds to the jump)
+	p.carry = p.floor_velocity.slide(p.up_direction)
+	p.velocity += p.carry + p.up_direction * maxf(p.floor_velocity.dot(p.up_direction), 0.0)
 	# only a real, still-held jump can be cut short (not swing launches, wall jumps, falls)
 	_cut = not (p.variable_jump and Input.is_action_pressed(&"jump"))
 	p.variable_jump = false
