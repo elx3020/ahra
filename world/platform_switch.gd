@@ -5,19 +5,20 @@ extends Interactable
 ## Lights up while its effect is active (toggled, running, reversed, multiplier not 1).
 
 enum Action {
-	POWER, ## moving <-> stopped
+	POWER, ## moving <-> stopped, wherever the program is
 	RUN, ## after `delay`, move for `run_time` seconds (pressing again restarts)
 	REVERSE, ## flip direction: platforms retrace their motion
 	SPEED, ## add `step` to the speed multiplier (negative step slows down)
-	COOLDOWN, ## add `step` to the cooldown multiplier (negative step shortens the pause)
+	LAP_WAIT, ## add `step` to the lap wait multiplier (platforms with shared_waits only)
+	SEQUENCE_WAIT, ## add `step` to the sequence wait multiplier (platforms with shared_waits only)
 }
 
 @export var channel: StringName
 @export var action := Action.POWER
 @export var delay := 0.0 ## RUN: seconds before the platforms start
 @export var run_time := 6.0 ## RUN: seconds they move
-@export var step := 0.5 ## SPEED / COOLDOWN: change per press
-@export var limits := Vector2(0.25, 3.0) ## SPEED / COOLDOWN: the multiplier stays in this range
+@export var step := 0.5 ## SPEED / waits: change per press
+@export var limits := Vector2(0.25, 3.0) ## SPEED / waits: the multiplier stays in this range
 @export var on_color := Color(0.3, 1.0, 0.4, 0.5)
 
 
@@ -34,8 +35,7 @@ func _lit() -> bool:
 		Action.POWER: return c.flip
 		Action.RUN: return World.time < c.run_end
 		Action.REVERSE: return c.dir < 0.0
-		Action.SPEED: return c.rates.x != 1.0
-	return c.rates.y != 1.0
+	return c.rates[action - Action.SPEED] != 1.0
 
 
 func interact(p: Player) -> float:
@@ -45,7 +45,7 @@ func interact(p: Player) -> float:
 		Action.REVERSE: World.reverse(channel)
 		_:
 			var r := World.rates(channel)
-			var i := 0 if action == Action.SPEED else 1
+			var i := action - Action.SPEED
 			r[i] = clampf(r[i] + step, limits.x, limits.y)
 			World.set_rates(channel, r)
 	return super(p)
