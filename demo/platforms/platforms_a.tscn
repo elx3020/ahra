@@ -1,14 +1,13 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://rh00dtm11fdh"]
 
-[ext_resource type="Script" path="res://world/area.gd" id="1_glw18"]
+[ext_resource type="Script" uid="uid://b8xdry2ovq5kx" path="res://world/area.gd" id="1_glw18"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_ns0vu"]
-[ext_resource type="Script" path="res://player/player.gd" id="3_xnmje"]
-[ext_resource type="Script" path="res://player/stat_mods.gd" id="4_emkxm"]
-[ext_resource type="Script" path="res://world/moving_platform.gd" id="5_e64hd"]
-[ext_resource type="Script" path="res://world/env_profile.gd" id="6_qwj2d"]
-[ext_resource type="Script" path="res://world/platform_switch.gd" id="7_ygd4d"]
-[ext_resource type="Script" path="res://world/scene_door.gd" id="8_a6hic"]
-[ext_resource type="Script" path="res://world/gravity_zone.gd" id="9_omwl0"]
+[ext_resource type="Script" uid="uid://dtpvbr5vi2vlr" path="res://player/stat_mods.gd" id="4_emkxm"]
+[ext_resource type="Script" uid="uid://bukqeypryc24m" path="res://world/moving_platform.gd" id="5_e64hd"]
+[ext_resource type="Script" uid="uid://0l2cbfrajomc" path="res://world/platform_switch.gd" id="6_qwj2d"]
+[ext_resource type="Script" uid="uid://d4dxuewqome1v" path="res://world/env_profile.gd" id="7_ygd4d"]
+[ext_resource type="Script" uid="uid://bkw8gop28gk2v" path="res://world/scene_door.gd" id="8_a6hic"]
+[ext_resource type="Script" uid="uid://jw3wimhy577v" path="res://world/gravity_zone.gd" id="9_omwl0"]
 
 [sub_resource type="Environment" id="Environment_q5mm2"]
 background_mode = 1
@@ -16,9 +15,6 @@ background_color = Color(0.11, 0.12, 0.15, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.62, 0.7, 1)
 ambient_light_energy = 0.7
-
-[sub_resource type="Resource" id="Resource_llfbc"]
-script = ExtResource("4_emkxm")
 
 [sub_resource type="Curve3D" id="Curve3D_6rssy"]
 _data = {
@@ -58,7 +54,7 @@ traction = -0.9
 
 [sub_resource type="Resource" id="Resource_4gp6y"]
 resource_name = "Ice platform"
-script = ExtResource("6_qwj2d")
+script = ExtResource("7_ygd4d")
 temperature = 0
 mods = SubResource("Resource_vj07i")
 
@@ -78,7 +74,7 @@ stamina_cost = 2.0
 
 [sub_resource type="Resource" id="Resource_8en47"]
 resource_name = "Mud platform"
-script = ExtResource("6_qwj2d")
+script = ExtResource("7_ygd4d")
 mods = SubResource("Resource_g86ah")
 
 [sub_resource type="Curve3D" id="Curve3D_bbte4"]
@@ -93,7 +89,7 @@ script = ExtResource("4_emkxm")
 
 [sub_resource type="Resource" id="Resource_wrx12"]
 resource_name = "Windy platform"
-script = ExtResource("6_qwj2d")
+script = ExtResource("7_ygd4d")
 mods = SubResource("Resource_qkylp")
 wind = Vector3(0, 0, 8)
 
@@ -140,165 +136,234 @@ _data = {
 point_count = 2
 
 [sub_resource type="Curve3D" id="Curve3D_qt1wv"]
+closed = true
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, -4, 0, 0, 0, 0, 0, 0, 3.5, -0.25, -4, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 4, 0, 0, 0, 0, 0, 0, -3.5, -0.25, 4),
+"tilts": PackedFloat32Array(0, 0, 0, 0)
+}
+point_count = 4
+
+[sub_resource type="Curve3D" id="Curve3D_6le18"]
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 0),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6le18"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xarpt"]
 transparency = 1
 albedo_color = Color(0.55, 0.55, 0.65, 0.25)
 
-[sub_resource type="Curve3D" id="Curve3D_xarpt"]
+[sub_resource type="Curve3D" id="Curve3D_ew272"]
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, 6.25, 0, 0, 0, 0, 0, 0, 0, 3.5, 6.25, 0),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
 
-[sub_resource type="Curve3D" id="Curve3D_ew272"]
+[sub_resource type="Curve3D" id="Curve3D_270qv"]
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, 3, -8.25, 0, 0, 0, 0, 0, 0, 3.5, 3, -8.25),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_270qv"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5jhuf"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
-[node name="PlatformsA" type="Node3D" unique_id=1280602820]
+[node name="PlatformsA" type="Node3D" unique_id=657992047]
 script = ExtResource("1_glw18")
-bounds_center = Vector3(90, 0, 0)
-bounds_radius = 150.0
+bounds_center = Vector3(100, 0, 0)
+bounds_radius = 160.0
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1812949953]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=480808027]
 environment = SubResource("Environment_q5mm2")
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2012139325]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=416787727]
 transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
 shadow_enabled = true
 
-[node name="Camera" type="Camera3D" parent="." unique_id=1371463216]
+[node name="Camera" type="Camera3D" parent="." unique_id=1913598714]
 projection = 1
 current = true
 size = 20.0
 far = 500.0
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=879000576]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=812490576]
 
-[node name="Label" type="Label" parent="HUD" unique_id=807922248]
+[node name="Label" type="Label" parent="HUD" unique_id=183431856]
 offset_left = 12.0
 offset_top = 8.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 
-[node name="Player" parent="." unique_id=769259468 instance=ExtResource("2_ns0vu")]
+[node name="Player" parent="." unique_id=1771887163 instance=ExtResource("2_ns0vu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Bays" type="Node3D" parent="." unique_id=1948591899]
+[node name="Bays" type="Node3D" parent="." unique_id=788330200]
 
-[node name="PingPong" type="Node3D" parent="Bays" unique_id=1533521120]
+[node name="PingPong" type="Node3D" parent="Bays" unique_id=181402791]
 
-[node name="Start" type="Marker3D" parent="Bays/PingPong" unique_id=1927349159]
+[node name="Start" type="Marker3D" parent="Bays/PingPong" unique_id=1369918525]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/PingPong" unique_id=741168167]
+[node name="Label" type="Label3D" parent="Bays/PingPong" unique_id=144393600]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "PING-PONG (always on), waits 1 s at each end
-jump on and ride it; jump while it moves: you keep its speed"
+text = "PING-PONG: 1 lap out, 1 back, 1 s pause at each end
+the switch reverses it; jump while it moves: you keep its speed"
 font_size = 56
 outline_size = 14
 
-[node name="Path" type="Path3D" parent="Bays/PingPong" unique_id=1493759185]
+[node name="Path" type="Path3D" parent="Bays/PingPong" unique_id=184778502]
 curve = SubResource("Curve3D_6rssy")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/PingPong/Path" unique_id=1403799613]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/PingPong/Path" unique_id=1743412643]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.62, -0.25, 0)
 script = ExtResource("5_e64hd")
 speed = 2.5
 wait = 1.0
+cooldown = 1.0
+channel = &"pingpong"
+preview = true
 
-[node name="Elevator" type="Node3D" parent="Bays" unique_id=1488197946]
+[node name="Reverse" type="Area3D" parent="Bays/PingPong" unique_id=108428728]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("6_qwj2d")
+channel = &"pingpong"
+action = 2
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="ReverseLabel" type="Label3D" parent="Bays/PingPong" unique_id=897801971]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "REVERSE"
+outline_size = 10
+
+[node name="Elevator" type="Node3D" parent="Bays" unique_id=1971002318]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Elevator" unique_id=1169435717]
+[node name="Start" type="Marker3D" parent="Bays/Elevator" unique_id=1956901927]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Elevator" unique_id=768380675]
+[node name="Label" type="Label3D" parent="Bays/Elevator" unique_id=574892767]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "ELEVATOR (always on)
-rides up to the high ledge, waits 1.5 s at each end"
+text = "ELEVATOR: up to the high ledge, 1.5 s pause at each end
+the switch reverses it"
 font_size = 56
 outline_size = 14
 
-[node name="Path" type="Path3D" parent="Bays/Elevator" unique_id=8097764]
+[node name="Path" type="Path3D" parent="Bays/Elevator" unique_id=1400263019]
 curve = SubResource("Curve3D_5eswl")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Elevator/Path" unique_id=124780678]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Elevator/Path" unique_id=383847696]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
 script = ExtResource("5_e64hd")
 wait = 1.5
+cooldown = 1.5
+channel = &"elevator"
 
-[node name="HighLedge" type="CSGBox3D" parent="Bays/Elevator" unique_id=2075241855]
+[node name="Reverse" type="Area3D" parent="Bays/Elevator" unique_id=1204787964]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("6_qwj2d")
+channel = &"elevator"
+action = 2
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="ReverseLabel" type="Label3D" parent="Bays/Elevator" unique_id=1867971456]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "REVERSE"
+outline_size = 10
+
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Elevator" unique_id=2065998581]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.25, 1, 0)
 use_collision = true
 size = Vector3(5.5, 10, 16)
 material = SubResource("StandardMaterial3D_xb70m")
 
-[node name="Loop" type="Node3D" parent="Bays" unique_id=2029154555]
+[node name="Loop" type="Node3D" parent="Bays" unique_id=1402544261]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Loop" unique_id=490994749]
+[node name="Start" type="Marker3D" parent="Bays/Loop" unique_id=827555051]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Loop" unique_id=1916077895]
+[node name="Label" type="Label3D" parent="Bays/Loop" unique_id=1932126964]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "LOOP: 3 platforms share one closed path
-spaced a third of a lap apart (offset), always in sync"
+text = "LOOP: 3 platforms share one closed path, a third of a lap apart
+the switch reverses all three at once"
 font_size = 56
 outline_size = 14
 
-[node name="Path" type="Path3D" parent="Bays/Loop" unique_id=2040253364]
+[node name="Path" type="Path3D" parent="Bays/Loop" unique_id=1267225034]
 curve = SubResource("Curve3D_rv2d2")
 
-[node name="Platform1" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=505976419]
+[node name="Platform1" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=702786832]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_e64hd")
-motion = 1
+laps_back = 0
 wait = 0.0
+cooldown = 0.0
+channel = &"loop"
 
-[node name="Platform2" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=1746412714]
+[node name="Platform2" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=742084599]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0.41666698, 0)
 script = ExtResource("5_e64hd")
-motion = 1
+laps_back = 0
 wait = 0.0
+cooldown = 0.0
 offset = 4.333333333333333
+channel = &"loop"
 
-[node name="Platform3" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=1524107297]
+[node name="Platform3" type="AnimatableBody3D" parent="Bays/Loop/Path" unique_id=988474340]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16666603, 4.75, 0)
 script = ExtResource("5_e64hd")
-motion = 1
+laps_back = 0
 wait = 0.0
+cooldown = 0.0
 offset = 8.666666666666666
+channel = &"loop"
 
-[node name="HighLedge" type="CSGBox3D" parent="Bays/Loop" unique_id=1043203337]
+[node name="Reverse" type="Area3D" parent="Bays/Loop" unique_id=796263569]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("6_qwj2d")
+channel = &"loop"
+action = 2
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="ReverseLabel" type="Label3D" parent="Bays/Loop" unique_id=1931239556]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "REVERSE"
+outline_size = 10
+
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Loop" unique_id=1354589458]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, 0)
 use_collision = true
 size = Vector3(4, 9, 16)
 material = SubResource("StandardMaterial3D_xb70m")
 
-[node name="Surfaces" type="Node3D" parent="Bays" unique_id=1629437194]
+[node name="Surfaces" type="Node3D" parent="Bays" unique_id=463038572]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Surfaces" unique_id=1917145836]
+[node name="Start" type="Marker3D" parent="Bays/Surfaces" unique_id=1699210834]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Surfaces" unique_id=769253628]
+[node name="Label" type="Label3D" parent="Bays/Surfaces" unique_id=1041505419]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
@@ -308,166 +373,339 @@ back: ice (slides) | middle: mud (slow, tiring) | front: crosswind (pushes you o
 font_size = 56
 outline_size = 14
 
-[node name="IcePath" type="Path3D" parent="Bays/Surfaces" unique_id=396970507]
+[node name="IcePath" type="Path3D" parent="Bays/Surfaces" unique_id=1001791896]
 curve = SubResource("Curve3D_4ynua")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/IcePath" unique_id=791421730]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/IcePath" unique_id=2032384643]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -5)
 script = ExtResource("5_e64hd")
 color = Color(0.7, 0.9, 1, 1)
 surface = SubResource("Resource_4gp6y")
 wait = 1.0
+cooldown = 1.0
 
-[node name="MudPath" type="Path3D" parent="Bays/Surfaces" unique_id=1258358056]
+[node name="MudPath" type="Path3D" parent="Bays/Surfaces" unique_id=1124861365]
 curve = SubResource("Curve3D_wkgpd")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/MudPath" unique_id=1902927654]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/MudPath" unique_id=1426489764]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.45, 0.32, 0.2, 1)
 surface = SubResource("Resource_8en47")
 wait = 1.0
+cooldown = 1.0
 
-[node name="WindPath" type="Path3D" parent="Bays/Surfaces" unique_id=335044786]
+[node name="WindPath" type="Path3D" parent="Bays/Surfaces" unique_id=102913728]
 curve = SubResource("Curve3D_bbte4")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/WindPath" unique_id=962385047]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Surfaces/WindPath" unique_id=374198746]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 5)
 script = ExtResource("5_e64hd")
 color = Color(0.85, 0.85, 0.85, 1)
 surface = SubResource("Resource_wrx12")
 wait = 1.0
+cooldown = 1.0
 
-[node name="Timed" type="Node3D" parent="Bays" unique_id=1591764537]
+[node name="Timed" type="Node3D" parent="Bays" unique_id=1671553158]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Timed" unique_id=784949245]
+[node name="Start" type="Marker3D" parent="Bays/Timed" unique_id=870868093]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Timed" unique_id=1844315714]
+[node name="Label" type="Label3D" parent="Bays/Timed" unique_id=123182453]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "TIMED: moves 3 s, stops 2 s, repeating on the world clock
-the front one runs 2.5 s later"
+text = "TIMED: moves 3 s, stops 2 s (the front one 2.5 s later)
+one switch reverses both"
 font_size = 56
 outline_size = 14
 
-[node name="BackPath" type="Path3D" parent="Bays/Timed" unique_id=1812965773]
+[node name="BackPath" type="Path3D" parent="Bays/Timed" unique_id=291610986]
 curve = SubResource("Curve3D_toqsg")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/BackPath" unique_id=1387770469]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/BackPath" unique_id=1037051997]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -3)
 script = ExtResource("5_e64hd")
 color = Color(0.7, 0.5, 0.9, 1)
 speed = 2.5
 wait = 0.0
-activation = 1
+cooldown = 0.0
+off_time = 2.0
+channel = &"timed"
 
-[node name="FrontPath" type="Path3D" parent="Bays/Timed" unique_id=1481647921]
+[node name="FrontPath" type="Path3D" parent="Bays/Timed" unique_id=1116879815]
 curve = SubResource("Curve3D_j225p")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/FrontPath" unique_id=1770256699]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Timed/FrontPath" unique_id=716583405]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.75, -0.25, 3)
 script = ExtResource("5_e64hd")
 color = Color(0.7, 0.5, 0.9, 1)
 speed = 2.5
 wait = 0.0
+cooldown = 0.0
 offset = 2.5
-activation = 1
+off_time = 2.0
+channel = &"timed"
 
-[node name="Switch" type="Node3D" parent="Bays" unique_id=1241383560]
+[node name="Reverse" type="Area3D" parent="Bays/Timed" unique_id=321753531]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
+script = ExtResource("6_qwj2d")
+channel = &"timed"
+action = 2
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="ReverseLabel" type="Label3D" parent="Bays/Timed" unique_id=909254539]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -6)
+pixel_size = 0.01
+billboard = 1
+text = "REVERSE"
+outline_size = 10
+
+[node name="Switch" type="Node3D" parent="Bays" unique_id=2094927901]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Switch" unique_id=17527703]
+[node name="Start" type="Marker3D" parent="Bays/Switch" unique_id=1522451930]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Switch" unique_id=830744039]
+[node name="Label" type="Label3D" parent="Bays/Switch" unique_id=1251771188]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "SWITCH: E at the green box toggles channel \"bridge\"
+text = "SWITCH: power toggles channel 'bridge'
 3 platforms rise in a wave, in sync; off = they freeze"
 font_size = 56
 outline_size = 14
 
-[node name="Switch" type="Area3D" parent="Bays/Switch" unique_id=713979041]
+[node name="Switch" type="Area3D" parent="Bays/Switch" unique_id=511214779]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
-script = ExtResource("7_ygd4d")
+script = ExtResource("6_qwj2d")
 channel = &"bridge"
-size = Vector3(2, 2, 2)
+size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
 
-[node name="Path1" type="Path3D" parent="Bays/Switch" unique_id=432973972]
+[node name="SwitchLabel" type="Label3D" parent="Bays/Switch" unique_id=410494903]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "POWER"
+outline_size = 10
+
+[node name="Path1" type="Path3D" parent="Bays/Switch" unique_id=1857865097]
 curve = SubResource("Curve3D_q64e8")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path1" unique_id=1743784586]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path1" unique_id=118961526]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, -3.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.9, 0.7, 0.3, 1)
 wait = 1.0
-activation = 2
+cooldown = 1.0
 channel = &"bridge"
+starts_on = false
 
-[node name="Path2" type="Path3D" parent="Bays/Switch" unique_id=1165672481]
+[node name="Path2" type="Path3D" parent="Bays/Switch" unique_id=1961134350]
 curve = SubResource("Curve3D_xl8uk")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path2" unique_id=2077419822]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path2" unique_id=696614630]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, -2.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.9, 0.7, 0.3, 1)
 wait = 1.0
+cooldown = 1.0
 offset = 0.5
-activation = 2
 channel = &"bridge"
+starts_on = false
 
-[node name="Path3" type="Path3D" parent="Bays/Switch" unique_id=1265641748]
+[node name="Path3" type="Path3D" parent="Bays/Switch" unique_id=1315425460]
 curve = SubResource("Curve3D_lhg64")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path3" unique_id=132066698]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Switch/Path3" unique_id=1784014598]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -1.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.9, 0.7, 0.3, 1)
 wait = 1.0
+cooldown = 1.0
 offset = 1.0
-activation = 2
 channel = &"bridge"
+starts_on = false
 
-[node name="TimedSwitch" type="Node3D" parent="Bays" unique_id=1559435556]
+[node name="TimedSwitch" type="Node3D" parent="Bays" unique_id=736287345]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/TimedSwitch" unique_id=4678060]
+[node name="Start" type="Marker3D" parent="Bays/TimedSwitch" unique_id=642773853]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/TimedSwitch" unique_id=1088665030]
+[node name="Label" type="Label3D" parent="Bays/TimedSwitch" unique_id=331197588]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "TIMED SWITCH: E runs channel \"rush\" for 6 s
-ride across before it stops (pressing again restarts the 6 s)"
+text = "TIMED SWITCH: starts channel 'rush' 1.5 s after the press, for 6 s
+ride across before it stops (pressing again restarts)"
 font_size = 56
 outline_size = 14
 
-[node name="Switch" type="Area3D" parent="Bays/TimedSwitch" unique_id=711442494]
+[node name="Switch" type="Area3D" parent="Bays/TimedSwitch" unique_id=282259913]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
-script = ExtResource("7_ygd4d")
+script = ExtResource("6_qwj2d")
 channel = &"rush"
-run_time = 6.0
-size = Vector3(2, 2, 2)
-color = Color(0.9, 0.4, 0.3, 0.35)
+action = 1
+delay = 1.5
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
 
-[node name="Path" type="Path3D" parent="Bays/TimedSwitch" unique_id=588849485]
+[node name="SwitchLabel" type="Label3D" parent="Bays/TimedSwitch" unique_id=1052369092]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "RUN 6 s
+(1.5 s delay)"
+outline_size = 10
+
+[node name="Path" type="Path3D" parent="Bays/TimedSwitch" unique_id=174811420]
 curve = SubResource("Curve3D_uyueq")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/TimedSwitch/Path" unique_id=244861024]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/TimedSwitch/Path" unique_id=344636476]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.9, 0.4, 0.3, 1)
 speed = 3.0
-activation = 2
 channel = &"rush"
+starts_on = false
 
-[node name="Remote" type="Node3D" parent="Bays" unique_id=1009284865]
+[node name="Program" type="Node3D" parent="Bays" unique_id=1119582631]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Remote" unique_id=1684698725]
+[node name="Start" type="Marker3D" parent="Bays/Program" unique_id=697852303]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 6)
+
+[node name="Label" type="Label3D" parent="Bays/Program" unique_id=1037061701]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "PROGRAM: 2 laps -> wait 1 s -> 2 laps back -> cooldown 3 s -> repeat
+the panel changes it: power, reverse, speed +/-, cooldown +/-"
+font_size = 56
+outline_size = 14
+
+[node name="Path" type="Path3D" parent="Bays/Program" unique_id=279846522]
+curve = SubResource("Curve3D_qt1wv")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Program/Path" unique_id=115919399]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, -4)
+script = ExtResource("5_e64hd")
+color = Color(0.4, 0.75, 0.95, 1)
+speed = 4.0
+laps = 2
+laps_back = 2
+wait = 1.0
+cooldown = 3.0
+channel = &"program"
+
+[node name="Power" type="Area3D" parent="Bays/Program" unique_id=964777434]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -7)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="PowerLabel" type="Label3D" parent="Bays/Program" unique_id=1674941917]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -7)
+pixel_size = 0.01
+billboard = 1
+text = "POWER"
+outline_size = 10
+
+[node name="Reverse" type="Area3D" parent="Bays/Program" unique_id=744464742]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -5)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+action = 2
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="ReverseLabel" type="Label3D" parent="Bays/Program" unique_id=2014410261]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -5)
+pixel_size = 0.01
+billboard = 1
+text = "REVERSE"
+outline_size = 10
+
+[node name="SpeedUp" type="Area3D" parent="Bays/Program" unique_id=270748939]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+action = 3
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="SpeedUpLabel" type="Label3D" parent="Bays/Program" unique_id=1451566718]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "SPEED +"
+outline_size = 10
+
+[node name="SpeedDown" type="Area3D" parent="Bays/Program" unique_id=2106715744]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -1)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+action = 3
+step = -0.5
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="SpeedDownLabel" type="Label3D" parent="Bays/Program" unique_id=1898955995]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -1)
+pixel_size = 0.01
+billboard = 1
+text = "SPEED -"
+outline_size = 10
+
+[node name="CooldownUp" type="Area3D" parent="Bays/Program" unique_id=1026929988]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 1)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+action = 4
+limits = Vector2(0, 3)
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="CooldownUpLabel" type="Label3D" parent="Bays/Program" unique_id=397723370]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, 1)
+pixel_size = 0.01
+billboard = 1
+text = "COOLDOWN +"
+outline_size = 10
+
+[node name="CooldownDown" type="Area3D" parent="Bays/Program" unique_id=88625315]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 3)
+script = ExtResource("6_qwj2d")
+channel = &"program"
+action = 4
+step = -0.5
+limits = Vector2(0, 3)
+size = Vector3(1.6, 2, 1.6)
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="CooldownDownLabel" type="Label3D" parent="Bays/Program" unique_id=613168942]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, 3)
+pixel_size = 0.01
+billboard = 1
+text = "COOLDOWN -"
+outline_size = 10
+
+[node name="Remote" type="Node3D" parent="Bays" unique_id=1130330733]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Remote" unique_id=217276116]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Remote" unique_id=1527081756]
+[node name="Label" type="Label3D" parent="Bays/Remote" unique_id=1646865593]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
@@ -477,17 +715,19 @@ turn it on there and come back: it kept moving while you were away"
 font_size = 56
 outline_size = 14
 
-[node name="Path" type="Path3D" parent="Bays/Remote" unique_id=1523977672]
-curve = SubResource("Curve3D_qt1wv")
+[node name="Path" type="Path3D" parent="Bays/Remote" unique_id=1621676943]
+curve = SubResource("Curve3D_6le18")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Remote/Path" unique_id=2013879077]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Remote/Path" unique_id=1094138805]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.3, 0.8, 0.6, 1)
 wait = 1.0
-activation = 2
+cooldown = 1.0
 channel = &"remote"
+starts_on = false
 
-[node name="DoorToB" type="Area3D" parent="Bays/Remote" unique_id=967046775]
+[node name="DoorToB" type="Area3D" parent="Bays/Remote" unique_id=2100561603]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
 script = ExtResource("8_a6hic")
 scene = "res://demo/platforms/platforms_b.tscn"
@@ -495,16 +735,16 @@ spawn = &"FromA"
 size = Vector3(2, 2, 2)
 color = Color(0.3, 0.8, 0.6, 0.4)
 
-[node name="FromB" type="Marker3D" parent="Bays/Remote" unique_id=1381585171]
+[node name="FromB" type="Marker3D" parent="Bays/Remote" unique_id=1742055824]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -2)
 
-[node name="Ceiling" type="Node3D" parent="Bays" unique_id=1716357734]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 160, 0, 0)
+[node name="Ceiling" type="Node3D" parent="Bays" unique_id=1126580656]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 180, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Ceiling" unique_id=755652261]
+[node name="Start" type="Marker3D" parent="Bays/Ceiling" unique_id=1764263808]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Ceiling" unique_id=1326700877]
+[node name="Label" type="Label3D" parent="Bays/Ceiling" unique_id=831229329]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -6)
 pixel_size = 0.01
 billboard = 1
@@ -514,52 +754,54 @@ ride the platform under the gap to the right slab"
 font_size = 56
 outline_size = 14
 
-[node name="SlabA" type="CSGBox3D" parent="Bays/Ceiling" unique_id=106017403]
+[node name="SlabA" type="CSGBox3D" parent="Bays/Ceiling" unique_id=833051230]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 6.5, 0)
 use_collision = true
 size = Vector3(4, 1, 6)
-material = SubResource("StandardMaterial3D_6le18")
+material = SubResource("StandardMaterial3D_xarpt")
 
-[node name="SlabB" type="CSGBox3D" parent="Bays/Ceiling" unique_id=718424890]
+[node name="SlabB" type="CSGBox3D" parent="Bays/Ceiling" unique_id=1251027387]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 6.5, 0)
 use_collision = true
 size = Vector3(4, 1, 6)
-material = SubResource("StandardMaterial3D_6le18")
+material = SubResource("StandardMaterial3D_xarpt")
 
-[node name="Path" type="Path3D" parent="Bays/Ceiling" unique_id=234982590]
-curve = SubResource("Curve3D_xarpt")
+[node name="Path" type="Path3D" parent="Bays/Ceiling" unique_id=66289678]
+curve = SubResource("Curve3D_ew272")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Ceiling/Path" unique_id=1226739180]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Ceiling/Path" unique_id=540971289]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 6.25, 0)
 script = ExtResource("5_e64hd")
 color = Color(0.55, 0.6, 0.75, 0.5)
 wait = 1.0
+cooldown = 1.0
 
-[node name="ToCeiling" type="Area3D" parent="Bays/Ceiling" unique_id=147550817]
+[node name="ToCeiling" type="Area3D" parent="Bays/Ceiling" unique_id=1350837193]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 0)
 script = ExtResource("9_omwl0")
 gravity_dir = Vector3(0, 1, 0)
 size = Vector3(2, 1, 2)
 color = Color(1, 0.4, 1, 0.4)
 
-[node name="Reset" type="Area3D" parent="Bays/Ceiling" unique_id=1954547486]
+[node name="Reset" type="Area3D" parent="Bays/Ceiling" unique_id=700252139]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 5.5, 0)
 script = ExtResource("9_omwl0")
 size = Vector3(2, 1, 2)
 color = Color(1, 1, 1, 0.4)
 
-[node name="SkyNet" type="Area3D" parent="Bays/Ceiling" unique_id=41471273]
+[node name="SkyNet" type="Area3D" parent="Bays/Ceiling" unique_id=567423786]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 script = ExtResource("9_omwl0")
 size = Vector3(22, 2, 12)
 color = Color(1, 1, 1, 0.05)
 
-[node name="Wall" type="Node3D" parent="Bays" unique_id=1439760015]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 180, 0, 0)
+[node name="Wall" type="Node3D" parent="Bays" unique_id=884155788]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 0, 0)
 
-[node name="Start" type="Marker3D" parent="Bays/Wall" unique_id=556964493]
+[node name="Start" type="Marker3D" parent="Bays/Wall" unique_id=808675857]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
 
-[node name="Label" type="Label3D" parent="Bays/Wall" unique_id=1373458128]
+[node name="Label" type="Label3D" parent="Bays/Wall" unique_id=1416862870]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -4)
 pixel_size = 0.01
 billboard = 1
@@ -569,101 +811,109 @@ ride the platform across the hole in the wall"
 font_size = 56
 outline_size = 14
 
-[node name="WallA" type="CSGBox3D" parent="Bays/Wall" unique_id=340942539]
+[node name="WallA" type="CSGBox3D" parent="Bays/Wall" unique_id=266380449]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 4, -8.5)
 use_collision = true
 size = Vector3(4, 8, 1)
 material = SubResource("StandardMaterial3D_xb70m")
 
-[node name="WallB" type="CSGBox3D" parent="Bays/Wall" unique_id=1196983727]
+[node name="WallB" type="CSGBox3D" parent="Bays/Wall" unique_id=1580836020]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 4, -8.5)
 use_collision = true
 size = Vector3(4, 8, 1)
 material = SubResource("StandardMaterial3D_xb70m")
 
-[node name="Path" type="Path3D" parent="Bays/Wall" unique_id=1800947273]
-curve = SubResource("Curve3D_ew272")
+[node name="Path" type="Path3D" parent="Bays/Wall" unique_id=87449238]
+curve = SubResource("Curve3D_270qv")
 
-[node name="Platform" type="AnimatableBody3D" parent="Bays/Wall/Path" unique_id=733466135]
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Wall/Path" unique_id=1561896424]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3, -8.25)
 script = ExtResource("5_e64hd")
 size = Vector3(3, 5.5, 0.5)
 wait = 1.0
+cooldown = 1.0
 
-[node name="ToWall" type="Area3D" parent="Bays/Wall" unique_id=1257215042]
+[node name="ToWall" type="Area3D" parent="Bays/Wall" unique_id=991614535]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, -5)
 script = ExtResource("9_omwl0")
 gravity_dir = Vector3(0, 0, -1)
 size = Vector3(2, 1, 2)
 color = Color(1, 0.6, 0.2, 0.4)
 
-[node name="Reset" type="Area3D" parent="Bays/Wall" unique_id=2015029216]
+[node name="Reset" type="Area3D" parent="Bays/Wall" unique_id=2020846048]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3, -7.5)
 script = ExtResource("9_omwl0")
 size = Vector3(2, 6, 1)
 color = Color(1, 1, 1, 0.4)
 
-[node name="BackNet" type="Area3D" parent="Bays/Wall" unique_id=1570095370]
+[node name="BackNet" type="Area3D" parent="Bays/Wall" unique_id=832718189]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -11)
 script = ExtResource("9_omwl0")
 size = Vector3(12, 12, 2)
 color = Color(1, 1, 1, 0.05)
 
-[node name="Walkway0" type="CSGBox3D" parent="." unique_id=1009033298]
+[node name="Walkway0" type="CSGBox3D" parent="." unique_id=939551711]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -0.5, 0)
 use_collision = true
 size = Vector3(5, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway1" type="CSGBox3D" parent="." unique_id=1334138659]
+[node name="Walkway1" type="CSGBox3D" parent="." unique_id=1595282502]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.75, -0.5, 0)
 use_collision = true
 size = Vector3(13.5, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway2" type="CSGBox3D" parent="." unique_id=215310068]
+[node name="Walkway2" type="CSGBox3D" parent="." unique_id=2109350594]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.25, -0.5, 0)
 use_collision = true
 size = Vector3(13.5, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway3" type="CSGBox3D" parent="." unique_id=2108251582]
+[node name="Walkway3" type="CSGBox3D" parent="." unique_id=1896502311]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.5, -0.5, 0)
 use_collision = true
 size = Vector3(9, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway4" type="CSGBox3D" parent="." unique_id=1586863594]
+[node name="Walkway4" type="CSGBox3D" parent="." unique_id=119697123]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, -0.5, 0)
 use_collision = true
 size = Vector3(10, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway5" type="CSGBox3D" parent="." unique_id=1879236731]
+[node name="Walkway5" type="CSGBox3D" parent="." unique_id=1812872785]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -0.5, 0)
 use_collision = true
 size = Vector3(10, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway6" type="CSGBox3D" parent="." unique_id=1995547213]
+[node name="Walkway6" type="CSGBox3D" parent="." unique_id=561331001]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 111, -0.5, 0)
 use_collision = true
 size = Vector3(8, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway7" type="CSGBox3D" parent="." unique_id=245267681]
+[node name="Walkway7" type="CSGBox3D" parent="." unique_id=1687873461]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 131, -0.5, 0)
 use_collision = true
 size = Vector3(8, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="Walkway8" type="CSGBox3D" parent="." unique_id=777592471]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 167.5, -0.5, 0)
+[node name="Walkway8" type="CSGBox3D" parent="." unique_id=1437933265]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, -0.5, 0)
+use_collision = true
+size = Vector3(10, 1, 16)
+material = SubResource("StandardMaterial3D_5jhuf")
+
+[node name="Walkway9" type="CSGBox3D" parent="." unique_id=904950932]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 187.5, -0.5, 0)
 use_collision = true
 size = Vector3(45, 1, 16)
-material = SubResource("StandardMaterial3D_270qv")
+material = SubResource("StandardMaterial3D_5jhuf")
 
-[node name="PitFloor" type="CSGBox3D" parent="." unique_id=2053499491]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -4.5, -3)
+[node name="PitFloor" type="CSGBox3D" parent="." unique_id=1214279221]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, -4.5, -3)
 use_collision = true
-size = Vector3(200, 1, 22)
+size = Vector3(220, 1, 22)
 material = SubResource("StandardMaterial3D_xb70m")

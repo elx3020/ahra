@@ -21,17 +21,19 @@ func _run() -> void:
 	await _wait(2)
 	var p: Player = area.get_node("Player")
 
-	# --- timeline math ---
-	var pp: Node3D = area.get_node("Bays/PingPong/Path/Platform") # 7 m, 2.5 m/s, wait 1 => leg 3.8 s
-	_check(is_zero_approx(pp.distance(0.9)) and is_equal_approx(pp.distance(2.4), 3.5) and is_equal_approx(pp.distance(3.8), 7.0)
-		and is_equal_approx(pp.distance(6.2), 3.5) and is_zero_approx(pp.distance(7.6)), "ping-pong: wait, go, wait, come back")
+	# --- program math ---
+	var pp: Node3D = area.get_node("Bays/PingPong/Path/Platform") # 7 m at 2.5 m/s (2.8 s), wait 1, back, cooldown 1
+	_check(is_equal_approx(pp.distance(1.4), 3.5) and is_equal_approx(pp.distance(3.3), 7.0) and is_equal_approx(pp.distance(5.2), 3.5)
+		and is_zero_approx(pp.distance(7.1)) and is_zero_approx(pp.distance(7.6)), "ping-pong: go, wait, come back, cooldown")
+	var prog: Node3D = area.get_node("Bays/Program/Path/Platform") # 30 m circuit at 4 m/s: legs 2 laps 15 s, wait 1, 2 laps back 15 s, cooldown 3
+	_check(is_equal_approx(prog.distance(3.75), 15.0) and _near0(prog.distance(7.5)) and _near0(prog.distance(15.5))
+		and is_equal_approx(prog.distance(17.875), 22.5) and _near0(prog.distance(32.5)), "program: 2 laps -> wait -> 2 laps back -> cooldown")
 	var loop: Array = area.get_node("Bays/Loop/Path").get_children() # 26 m lap, 3 platforms
 	await _at_time(p, 98765.4321)
-	var d := loop.map(func(pl): return pl.distance(pl.motion_time()))
-	_check(is_equal_approx(fposmod(d[1] - d[0], 26.0), 26.0 / 3.0) and is_equal_approx(fposmod(d[2] - d[1], 26.0), 26.0 / 3.0), "loop group still a third of a lap apart after a day of world time")
+	_check(_spaced(loop), "loop group still a third of a lap apart after a day of world time")
 
 	# --- riding: carry, jump keeps momentum ---
-	await _at_time(p, 7.6 * 1000.0) # ping-pong platform waiting at its start
+	await _at_time(p, 7.6 * 1000.0 - 0.5) # ping-pong in its cooldown at the start, leaves in 0.5 s
 	await _place(p, pp.global_position + Vector3(0, 1, 0))
 	await _wait(90)
 	_check(p.is_on_floor() and absf(p.global_position.x - pp.global_position.x) < 0.3 and pp.position.x > -3.0, "standing on a moving platform carries the player")
@@ -46,8 +48,8 @@ func _run() -> void:
 			break
 	_check(p.is_on_floor() and absf(p.global_position.x - pp.global_position.x) < 1.4 and p.global_position.y > 0.0, "straight-up jump lands back on the moving platform")
 
-	var el: Node3D = area.get_node("Bays/Elevator/Path/Platform") # 6 m up, 2 m/s, wait 1.5 => 9 s round trip
-	await _at_time(p, 9.0 * 1000.0)
+	var el: Node3D = area.get_node("Bays/Elevator/Path/Platform") # 6 m up at 2 m/s, pauses 1.5 => 9 s round trip
+	await _at_time(p, 9.0 * 1000.0 - 1.0)
 	await _place(p, el.global_position + Vector3(0, 1, 0))
 	await _wait(10)
 	var airborne := 0
@@ -60,7 +62,7 @@ func _run() -> void:
 
 	# --- surface class: the EnvZone rides along ---
 	var ice: Node3D = area.get_node("Bays/Surfaces/IcePath/Platform")
-	await _at_time(p, 9.0 * 2000.0 + 1.0) # 7 m at 2 m/s, wait 1: just starting to move
+	await _at_time(p, 9.0 * 2000.0) # starting to move
 	await _place(p, ice.global_position + Vector3(0, 1, 0))
 	await _wait(60)
 	_check(p.mult(&"traction") < 0.5 and ice.position.x > -2.5, "ice platform: its zone moves with it and applies while riding")
@@ -68,41 +70,88 @@ func _run() -> void:
 	await _wait(5)
 	_check(is_equal_approx(p.mult(&"traction"), 1.0), "off the ice platform = normal traction")
 
-	# --- activation ---
-	var timed: Node3D = area.get_node("Bays/Timed/BackPath/Platform") # on 3 s / off 2 s
-	await _at_time(p, 5.0 * 3000.0 + 3.2) # inside an off window
-	var x0 := timed.position.x
+	# --- reverse switches ---
+	await _at_time(p, 7.6 * 2000.0 + 1.0) # ping-pong 2.5 m out, going right
+	var x0 := pp.position.x
+	await _wait(10)
+	var x1 := pp.position.x
+	area.get_node("Bays/PingPong/Reverse").interact(p)
+	await _wait(1)
+	var x2 := pp.position.x
+	await _wait(30)
+	_check(x1 > x0 and absf(x2 - x1) < 0.1 and pp.position.x < x2 - 0.5, "reverse: no jump, the platform heads back the way it came")
+	var lt: float = loop[0].motion_time()
+	area.get_node("Bays/Loop/Reverse").interact(p)
 	await _wait(60)
-	var x1 := timed.position.x
-	await _wait(60)
-	_check(is_equal_approx(x0, x1) and not is_equal_approx(x1, timed.position.x), "timed: stopped in the off window, moving again after")
+	_check(loop[0].motion_time() < lt and _spaced(loop), "one switch reverses the whole loop group, spacing kept")
 
+	var timed: Array = [area.get_node("Bays/Timed/BackPath/Platform"), area.get_node("Bays/Timed/FrontPath/Platform")] # on 3 s / off 2 s
+	await _at_time(p, 5.0 * 3000.0 + 3.2) # back one inside an off window
+	x0 = timed[0].position.x
+	await _wait(60)
+	x1 = timed[0].position.x
+	await _wait(60)
+	_check(is_equal_approx(x0, x1) and not is_equal_approx(x1, timed[0].position.x), "timed: stopped in the off window, moving again after")
+	var tt: Array = timed.map(func(pl): return pl.motion_time())
+	area.get_node("Bays/Timed/Reverse").interact(p)
+	await _wait(300)
+	_check(timed[0].motion_time() < tt[0] and timed[1].motion_time() < tt[1], "one switch reverses both timed platforms")
+
+	# --- power, delayed run ---
 	var bridge: Node3D = area.get_node("Bays/Switch/Path1/Platform")
 	var sw: Node = area.get_node("Bays/Switch/Switch")
 	var y0 := bridge.position.y
 	await _wait(30)
-	_check(is_equal_approx(y0, bridge.position.y) and is_zero_approx(world.active_time(&"bridge")), "switch platform waits until switched on")
+	_check(is_equal_approx(y0, bridge.position.y) and is_zero_approx(world.drive(&"bridge", false)), "switch platform waits until switched on")
 	sw.interact(p)
 	await _wait(120)
 	var y1 := bridge.position.y
-	_check(world.is_on(&"bridge") and y1 > y0 + 1.0, "switch on: the bridge wave rises")
+	_check(world.channels[&"bridge"].flip and y1 > y0 + 1.0, "power on: the bridge wave rises")
 	sw.interact(p)
 	await _wait(1)
 	y1 = bridge.position.y
 	await _wait(60)
-	_check(not world.is_on(&"bridge") and is_equal_approx(y1, bridge.position.y), "switch off: frozen in place")
+	_check(not world.channels[&"bridge"].flip and is_equal_approx(y1, bridge.position.y), "power off: frozen in place")
 	var wave := (area.get_node("Bays/Switch").find_children("Platform", "MovingPlatform", true) as Array).map(func(pl): return pl.motion_time())
 	_check(is_equal_approx(wave[1] - wave[0], 0.5) and is_equal_approx(wave[2] - wave[1], 0.5), "switch group keeps its offsets through on/off")
 
 	var rush: Node3D = area.get_node("Bays/TimedSwitch/Path/Platform")
+	x0 = rush.position.x
 	area.get_node("Bays/TimedSwitch/Switch").interact(p)
 	await _wait(60)
-	_check(world.is_on(&"rush") and rush.position.x > -3.5, "timed switch: running")
+	_check(is_equal_approx(rush.position.x, x0), "timed switch: still waiting out its 1.5 s delay")
+	await _wait(60)
+	_check(rush.position.x > x0 + 0.5, "timed switch: running after the delay")
 	world.time += 6.0
 	await _wait(1)
 	x0 = rush.position.x
 	await _wait(30)
-	_check(not world.is_on(&"rush") and is_equal_approx(world.active_time(&"rush"), 6.0) and is_equal_approx(x0, rush.position.x), "timed switch: stops after 6 s of running")
+	_check(is_equal_approx(world.drive(&"rush", false), 6.0) and is_equal_approx(x0, rush.position.x), "timed switch: stops after 6 s of running")
+
+	# --- speed and cooldown switches ---
+	await _at_time(p, 34.0 * 100.0 + 2.0) # program 8 m into its first lap
+	var d0: float = prog.distance(prog.motion_time())
+	await _wait(30)
+	var base := fposmod(prog.distance(prog.motion_time()) - d0, 30.0) # metres per 30 frames at x1
+	var before := prog.position
+	area.get_node("Bays/Program/SpeedUp").interact(p)
+	await _wait(1)
+	var jump := prog.position.distance_to(before)
+	d0 = prog.distance(prog.motion_time())
+	await _wait(30)
+	var ratio := fposmod(prog.distance(prog.motion_time()) - d0, 30.0) / base
+	_check(jump < 0.15 and absf(ratio - 1.5) < 0.05 and world.rates(&"program").x == 1.5, "speed +: no jump, 1.5x along the path (x%.2f)" % ratio)
+	var legs: Array[float] = prog._legs()
+	var at: Vector3 = prog._locate(prog.motion_time() + prog._shift, legs)
+	world.time += (at.x * (legs[0] + legs[1] + legs[2] + legs[3]) + legs[0] + legs[1] + legs[2] + 0.05) - (prog.motion_time() + prog._shift)
+	await _wait(1)
+	_check(int(prog._locate(prog.motion_time() + prog._shift, prog._legs()).y) == 3, "program reaches its cooldown")
+	area.get_node("Bays/Program/CooldownDown").interact(p)
+	var frames := 0
+	while frames < 400 and int(prog._locate(prog.motion_time() + prog._shift, prog._legs()).y) == 3:
+		await _wait(1)
+		frames += 1
+	_check(frames > 70 and frames < 110, "cooldown -: the 3 s pause becomes 1.5 s (%d frames)" % frames)
 
 	# --- gravity: ceiling and wall platforms carry the player ---
 	var ceil: Node3D = area.get_node("Bays/Ceiling/Path/Platform")
@@ -141,13 +190,25 @@ func _run() -> void:
 	remote = area.get_node("Bays/Remote/Path/Platform")
 	p = area.get_node("Player")
 	_check(area.name == &"PlatformsA" and p.global_position.distance_to(area.get_node("Bays/Remote/FromB").global_position) < 1.5, "door back to area A at the remote bay")
-	_check(absf(world.active_time(&"remote") - (world.time - on_at)) < 0.05 and not remote.position.is_equal_approx(start), "remote platform kept moving while the player was in area B")
-	var before := remote.position
+	_check(absf(world.drive(&"remote", false) - (world.time - on_at)) < 0.05 and not remote.position.is_equal_approx(start), "remote platform kept moving while the player was in area B")
+	before = remote.position
 	await _wait(30)
 	_check(not remote.position.is_equal_approx(before), "and it is still moving")
+	prog = area.get_node("Bays/Program/Path/Platform")
+	_check(prog._rates == Vector2(1.5, 0.5), "speed/cooldown changes survive leaving and reloading the area")
 
 	print("PLATFORMS: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
+
+
+func _spaced(loop: Array) -> bool:
+	var d := loop.map(func(pl): return pl.distance(pl.motion_time()))
+	return is_equal_approx(fposmod(d[1] - d[0], 26.0), 26.0 / 3.0) and is_equal_approx(fposmod(d[2] - d[1], 26.0), 26.0 / 3.0)
+
+
+## Distance on a closed path is ~0 (or ~length, the same point).
+func _near0(d: float) -> bool:
+	return absf(wrapf(d, -15.0, 15.0)) < 0.001
 
 
 ## Jumps the world clock with the player parked on solid ground: a platform teleported
