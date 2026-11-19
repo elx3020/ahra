@@ -1,0 +1,23 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_rkhp3"]
+noise_type = 5
+frequency = 0.25
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_f86wp"]
+noise = SubResource("FastNoiseLite_rkhp3")
+seamless = true
+as_normal_map = true
+bump_strength = 2.0
+
+[resource]
+resource_name = "Cloth"
+albedo_color = Color(0.16, 0.26, 0.52, 1)
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_f86wp")
+rim_enabled = true
+rim = 0.7
+rim_tint = 0.4
+uv1_scale = Vector3(3, 3, 3)
+uv1_triplanar = true

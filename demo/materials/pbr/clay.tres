@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_w2njj"]
+frequency = 0.04
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3bbm5"]
+noise = SubResource("FastNoiseLite_w2njj")
+seamless = true
+as_normal_map = true
+bump_strength = 1.5
+
+[resource]
+resource_name = "Clay"
+albedo_color = Color(0.7, 0.35, 0.22, 1)
+roughness = 0.9
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_3bbm5")
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true

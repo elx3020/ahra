@@ -1,0 +1,22 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_5wg2h"]
+frequency = 0.008
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3xubp"]
+noise = SubResource("FastNoiseLite_5wg2h")
+seamless = true
+as_normal_map = true
+bump_strength = 4.0
+
+[resource]
+resource_name = "Water"
+transparency = 1
+albedo_color = Color(0.08, 0.3, 0.38, 0.3)
+roughness = 0.03
+normal_enabled = true
+normal_scale = 0.6
+normal_texture = SubResource("NoiseTexture2D_3xubp")
+refraction_enabled = true
+refraction_scale = 0.08
+uv1_triplanar = true

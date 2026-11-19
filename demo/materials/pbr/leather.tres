@@ -1,0 +1,29 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="Gradient" id="Gradient_kk4y2"]
+colors = PackedColorArray(0.38, 0.21, 0.11, 1, 0.24, 0.12, 0.06, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_f3lrq"]
+noise_type = 2
+frequency = 0.04
+fractal_octaves = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_t0met"]
+noise = SubResource("FastNoiseLite_f3lrq")
+color_ramp = SubResource("Gradient_kk4y2")
+seamless = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_8gaqx"]
+noise = SubResource("FastNoiseLite_f3lrq")
+seamless = true
+as_normal_map = true
+bump_strength = 3.0
+
+[resource]
+resource_name = "Leather"
+albedo_texture = SubResource("NoiseTexture2D_t0met")
+roughness = 0.55
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_8gaqx")
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true

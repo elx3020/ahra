@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "Glass"
+transparency = 1
+albedo_color = Color(0.92, 0.97, 1, 0.1)
+roughness = 0.02
+refraction_enabled = true
+refraction_scale = 0.06

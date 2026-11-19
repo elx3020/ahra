@@ -1,0 +1,23 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_km8rl"]
+noise_type = 2
+frequency = 0.012
+fractal_octaves = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_fk44v"]
+noise = SubResource("FastNoiseLite_km8rl")
+seamless = true
+as_normal_map = true
+bump_strength = 2.0
+
+[resource]
+resource_name = "Quartz"
+transparency = 1
+albedo_color = Color(0.96, 0.9, 0.92, 0.55)
+roughness = 0.06
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_fk44v")
+refraction_enabled = true
+refraction_scale = 0.03
+uv1_triplanar = true

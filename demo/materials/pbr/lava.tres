@@ -1,0 +1,43 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="Gradient" id="Gradient_dx4gn"]
+offsets = PackedFloat32Array(0, 0.12, 1)
+colors = PackedColorArray(0.2, 0.05, 0.02, 1, 0.06, 0.04, 0.035, 1, 0.1, 0.08, 0.07, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_v038u"]
+noise_type = 2
+fractal_octaves = 2
+cellular_return_type = 4
+domain_warp_enabled = true
+domain_warp_amplitude = 20.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_qogbl"]
+noise = SubResource("FastNoiseLite_v038u")
+color_ramp = SubResource("Gradient_dx4gn")
+seamless = true
+
+[sub_resource type="Gradient" id="Gradient_3grqv"]
+offsets = PackedFloat32Array(0, 0.03, 0.07, 0.11, 1)
+colors = PackedColorArray(1, 0.85, 0.35, 1, 1, 0.35, 0.05, 1, 0.35, 0.02, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_2twwp"]
+noise = SubResource("FastNoiseLite_v038u")
+color_ramp = SubResource("Gradient_3grqv")
+seamless = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_nuyec"]
+noise = SubResource("FastNoiseLite_v038u")
+seamless = true
+as_normal_map = true
+bump_strength = 10.0
+
+[resource]
+resource_name = "Lava"
+albedo_texture = SubResource("NoiseTexture2D_qogbl")
+roughness = 0.85
+emission_enabled = true
+emission_energy_multiplier = 4.0
+emission_texture = SubResource("NoiseTexture2D_2twwp")
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_nuyec")
+uv1_triplanar = true
