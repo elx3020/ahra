@@ -9,8 +9,8 @@ enum Action {
 	RUN, ## after `delay`, move for `run_time` seconds (pressing again restarts)
 	REVERSE, ## flip direction: platforms retrace their motion
 	SPEED, ## add `step` to the speed multiplier (negative step slows down)
-	LAP_WAIT, ## add `step` to the lap wait multiplier (platforms with shared_waits only)
-	SEQUENCE_WAIT, ## add `step` to the sequence wait multiplier (platforms with shared_waits only)
+	START_WAIT, ## add `step` to the multiplier of every start wait
+	END_WAIT, ## add `step` to the multiplier of every end wait
 }
 
 @export var channel: StringName

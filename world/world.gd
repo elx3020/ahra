@@ -8,9 +8,9 @@ var spawn: StringName ## marker the next area puts the player at (set by SceneDo
 ## channel -> state, changed by PlatformSwitches, read by MovingPlatforms:
 ##   t0: last change, drive: [drive of starts-off, of starts-on platforms] at t0,
 ##   flip: power toggled, dir: +1/-1, run_start/run_end: RUN window (forced on),
-##   rates: (speed, lap wait, sequence wait) multipliers,
-##   changes: rate history [[time, drive off, drive on, speed, lap wait, sequence wait]],
-##   bounds: run-once platforms' ends {platform path: [starts_on, low, high]}
+##   rates: (speed, start wait, end wait) multipliers,
+##   changes: rate history [[time, drive off, drive on, speed, start wait, end wait]],
+##   bounds: run-once platforms' ends {track path#platform: [starts_on, low, high]}
 var channels := {}
 
 
@@ -63,14 +63,14 @@ func reverse(channel: StringName) -> void:
 	_settle(channel).dir *= -1.0
 
 
-## SPEED / LAP_WAIT / SEQUENCE_WAIT: new multipliers. Platforms re-time their program from where they are.
+## SPEED / START_WAIT / END_WAIT: new multipliers. Tracks re-time their program from where their platforms are.
 func set_rates(channel: StringName, r: Vector3) -> void:
 	var c := _settle(channel)
 	c.rates = r
 	c.changes.append([time, c.drive[0], c.drive[1], r.x, r.y, r.z])
 
 
-## A run-once platform's program ends, in drive seconds (see MovingPlatform._rebase).
+## A run-once platform's program ends, in drive seconds (see PlatformProgram._rebase).
 func bound(channel: StringName, platform: String, starts_on: bool, low: float, high: float) -> void:
 	_settle(channel).bounds[platform] = [starts_on, low, high]
 
@@ -90,7 +90,7 @@ func debug_text() -> String:
 	var out := ""
 	for ch: StringName in channels:
 		var c: Dictionary = channels[ch]
-		out += "\n  %s: %s%s, speed x%.2f, lap wait x%.2f, sequence wait x%.2f%s" % [ch,
+		out += "\n  %s: %s%s, speed x%.2f, start wait x%.2f, end wait x%.2f%s" % [ch,
 			"toggled, " if c.flip else "", "reversed" if c.dir < 0.0 else "forward", c.rates.x, c.rates.y, c.rates.z,
 			", running %.1fs" % (c.run_end - time) if time < c.run_end else ""]
 	return "\nchannels:" + (out if out else " none")

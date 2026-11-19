@@ -1,19 +1,19 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bb0rhqoyxk76l"]
 
-[ext_resource type="Script" path="res://player/player.gd" id="1_player"]
-[ext_resource type="Script" path="res://player/gauges.gd" id="2_gauges"]
+[ext_resource type="Script" uid="uid://5gg03pukfwgq" path="res://player/player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://bdy4f06pq0t2k" path="res://player/gauges.gd" id="2_gauges"]
 
 [sub_resource type="CapsuleShape3D" id="shape"]
-radius = 0.4
-height = 1.8
-
-[sub_resource type="CapsuleMesh" id="body_mesh"]
 radius = 0.4
 height = 1.8
 
 [sub_resource type="StandardMaterial3D" id="body_mat"]
 resource_local_to_scene = true
 albedo_color = Color(0.9, 0.7, 0.3, 1)
+
+[sub_resource type="CapsuleMesh" id="body_mesh"]
+radius = 0.4
+height = 1.8
 
 [sub_resource type="BoxMesh" id="nose_mesh"]
 size = Vector3(0.2, 0.2, 0.3)
@@ -39,33 +39,34 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[node name="Player" type="CharacterBody3D"]
+[node name="Player" type="CharacterBody3D" unique_id=1602617663]
 script = ExtResource("1_player")
 
-[node name="Collision" type="CollisionShape3D" parent="."]
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=2093200688]
 shape = SubResource("shape")
 
-[node name="Visual" type="Node3D" parent="."]
-position = Vector3(0, -0.9, 0)
+[node name="Visual" type="Node3D" parent="." unique_id=616457592]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.9, 0)
 
-[node name="Body" type="MeshInstance3D" parent="Visual"]
-position = Vector3(0, 0.9, 0)
-mesh = SubResource("body_mesh")
+[node name="Body" type="MeshInstance3D" parent="Visual" unique_id=1239462776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 material_override = SubResource("body_mat")
+mesh = SubResource("body_mesh")
 
-[node name="Nose" type="MeshInstance3D" parent="Visual"]
-position = Vector3(0, 1.4, -0.42)
+[node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1652538454]
+transform = Transform3D(2.3331087, 0, 0, 0, 1, 0, 0, 0, 0.7079041, 0, 1.4, -0.42)
 mesh = SubResource("nose_mesh")
 
-[node name="GaugeLayer" type="CanvasLayer" parent="."]
+[node name="GaugeLayer" type="CanvasLayer" parent="." unique_id=314730347]
 
-[node name="Gauges" type="VBoxContainer" parent="GaugeLayer"]
+[node name="Gauges" type="VBoxContainer" parent="GaugeLayer" unique_id=1466302102]
 mouse_filter = 2
 theme_override_constants/separation = 3
 script = ExtResource("2_gauges")
 
-[node name="Stamina" type="ProgressBar" parent="GaugeLayer/Gauges"]
+[node name="Stamina" type="ProgressBar" parent="GaugeLayer/Gauges" unique_id=579766706]
 custom_minimum_size = Vector2(64, 8)
+layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("bar_stamina")
@@ -73,8 +74,9 @@ max_value = 1.0
 step = 0.001
 show_percentage = false
 
-[node name="Oxygen" type="ProgressBar" parent="GaugeLayer/Gauges"]
+[node name="Oxygen" type="ProgressBar" parent="GaugeLayer/Gauges" unique_id=1384709806]
 custom_minimum_size = Vector2(64, 8)
+layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("bar_oxygen")

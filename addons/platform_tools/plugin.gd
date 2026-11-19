@@ -11,13 +11,15 @@ extends EditorPlugin
 ##   the first anchor again (3+ placed) closes the loop and builds it. A 3D preview shows where
 ##   the next anchor goes and the path being drawn; the toolbar shows Finish / Cancel meanwhile;
 ## - Preview Settings: the preview's colours, opacity and look (saved in editor settings).
-## While tracks are selected a second icon menu acts on them:
-## - Play in Editor: their platforms move in the editor (a grouped track plays its whole group);
+## While tracks are selected a second icon menu acts on them (on their circuit, for circuit tracks):
+## - Play in Editor: their platforms move in the editor;
 ## - Group: names a new PlatformTrackGroup and moves them in;
-## - Switch: adds a PlatformSwitch next to the track and puts the tracks' platforms on its
-##   channel, picked from the channel registry or a new name that can't collide with one used
-##   anywhere in the project.
-## The inspector's `channel` field (platforms, switches) becomes the same channel dropdown.
+## - Switch: adds a PlatformSwitch next to the track and puts the tracks on its channel, picked
+##   from the channel registry or a new name that can't collide with one used anywhere in the
+##   project;
+## - Reconnect: joins a circuit's track ends again (halfway between them).
+## Inspector: `channel` (tracks, circuits, switches) is the same channel dropdown, and a group's
+## `circuit` checkbox turns circuit mode on or off with set_circuit().
 ## Every change is undoable.
 
 const TrackPreview := preload("track_preview.gd")
@@ -32,8 +34,7 @@ const SHAPES := {
 	Plane = &"WorldBoundaryShape3D",
 }
 const REF_SCALE := 4.0 ## shape references start this many times Godot's default shape size
-const PLATFORM_SIZE := Vector3(3, 0.5, 3) ## a new track's platform: a box this size...
-const LOOP_LAPS := 2 ## ...on a loop sequence: out and back (a closed path: 1 lap, round and round)
+const PLATFORM_SIZE := Vector3(3, 0.5, 3) ## a new track's platform: a box this size, back and forth forever (a closed path: round and round)
 const CLOSE_PIXELS := 12.0 ## the cursor this close to the first anchor (3+ placed) snaps there and closes the loop
 const CLOSE_DISTANCE := 0.25 ## Enter with the last anchor this close (m) to the first also closes it
 
@@ -68,6 +69,7 @@ func _enter_tree() -> void:
 	set_input_event_forwarding_always_enabled()
 	TrackPreview.register()
 	_channel_inspector = ChannelInspector.new()
+	_channel_inspector.plugin = self
 	add_inspector_plugin(_channel_inspector)
 	_build_toolbar()
 	add_control_to_container(CONTAINER_SPATIAL_EDITOR_MENU, _bar)
@@ -128,13 +130,20 @@ func _build_toolbar() -> void:
 	var tm := _track_menu.get_popup()
 	tm.add_icon_check_item(_icon(&"Play"), "Play in Editor")
 	tm.set_item_metadata(0, func() -> void: play_in_editor(not is_playing()))
-	tm.set_item_tooltip(0, "Move their platforms in the editor (a grouped track plays its whole group)")
+	tm.set_item_tooltip(0, "Move their platforms in the editor")
 	tm.add_icon_item(_icon(&"Groups"), "Group...")
 	tm.set_item_metadata(1, _open_group_popup)
 	tm.add_icon_item(_icon(&"Signals"), "Switch...")
 	tm.set_item_metadata(2, _open_switch_popup)
 	tm.set_item_tooltip(2, "Add a switch that controls the selected tracks")
-	tm.about_to_popup.connect(func() -> void: tm.set_item_checked(0, is_playing()))
+	tm.add_icon_item(_icon(&"Reload"), "Reconnect")
+	tm.set_item_metadata(3, func() -> void:
+		for c in _circuits():
+			join_circuit(c))
+	tm.set_item_tooltip(3, "Their circuit's track ends meet again, halfway between them")
+	tm.about_to_popup.connect(func() -> void:
+		tm.set_item_checked(0, is_playing())
+		tm.set_item_disabled(3, _circuits().is_empty()))
 	tm.index_pressed.connect(func(i: int) -> void: _menu_pick(tm, i))
 	_bar.add_child(_track_menu)
 
@@ -280,11 +289,7 @@ func _menu_pick(menu: PopupMenu, i: int) -> void:
 func remove_nodes(nodes: Array) -> void:
 	if nodes.is_empty():
 		return
-	# each node, where it was, and the owner of everything saved under it (removing clears them)
-	var entries := nodes.map(func(n: Node) -> Array:
-		var saved := ([n] + n.find_children("*", "", true, true)).map(func(m: Node) -> Array: return [m, m.owner])
-		return [n, n.get_parent(), n.get_index(), saved])
-	entries.sort_custom(func(a: Array, b: Array) -> bool: return a[2] < b[2])
+	var entries := _entries(nodes)
 	var ur := EditorInterface.get_editor_undo_redo()
 	ur.create_action("Remove %d node%s" % [nodes.size(), "" if nodes.size() == 1 else "s"], UndoRedo.MERGE_DISABLE, nodes[0])
 	ur.add_do_method(self, &"_detach", entries)
@@ -292,6 +297,15 @@ func remove_nodes(nodes: Array) -> void:
 	for n: Node in nodes:
 		ur.add_undo_reference(n)
 	ur.commit_action()
+
+
+## Each node, where it is, and the owner of everything saved under it (removing clears them).
+func _entries(nodes: Array) -> Array:
+	var entries := nodes.map(func(n: Node) -> Array:
+		var saved := ([n] + n.find_children("*", "", true, true)).map(func(m: Node) -> Array: return [m, m.owner])
+		return [n, n.get_parent(), n.get_index(), saved])
+	entries.sort_custom(func(a: Array, b: Array) -> bool: return a[2] < b[2])
+	return entries
 
 
 func _detach(entries: Array) -> void:
@@ -381,14 +395,14 @@ func finish_track(close := false) -> PlatformTrackInstance:
 	return create_track(points, close) if points.size() >= 2 else null
 
 
-## A PlatformTrackInstance at points[0]: a Path3D through `points`, and a box platform on a
-## loop sequence along it (`closed`: round the loop, again and again). It goes into the
-## selected group, if any, else the scene root.
+## A PlatformTrackInstance at points[0]: a Path3D through `points` and a box platform going
+## back and forth along it forever (`closed`: round and round). It goes into the selected group,
+## if any, else the scene root; into a circuit it runs once from its first anchor to its last,
+## rides the circuit's platform and is joined to its neighbours.
 func create_track(points: PackedVector3Array, closed := false) -> PlatformTrackInstance:
 	var root := EditorInterface.get_edited_scene_root()
-	var parent: Node = _selected_group()
-	if parent == null:
-		parent = root
+	var group := _selected_group()
+	var parent: Node = group if group else root
 	var inst := PlatformTrackInstance.new()
 	inst.name = "Track"
 	var basis: Basis = parent.global_basis if parent is Node3D else Basis.IDENTITY
@@ -401,24 +415,25 @@ func create_track(points: PackedVector3Array, closed := false) -> PlatformTrackI
 	for p in points:
 		path.curve.add_point(frame.affine_inverse() * p)
 	inst.add_child(path)
-	var plat := MovingPlatform.new()
-	plat.name = "Platform"
-	if closed:
-		plat.repeat = MovingPlatform.Repeat.RESTART # keep going round the same way
-	var cs := CollisionShape3D.new()
-	cs.name = "Box"
-	var box := BoxShape3D.new()
-	box.size = PLATFORM_SIZE
-	box.resource_local_to_scene = true
-	cs.shape = box
-	plat.add_child(cs)
 	var seq := PlatformSequence.new()
-	seq.name = "Sequence"
-	seq.path = path
-	seq.laps = 1 if closed else LOOP_LAPS
-	plat.add_child(seq)
-	inst.add_child(plat)
+	seq.end_anchor = 0 if closed else points.size() - 1
+	if group == null or not group.circuit:
+		seq.trips = 0 # forever...
+		seq.round_trip = not closed # ...back and forth, or round the loop
+		var plat := MovingPlatform.new()
+		plat.name = "Platform"
+		var cs := CollisionShape3D.new()
+		cs.name = "Box"
+		var box := BoxShape3D.new()
+		box.size = PLATFORM_SIZE
+		box.resource_local_to_scene = true
+		cs.shape = box
+		plat.add_child(cs)
+		inst.add_child(plat)
+	inst.sequences.append(seq)
 	_add(parent, inst, "Add platform track")
+	if group and group.circuit:
+		join_circuit(group)
 	return inst
 
 
@@ -483,15 +498,15 @@ func _open_switch_popup() -> void:
 	var tracks := selected_tracks()
 	if tracks.is_empty():
 		return
-	var plat: MovingPlatform = tracks[0].platform()
-	_switch_picker.setup(plat.channel if plat else &"", String(tracks[0].name))
-	_switch_starts.button_pressed = plat.starts_on if plat else true
+	var program: PlatformProgram = tracks[0].program()
+	_switch_picker.setup(program.channel, String(program.name))
+	_switch_starts.button_pressed = program.starts_on
 	_popup_under(_switch_popup, _track_menu, 340)
 
 
 ## Undoable: a PlatformSwitch (box zone) on `channel` doing `action`, placed beside the first
 ## selected track's platform as a child of that track (move it anywhere), and every selected
-## track's platform put on that channel with `starts_on`.
+## track (or its circuit) put on that channel with `starts_on`.
 func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSwitch:
 	var tracks := selected_tracks()
 	if tracks.is_empty() or channel == &"":
@@ -517,30 +532,165 @@ func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSw
 	ur.add_do_method(self, &"_attach", host, sw, built, EditorInterface.get_edited_scene_root())
 	ur.add_do_reference(sw)
 	ur.add_undo_method(host, &"remove_child", sw)
-	for t: PlatformTrackInstance in tracks:
-		var p := t.platform()
-		if p:
-			ur.add_do_property(p, &"channel", channel)
-			ur.add_undo_property(p, &"channel", p.channel)
-			ur.add_do_property(p, &"starts_on", starts_on)
-			ur.add_undo_property(p, &"starts_on", p.starts_on)
+	for p: PlatformProgram in _programs():
+		ur.add_do_property(p, &"channel", channel)
+		ur.add_undo_property(p, &"channel", p.channel)
+		ur.add_do_property(p, &"starts_on", starts_on)
+		ur.add_undo_property(p, &"starts_on", p.starts_on)
 	ur.commit_action()
 	_select(sw)
 	return sw
 
 
-## The inspector's `channel` field on platforms and switches: the channel picker.
+## Inspector: `channel` on tracks, circuits and switches is the channel picker; a group's
+## `circuit` checkbox goes through set_circuit (moves the platforms, joins the tracks).
 class ChannelInspector extends EditorInspectorPlugin:
 	const ChannelProperty := preload("channel_property.gd")
+	var plugin: EditorPlugin
 
 	func _can_handle(o: Object) -> bool:
-		return o is MovingPlatform or o is PlatformSwitch
+		return o is PlatformProgram or o is PlatformSwitch
 
-	func _parse_property(_o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
-		if name != "channel":
-			return false
-		add_property_editor(name, ChannelProperty.new())
-		return true
+	func _parse_property(o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
+		if name == "channel":
+			add_property_editor(name, ChannelProperty.new())
+			return true
+		if name == "circuit" and o is PlatformTrackGroup:
+			add_property_editor(name, CircuitProperty.new(plugin))
+			return true
+		return false
+
+
+class CircuitProperty extends EditorProperty:
+	var _check: CheckBox
+
+	func _init(plugin: EditorPlugin) -> void:
+		_check = CheckBox.new()
+		_check.text = "On"
+		_check.toggled.connect(func(on: bool) -> void: plugin.set_circuit(get_edited_object(), on))
+		add_child(_check)
+		add_focusable(_check)
+
+	func _update_property() -> void:
+		_check.set_pressed_no_signal(get_edited_object().circuit)
+
+
+# --- circuits ---
+
+## Undoable. On: the first track's platform moves under the group and rides every track in turn
+## (the other tracks' platforms go, the group takes the first track's timing), each track whose
+## sequences don't run from its first anchor to its last gets one run that does, and neighbouring
+## ends meet halfway (join_circuit). Off: each track gets its own copy of the circuit's platform.
+func set_circuit(group: PlatformTrackGroup, on: bool) -> void:
+	if group.circuit == on:
+		return
+	var ts: Array = group.tracks()
+	var ur := EditorInterface.get_editor_undo_redo()
+	ur.create_action("Circuit mode on" if on else "Circuit mode off", UndoRedo.MERGE_DISABLE, group)
+	if on:
+		var plats := ts.map(func(t: PlatformTrackInstance) -> MovingPlatform: return t.platform()).filter(func(p: MovingPlatform) -> bool: return p != null)
+		if not plats.is_empty():
+			ur.add_do_method(self, &"_move_node", plats[0], group, group.get_child_count())
+			ur.add_undo_method(self, &"_move_node", plats[0], plats[0].get_parent(), plats[0].get_index())
+			var gone := _entries(plats.slice(1))
+			ur.add_do_method(self, &"_detach", gone)
+			ur.add_undo_method(self, &"_restore", gone)
+			for p: Node in plats.slice(1):
+				ur.add_undo_reference(p)
+		if not ts.is_empty():
+			for k: StringName in PlatformProgram.PROGRAM:
+				if k != &"after_last":
+					ur.add_do_property(group, k, ts[0].get(k))
+					ur.add_undo_property(group, k, group.get(k))
+		for t: PlatformTrackInstance in ts:
+			if t.path() and t.path().curve and not _runs_through(t):
+				var once := PlatformSequence.new()
+				var first: PlatformSequence = t.sequences[0] if not t.sequences.is_empty() and t.sequences[0] else once
+				once.end_anchor = 0 if t.path().curve.closed else t.path().curve.point_count - 1
+				once.speed = first.speed
+				once.start_wait = first.start_wait
+				once.end_wait = first.end_wait
+				var runs: Array[PlatformSequence] = [once]
+				ur.add_do_property(t, &"sequences", runs)
+				ur.add_undo_property(t, &"sequences", t.sequences)
+		_add_joins(ur, group)
+	else:
+		var shared := group.platform()
+		if shared and not ts.is_empty():
+			ur.add_do_method(self, &"_move_node", shared, ts[0], ts[0].get_child_count())
+			ur.add_undo_method(self, &"_move_node", shared, group, shared.get_index())
+			for t: PlatformTrackInstance in ts.slice(1):
+				var copy := MovingPlatform.new()
+				copy.name = shared.name
+				copy.color = shared.color
+				copy.surface = shared.surface
+				for cs in shared.shapes():
+					copy.add_child(cs.duplicate())
+				ur.add_do_method(self, &"_attach", t, copy, [copy] + copy.get_children(), EditorInterface.get_edited_scene_root())
+				ur.add_do_reference(copy)
+				ur.add_undo_method(t, &"remove_child", copy)
+	ur.add_do_property(group, &"circuit", on)
+	ur.add_undo_property(group, &"circuit", not on)
+	ur.commit_action()
+
+
+## Undoable: each circuit track's end and the next one's start meet halfway between them (the
+## last track's end and the first's start too when the circuit starts over).
+func join_circuit(group: PlatformTrackGroup) -> void:
+	var ur := EditorInterface.get_editor_undo_redo()
+	ur.create_action("Join circuit tracks", UndoRedo.MERGE_DISABLE, group)
+	_add_joins(ur, group)
+	ur.commit_action()
+
+
+func _add_joins(ur: EditorUndoRedoManager, group: PlatformTrackGroup) -> void:
+	var ts := group.tracks().filter(func(t: PlatformTrackInstance) -> bool: return t.path() != null and t.path().curve != null and t.path().curve.point_count > 1)
+	var pairs := []
+	for i in ts.size() - 1:
+		pairs.append([ts[i], ts[i + 1]])
+	if group.after_last == PlatformProgram.End.START_OVER and ts.size() > 1:
+		pairs.append([ts[-1], ts[0]])
+	var moved := {} # curve -> {anchor: new local position}: later joins see earlier ones
+	for pair: Array in pairs:
+		var a: Path3D = pair[0].path()
+		var b: Path3D = pair[1].path()
+		var ai := 0 if a.curve.closed else a.curve.point_count - 1
+		var mid := (a.to_global(_anchor(moved, a.curve, ai)) + b.to_global(_anchor(moved, b.curve, 0))) * 0.5
+		moved.get_or_add(a.curve, {})[ai] = a.to_local(mid)
+		moved.get_or_add(b.curve, {})[0] = b.to_local(mid)
+	for curve: Curve3D in moved:
+		for i: int in moved[curve]:
+			ur.add_do_method(curve, &"set_point_position", i, moved[curve][i])
+			ur.add_undo_method(curve, &"set_point_position", i, curve.get_point_position(i))
+
+
+func _anchor(moved: Dictionary, curve: Curve3D, i: int) -> Vector3:
+	return moved.get(curve, {}).get(i, curve.get_point_position(i))
+
+
+## Its sequences take the platform from its first anchor to its last (closed path: round to the
+## first again), and end.
+func _runs_through(t: PlatformTrackInstance) -> bool:
+	var line := t.path()
+	if line == null or line.curve == null or t.sequences.is_empty() or t.sequences.has(null):
+		return false
+	var end := 0 if line.curve.closed else line.curve.point_count - 1
+	return t.sequences[0].start_anchor == 0 and t.sequences.all(func(q: PlatformSequence) -> bool: return q.trips > 0) \
+		and t.sequences[-1].finish_anchor() == end
+
+
+func _move_node(node: Node, parent: Node, index: int) -> void:
+	node.reparent(parent) # keeps its global transform and its owner
+	parent.move_child(node, mini(index, parent.get_child_count() - 1))
+
+
+## The circuits holding the selected tracks.
+func _circuits() -> Array:
+	var out := []
+	for t: PlatformTrackInstance in selected_tracks():
+		if t.circuit() and not out.has(t.circuit()):
+			out.append(t.circuit())
+	return out
 
 
 # --- preview settings ---
@@ -608,25 +758,23 @@ func reset_look() -> void:
 
 # --- play in editor ---
 
-## What plays each selected track in the editor: its group (which plays all its tracks), else
-## its platform. Both have a `preview` flag.
-func _players() -> Array:
+## What runs each selected track: the track, or its circuit.
+func _programs() -> Array:
 	var out := []
 	for t: PlatformTrackInstance in selected_tracks():
-		var p: Node = t.get_parent() if t.get_parent() is PlatformTrackGroup else t.platform()
-		if p and not out.has(p):
-			out.append(p)
+		if not out.has(t.program()):
+			out.append(t.program())
 	return out
 
 
 func is_playing() -> bool:
-	var players := _players()
+	var players := _programs()
 	return not players.is_empty() and players.all(func(p: Node) -> bool: return p.preview)
 
 
 ## Undoable: the selected tracks' platforms move in the editor (or stop).
 func play_in_editor(on: bool) -> void:
-	var players := _players()
+	var players := _programs()
 	if players.is_empty():
 		return
 	var ur := EditorInterface.get_editor_undo_redo()

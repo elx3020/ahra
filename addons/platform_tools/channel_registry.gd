@@ -22,7 +22,7 @@ static func channels() -> Dictionary:
 				_add(found, m.get_string(1), path)
 	if open:
 		for n in [open] + open.find_children("*", "", true, false):
-			if (n is MovingPlatform or n is PlatformSwitch) and n.channel != &"":
+			if (n is PlatformSwitch or n is PlatformProgram and n.plays()) and n.channel != &"":
 				_add(found, String(n.channel), open_path if open_path else "(unsaved scene)")
 	var names := found.keys()
 	names.sort()

@@ -4,9 +4,10 @@
 [ext_resource type="Script" uid="uid://dhm8i40j5tsdy" path="res://world/shape_reference.gd" id="1_fnfac"]
 [ext_resource type="Script" uid="uid://dpgik3h6qc4e4" path="res://world/platform_track_instance.gd" id="2_6e3mj"]
 [ext_resource type="Script" uid="uid://j86jv8iqe2ns" path="res://world/platform_track_group.gd" id="2_l1rbd"]
-[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_piypc"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="2_piypc"]
 [ext_resource type="Script" uid="uid://bukqeypryc24m" path="res://world/moving_platform.gd" id="3_l1rbd"]
 [ext_resource type="Script" uid="uid://b0s1eycar27vk" path="res://world/platform_sequence.gd" id="4_6b7c1"]
+[ext_resource type="Script" uid="uid://0l2cbfrajomc" path="res://world/platform_switch.gd" id="8_piypc"]
 
 [sub_resource type="Environment" id="Environment_1agrf"]
 background_mode = 1
@@ -18,17 +19,55 @@ ambient_light_energy = 0.7
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_piypc"]
 resource_local_to_scene = true
 
-[sub_resource type="Curve3D" id="Curve3D_6b7c1"]
+[sub_resource type="Resource" id="Resource_lx5eq"]
+script = ExtResource("4_6b7c1")
+speed = 3.0
+start_wait = 2.0
+
+[sub_resource type="Resource" id="Resource_8ou1r"]
+script = ExtResource("4_6b7c1")
+start_anchor = 1
+end_anchor = 2
+speed = 6.0
+metadata/_custom_type_script = "uid://b0s1eycar27vk"
+
+[sub_resource type="Resource" id="Resource_keqb0"]
+script = ExtResource("4_6b7c1")
+start_anchor = 2
+end_anchor = 0
+speed = 5.0
+metadata/_custom_type_script = "uid://b0s1eycar27vk"
+
+[sub_resource type="Curve3D" id="Curve3D_5t0ye"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -1.5, 0, 0, 0, 0, 0, 0, 0, 0, 22.52864, 0, 0),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12.07459, 0, -6.412134, 0, 0, 0, 0, 0, 0, 23.99745, 0, 0),
+"tilts": PackedFloat32Array(0, 0, 0)
+}
+point_count = 3
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6d3fr"]
+resource_local_to_scene = true
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="Resource" id="Resource_2qsn5"]
+script = ExtResource("4_6b7c1")
+round_trip = true
+trips = 0
+
+[sub_resource type="Curve3D" id="Curve3D_n5r1g"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22.742868, 0, 0.09888244),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_6b7c1"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_e7q53"]
 resource_local_to_scene = true
-height = 0.9951172
-radius = 1.4550781
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3etug"]
+resource_local_to_scene = true
+size = Vector3(3, 0.5, 3)
 
 [node name="ShapeRef" type="Node3D" unique_id=925775439]
 script = ExtResource("1_6b7c1")
@@ -80,27 +119,48 @@ use_collision = true
 size = Vector3(1, 1, 2)
 
 [node name="Floor2" type="CSGBox3D" parent="." unique_id=1603803223]
-transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5.9800005, 18.5, -0.5, 0)
+transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5.9800005, 46.478107, -0.5, 0)
 use_collision = true
 size = Vector3(1, 1, 2)
 
-[node name="Track" type="Node3D" parent="." unique_id=2134044147]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.029798, 0, 0.0069609927)
+[node name="Track" type="Node3D" parent="." unique_id=416626841]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.487635, -0.2378993, 0.025346205)
 script = ExtResource("2_6e3mj")
+sequences = Array[ExtResource("4_6b7c1")]([SubResource("Resource_lx5eq"), SubResource("Resource_8ou1r"), SubResource("Resource_keqb0")])
+preview = true
 
-[node name="Path" type="Path3D" parent="Track" unique_id=2133541031]
-curve = SubResource("Curve3D_6b7c1")
+[node name="Path" type="Path3D" parent="Track" unique_id=643009391]
+curve = SubResource("Curve3D_5t0ye")
 
-[node name="Platform" type="AnimatableBody3D" parent="Track" unique_id=1731495478]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 0)
+[node name="Platform" type="AnimatableBody3D" parent="Track" unique_id=659810966]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.56431, 0, -2.4238477)
 script = ExtResource("3_l1rbd")
 
-[node name="Sequence" type="Node" parent="Track/Platform" unique_id=1324127379 node_paths=PackedStringArray("path")]
-script = ExtResource("4_6b7c1")
-path = NodePath("../../Path")
-laps = 2
-lap_wait = 5.0
+[node name="Box" type="CollisionShape3D" parent="Track/Platform" unique_id=434008500]
+shape = SubResource("BoxShape3D_6d3fr")
 
-[node name="Cylinder" type="CollisionShape3D" parent="Track/Platform" unique_id=1202753675]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.50035, 0)
-shape = SubResource("CylinderShape3D_6b7c1")
+[node name="Track2" type="Node3D" parent="." unique_id=1801980653]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.058775, -0.25898647, -0.058401868)
+script = ExtResource("2_6e3mj")
+sequences = Array[ExtResource("4_6b7c1")]([SubResource("Resource_2qsn5")])
+channel = &"track_2"
+starts_on = false
+preview = true
+
+[node name="Path" type="Path3D" parent="Track2" unique_id=386022757]
+curve = SubResource("Curve3D_n5r1g")
+
+[node name="Platform" type="AnimatableBody3D" parent="Track2" unique_id=555787088]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.184923, 0, 0.07036953)
+script = ExtResource("3_l1rbd")
+
+[node name="PowerSwitch" type="Area3D" parent="Track2/Platform" unique_id=811244808]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("8_piypc")
+channel = &"track_2"
+
+[node name="Box" type="CollisionShape3D" parent="Track2/Platform/PowerSwitch" unique_id=1680925262]
+shape = SubResource("BoxShape3D_e7q53")
+
+[node name="Box" type="CollisionShape3D" parent="Track2/Platform" unique_id=805433906]
+shape = SubResource("BoxShape3D_3etug")

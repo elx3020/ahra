@@ -1,6 +1,7 @@
 extends SceneTree
-## Headless test of moving platforms (demo/platforms/platforms_a.tscn + _b).
-## (no MovingPlatform/PlatformSwitch static types here: -s scripts compile before the World autoload exists)
+## Headless test of moving platforms (demo/platforms/platforms_a.tscn + _b): tracks, circuits,
+## sequences, switches, riding.
+## (no MovingPlatform/PlatformSwitch/PlatformProgram static types here: -s scripts compile before the World autoload exists)
 ## Run: Godot_console.exe --headless --path . -s res://tests/platform_test.gd
 
 const A := "res://demo/platforms/platforms_a.tscn"
@@ -22,15 +23,17 @@ func _run() -> void:
 	var p: Player = area.get_node("Player")
 
 	# --- program math ---
-	var pp: Node3D = area.get_node("Bays/PingPong/Path/Platform") # 2 laps of 7 m at 2.5 m/s, 1 s lap wait: [1][2.8][1][2.8]
-	_check(_x(pp, 0.5, -3.5) and _x(pp, 2.4, 0.0) and _x(pp, 4.3, 3.5) and _x(pp, 6.2, 0.0) and _x(pp, 7.6, -3.5), "ping-pong: wait, out, wait, back (2 laps)")
-	var seq: Node3D = area.get_node("Bays/Sequences/Path/Platform") # 30 m circuit: 2 laps at 6 m/s, then 2 at 2 m/s; waits 1 s/lap, 3 s/sequence
+	var ppt: Node3D = area.get_node("Bays/PingPong/Track") # round trips of 7 m at 2.5 m/s forever, 1 s waits: [1][2.8][1][2.8]
+	var pp: Node3D = ppt.platform()
+	_check(_x(ppt, 0.5, -3.5) and _x(ppt, 2.4, 0.0) and _x(ppt, 4.3, 3.5) and _x(ppt, 6.2, 0.0) and _x(ppt, 7.6, -3.5), "ping-pong: wait, out, wait, back, forever")
+	var seqt: Node3D = area.get_node("Bays/Sequences/Track") # 30 m square: 2 laps at 6 m/s, then 2 at 2 m/s; 1 s start waits, 3 s end waits on the slow laps
+	var seq: Node3D = seqt.platform()
 	var far := Vector3(143.5, -0.25, 4) # half a lap from the start
-	var fast: float = seq.point_at(3.6).distance_to(seq.point_at(3.5))
-	var slow: float = seq.point_at(23.6).distance_to(seq.point_at(23.5))
-	_check(seq.point_at(3.5).is_equal_approx(far) and seq.point_at(23.5).is_equal_approx(far) and seq.point_at(6.5).is_equal_approx(Vector3(136.5, -0.25, -4))
-		and is_equal_approx(fast, 0.6) and is_equal_approx(slow, 0.2), "sequences: 2 fast laps, lap waits, then 2 slow laps")
-	var circ: Node3D = area.get_node("Bays/Circuit/Platform")
+	var fast: float = seqt.point_at(3.6).distance_to(seqt.point_at(3.5))
+	var slow: float = seqt.point_at(20.6).distance_to(seqt.point_at(20.5))
+	_check(seqt.point_at(3.5).is_equal_approx(far) and seqt.point_at(20.5).is_equal_approx(far) and seqt.point_at(6.5).is_equal_approx(Vector3(136.5, -0.25, -4))
+		and is_equal_approx(fast, 0.6) and is_equal_approx(slow, 0.2), "sequences: 2 fast laps, start waits, then 2 slow laps")
+	var circ: Node3D = area.get_node("Bays/Circuit/Circuit")
 	var dur: float = circ._duration
 	var step := 0.0
 	var t := 0.0
@@ -39,7 +42,9 @@ func _run() -> void:
 		t += 0.02
 	_check(circ._get_configuration_warnings().is_empty() and step < 0.07 and circ.point_at(dur).is_equal_approx(Vector3(156.5, -0.25, -1))
 		and circ.point_at(2.0 * dur).is_equal_approx(Vector3(156.5, -0.25, -5)), "circuit: 4 paths joined without a jump, ends on path D, plays back to the start (max step %.3f m)" % step)
-	var loop: Array = area.get_node("Bays/Loop/Path").get_children() # 26 m lap, 3 platforms
+	var loopt: Node3D = area.get_node("Bays/Loop/Track") # a full lap forever, 26 m, platforms = 3
+	var loop: Array = loopt._riders
+	_check(loop.size() == 3 and loop.all(func(r): return r.get_parent() == loopt), "loop: the track runs its platform and 2 copies")
 	await _at_time(p, 98765.4321)
 	_check(_spaced(loop), "loop group still a third of a lap apart after a day of world time")
 
@@ -59,7 +64,7 @@ func _run() -> void:
 			break
 	_check(p.is_on_floor() and absf(p.global_position.x - pp.global_position.x) < 1.4 and p.global_position.y > 0.0, "straight-up jump lands back on the moving platform")
 
-	var el: Node3D = area.get_node("Bays/Elevator/Path/Platform") # [1.5][3][1.5][3] = 9 s
+	var el: Node3D = area.get_node("Bays/Elevator/Track/Platform") # [1.5][3][1.5][3] = 9 s
 	await _at_time(p, 9.0 * 1000.0 + 0.5)
 	await _place(p, el.global_position + Vector3(0, 1, 0))
 	await _wait(10)
@@ -72,7 +77,7 @@ func _run() -> void:
 	_check(airborne == 0 and top > 6.5 and p.global_position.y < 1.5, "elevator up and down without losing the floor (airborne frames: %d)" % airborne)
 
 	# --- surface class: the EnvZone rides along ---
-	var ice: Node3D = area.get_node("Bays/Surfaces/IcePath/Platform")
+	var ice: Node3D = area.get_node("Bays/Surfaces/IceTrack/Platform")
 	await _at_time(p, 9.0 * 2000.0 + 1.0) # [1][3.5][1][3.5]: starting to move
 	await _place(p, ice.global_position + Vector3(0, 1, 0))
 	await _wait(60)
@@ -91,25 +96,25 @@ func _run() -> void:
 	var x2 := pp.position.x
 	await _wait(30)
 	_check(x1 > x0 and absf(x2 - x1) < 0.1 and pp.position.x < x2 - 0.5, "reverse: no jump, the platform heads back the way it came")
-	var lt: float = loop[0].motion_time()
+	var lt: float = loopt.motion_time()
 	area.get_node("Bays/Loop/Reverse").interact(p)
 	await _wait(60)
-	_check(loop[0].motion_time() < lt and _spaced(loop), "one switch reverses the whole loop group, spacing kept")
+	_check(loopt.motion_time() < lt and _spaced(loop), "one switch reverses the whole loop, spacing kept")
 
-	var timed: Array = [area.get_node("Bays/Timed/BackPath/Platform"), area.get_node("Bays/Timed/FrontPath/Platform")] # on 3 s / off 2 s
-	await _at_time(p, 5.0 * 3000.0 + 3.2) # back one inside an off window
-	x0 = timed[0].position.x
+	var timed: Array = [area.get_node("Bays/Timed/BackTrack"), area.get_node("Bays/Timed/FrontTrack")] # 4 one-way legs of 1.4 s, 2 s stop after each: 13.6 s
+	await _at_time(p, 13.6 * 1000.0 + 1.6) # back one stopped on its middle anchor until 3.4
+	x0 = timed[0].platform().position.x
 	await _wait(60)
-	x1 = timed[0].position.x
+	x1 = timed[0].platform().position.x
 	await _wait(60)
-	_check(is_equal_approx(x0, x1) and not is_equal_approx(x1, timed[0].position.x), "timed: stopped in the off window, moving again after")
-	var tt: Array = timed.map(func(pl): return pl.motion_time())
+	_check(absf(x0) < 0.01 and is_equal_approx(x0, x1) and not is_equal_approx(x1, timed[0].platform().position.x), "timed: stopped on the middle anchor, moving again after")
+	var tt: Array = timed.map(func(t): return t.motion_time())
 	area.get_node("Bays/Timed/Reverse").interact(p)
 	await _wait(300)
 	_check(timed[0].motion_time() < tt[0] and timed[1].motion_time() < tt[1], "one switch reverses both timed platforms")
 
 	# --- power, delayed run ---
-	var bridge: Node3D = area.get_node("Bays/Switch/Path1/Platform")
+	var bridge: Node3D = area.get_node("Bays/Switch/Track1/Platform")
 	var sw: Node = area.get_node("Bays/Switch/Switch")
 	var y0 := bridge.position.y
 	await _wait(30)
@@ -123,10 +128,10 @@ func _run() -> void:
 	y1 = bridge.position.y
 	await _wait(60)
 	_check(not world.channels[&"bridge"].flip and is_equal_approx(y1, bridge.position.y), "power off: frozen in place")
-	var wave := (area.get_node("Bays/Switch").find_children("Platform", "MovingPlatform", true) as Array).map(func(pl): return pl.motion_time())
+	var wave := [1, 2, 3].map(func(i): return area.get_node("Bays/Switch/Track%d" % i).motion_time())
 	_check(is_equal_approx(wave[1] - wave[0], 0.5) and is_equal_approx(wave[2] - wave[1], 0.5), "switch group keeps its offsets through on/off")
 
-	var rush: Node3D = area.get_node("Bays/TimedSwitch/Path/Platform")
+	var rush: Node3D = area.get_node("Bays/TimedSwitch/Track/Platform")
 	x0 = rush.position.x
 	area.get_node("Bays/TimedSwitch/Switch").interact(p)
 	await _wait(60)
@@ -139,8 +144,8 @@ func _run() -> void:
 	await _wait(30)
 	_check(is_equal_approx(world.drive(&"rush", false), 6.0) and is_equal_approx(x0, rush.position.x), "timed switch: stops after 6 s of running")
 
-	# --- run once (repeat: none) ---
-	var once: Node3D = area.get_node("Bays/RunOnce/Path/Platform")
+	# --- run once (one way, 1 trip, then stop) ---
+	var once: Node3D = area.get_node("Bays/RunOnce/Track/Platform")
 	area.get_node("Bays/RunOnce/Power").interact(p)
 	world.time += 100.0
 	await _wait(2)
@@ -155,7 +160,7 @@ func _run() -> void:
 	await _wait(60)
 	_check(once.position.x > -3.0, "run once: back at the start, reverse sends it out again at once")
 
-	# --- speed and wait switches (shared waits) ---
+	# --- speed and wait switches ---
 	await _at_time(p, 50.0 * 100.0 + 2.0) # first fast lap, 6 m in
 	var o0 := _offset(seq)
 	await _wait(30)
@@ -168,20 +173,20 @@ func _run() -> void:
 	await _wait(30)
 	var ratio := fposmod(_offset(seq) - o0, 30.0) / base
 	_check(jump < 0.25 and absf(ratio - 1.5) < 0.05, "speed +: no jump, 1.5x along the path (x%.2f)" % ratio)
-	area.get_node("Bays/Sequences/LapWaitUp").interact(p)
+	area.get_node("Bays/Sequences/StartWaitUp").interact(p)
 	await _wait(1)
-	_check(is_equal_approx(seq._plan[0][0], 1.5) and is_equal_approx(seq._plan[4][0], 3.0), "lap wait +: every lap wait is 1.5 s, sequence waits untouched")
-	await _skip_to(seq, 4) # the first sequence wait
-	_check(_entry(seq) == 4, "program reaches its first sequence wait")
-	area.get_node("Bays/Sequences/SequenceWaitDown").interact(p)
+	_check(is_equal_approx(seqt._plan[0][0], 1.5) and is_equal_approx(seqt._plan[8][0], 3.0), "start wait +: every start wait is 1.5 s, end waits untouched")
+	await _skip_to(seqt, 8) # the first slow lap's end wait
+	_check(_entry(seqt) == 8, "program reaches its first 3 s end wait")
+	area.get_node("Bays/Sequences/EndWaitDown").interact(p)
 	var frames := 0
-	while frames < 400 and _entry(seq) == 4:
+	while frames < 400 and _entry(seqt) == 8:
 		await _wait(1)
 		frames += 1
-	_check(frames > 70 and frames < 110, "sequence wait -: the 3 s wait becomes 1.5 s (%d frames)" % frames)
+	_check(frames > 70 and frames < 110, "end wait -: the 3 s wait becomes 1.5 s (%d frames)" % frames)
 
 	# --- gravity: ceiling and wall platforms carry the player ---
-	var ceil: Node3D = area.get_node("Bays/Ceiling/Path/Platform")
+	var ceil: Node3D = area.get_node("Bays/Ceiling/Track/Platform")
 	await _at_time(p, 9.0 * 3000.0 + 1.5) # [1][3.5][1][3.5]: moving right
 	await _place(p, ceil.global_position - Vector3(0, 1.2, 0))
 	p.set_gravity_dir(Vector3.UP)
@@ -191,7 +196,7 @@ func _run() -> void:
 	await _wait(30)
 	_check(p.is_on_floor() and p.up_direction == Vector3.DOWN and absf((p.global_position.x - px) - (ceil.global_position.x - cx)) < 0.15 and ceil.global_position.x - cx > 0.5, "ceiling platform carries the player (gravity +y)")
 
-	var wall: Node3D = area.get_node("Bays/Wall/Path/Platform")
+	var wall: Node3D = area.get_node("Bays/Wall/Track/Platform")
 	await _at_time(p, 9.0 * 4000.0 + 1.5)
 	await _place(p, wall.global_position + Vector3(0, 0, 1.2))
 	p.set_gravity_dir(Vector3.FORWARD)
@@ -202,7 +207,7 @@ func _run() -> void:
 	_check(p.is_on_floor() and p.up_direction == Vector3.BACK and absf((p.global_position.x - px) - (wall.global_position.x - cx)) < 0.15 and wall.global_position.x - cx > 0.5, "wall platform carries the player (gravity -z)")
 
 	# --- scenes: leave, switch a channel elsewhere, come back ---
-	var remote: Node3D = area.get_node("Bays/Remote/Path/Platform")
+	var remote: Node3D = area.get_node("Bays/Remote/Track/Platform")
 	var start := remote.position
 	await _place(p, area.get_node("Bays/Remote/DoorToB").global_position)
 	await _wait(10)
@@ -214,15 +219,15 @@ func _run() -> void:
 	await _place(pb, current_scene.get_node("DoorToA").global_position)
 	await _wait(10)
 	area = current_scene
-	remote = area.get_node("Bays/Remote/Path/Platform")
+	remote = area.get_node("Bays/Remote/Track/Platform")
 	p = area.get_node("Player")
 	_check(area.name == &"PlatformsA" and p.global_position.distance_to(area.get_node("Bays/Remote/FromB").global_position) < 1.5, "door back to area A at the remote bay")
 	_check(absf(world.drive(&"remote", false) - (world.time - on_at)) < 0.05 and not remote.position.is_equal_approx(start), "remote platform kept moving while the player was in area B")
 	before = remote.position
 	await _wait(30)
 	_check(not remote.position.is_equal_approx(before), "and it is still moving")
-	seq = area.get_node("Bays/Sequences/Path/Platform")
-	_check(seq._rates.is_equal_approx(Vector3(1.5, 1.5, 0.5)), "speed/wait changes survive leaving and reloading the area")
+	seqt = area.get_node("Bays/Sequences/Track")
+	_check(seqt._rates.is_equal_approx(Vector3(1.5, 1.5, 0.5)), "speed/wait changes survive leaving and reloading the area")
 
 	# --- platform shapes: any shape type; a surface zone wraps each shape ---
 	var plat_script: GDScript = load("res://world/moving_platform.gd")
@@ -260,20 +265,8 @@ func _run() -> void:
 	await _wait(2)
 	_check(not is_instance_valid(ref), "a ShapeReference removes itself in game")
 	var group: Node3D = load("res://world/platform_track_group.gd").new() # as the Platform Tools build them
-	var track: Node3D = load("res://world/platform_track_instance.gd").new()
-	var line := Path3D.new()
-	line.curve = Curve3D.new()
-	line.curve.add_point(Vector3.ZERO)
-	line.curve.add_point(Vector3(6, 0, 0))
-	track.add_child(line)
-	var rider: Node3D = plat_script.new()
-	var box_cs := CollisionShape3D.new()
-	box_cs.shape = BoxShape3D.new()
-	rider.add_child(box_cs)
-	var lap2: Node = load("res://world/platform_sequence.gd").new()
-	lap2.path = line
-	lap2.laps = 2
-	rider.add_child(lap2)
+	var track := _track([Vector3.ZERO, Vector3(6, 0, 0)], [[0, 1, true, 0]])
+	var rider: Node3D = _platform()
 	track.add_child(rider)
 	group.add_child(track)
 	group.position = Vector3(100, 70, 120)
@@ -285,17 +278,84 @@ func _run() -> void:
 	var on_line := func(v: Vector3) -> bool: return absf(v.x - 100) < 0.01 and absf(v.y - 70) < 0.01 and v.z > 113.99 and v.z < 120.01
 	_check(on_line.call(p0) and on_line.call(rider.global_position) and p0.distance_to(rider.global_position) > 0.5, "a track inside a rotated group rides its path, turned onto -z (%s -> %s)" % [p0, rider.global_position])
 
+	# --- sequences: chained anchors, 3 ahead then 2 back; trips; one way / round trip ---
+	var walk := _track([Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(4, 0, 0), Vector3(6, 0, 0)], [[0, 3, false, 1], [0, 1, false, 1]])
+	walk.after_last = 0 # stop
+	walk.add_child(_platform())
+	walk.position = Vector3(100, 80, 140)
+	area.add_child(walk)
+	await _wait(1)
+	var q2: Resource = walk.sequences[1]
+	# [0.5 wait][3 s: 0 -> 6 m][0.5][0.5][2 s: 6 -> 2 m][0.5] at 2 m/s
+	_check(q2.start_anchor == 3 and _px(walk, 0.4) == 0.0 and is_equal_approx(_px(walk, 2.0), 3.0) and is_equal_approx(_px(walk, 3.6), 6.0)
+		and is_equal_approx(_px(walk, 5.5), 4.0) and is_equal_approx(_px(walk, 99.0), 2.0), "chained sequences: the second starts where the first left it (anchor 3), goes back to anchor 1, stops")
+	var trips := _track([Vector3.ZERO, Vector3(4, 0, 0)], [[0, 1, false, 3]])
+	trips.after_last = 0
+	trips.add_child(_platform())
+	area.add_child(trips)
+	await _wait(1)
+	var t3: Resource = trips.sequences[0]
+	_check(t3.finish_anchor() == 1 and is_equal_approx(_px(trips, 99.0), 4.0) and is_equal_approx(trips._duration, 3 * 2.0 + 2 * (0.5 + 0.5)), "3 one-way trips alternate: out, back, out, ending at the end anchor")
+	t3.round_trip = true
+	trips._compile()
+	_check(t3.finish_anchor() == 0 and is_zero_approx(_px(trips, 99.0)) and is_equal_approx(trips._duration, 3 * (0.5 + 2.0 + 0.5 + 2.0)), "3 round trips: there and back three times, ending at the start")
+
+	# --- circuit: tracks sharing one platform, played in turn ---
+	var circuit: Node3D = load("res://world/platform_track_group.gd").new()
+	circuit.circuit = true
+	circuit.after_last = 2 # play backwards: the tracks don't close into a loop
+	circuit.add_child(_track([Vector3.ZERO, Vector3(4, 0, 0)], [[0, 1, false, 1]]))
+	circuit.add_child(_track([Vector3(4, 0, 0), Vector3(4, 0, 4)], [[0, 1, false, 1]]))
+	circuit.add_child(_platform())
+	circuit.position = Vector3(100, 90, 160)
+	area.add_child(circuit)
+	await _wait(1)
+	var a1: Vector3 = circuit.point_at(1.5) - circuit.global_position # [0.5][2 s along A][0.5] [0.5][2 s along B][0.5]
+	var b1: Vector3 = circuit.point_at(4.5) - circuit.global_position
+	_check(a1.is_equal_approx(Vector3(2, 0, 0)) and b1.is_equal_approx(Vector3(4, 0, 2)) and not circuit.get_child(0).plays() and circuit._get_configuration_warnings().is_empty(), "circuit: the platform rides track A, then track B")
+
 	print("PLATFORMS: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 
 
-func _x(pl: Node3D, t: float, x: float) -> bool:
-	return absf(pl.point_at(t).x - pl.get_parent().global_position.x - x) < 0.001
+func _x(track: Node3D, t: float, x: float) -> bool:
+	return absf(_px(track, t) - x) < 0.001
+
+
+## The track's platform x (track space) after t program seconds.
+func _px(track: Node3D, t: float) -> float:
+	return snappedf(track.to_local(track.point_at(t)).x, 0.0001)
+
+
+## A track along `points` with sequences [start, end, round trip, trips] (speed 2, waits 0.5).
+func _track(points: Array, sequences: Array) -> Node3D:
+	var track: Node3D = load("res://world/platform_track_instance.gd").new()
+	var line := Path3D.new()
+	line.curve = Curve3D.new()
+	for v: Vector3 in points:
+		line.curve.add_point(v)
+	track.add_child(line)
+	for q: Array in sequences:
+		var seq: Resource = load("res://world/platform_sequence.gd").new()
+		seq.start_anchor = q[0]
+		seq.end_anchor = q[1]
+		seq.round_trip = q[2]
+		seq.trips = q[3]
+		track.sequences.append(seq)
+	return track
+
+
+func _platform() -> Node3D:
+	var rider: Node3D = load("res://world/moving_platform.gd").new()
+	var cs := CollisionShape3D.new()
+	cs.shape = BoxShape3D.new()
+	rider.add_child(cs)
+	return rider
 
 
 ## Distance along the platform's (closed) path.
 func _offset(pl: Node3D) -> float:
-	var path: Path3D = pl.get_parent()
+	var path: Path3D = pl.get_parent().path()
 	return path.curve.get_closest_offset(path.to_local(pl.global_position))
 
 
@@ -306,12 +366,12 @@ func _spaced(loop: Array) -> bool:
 
 ## Program entry (wait or lap) the platform is in now.
 func _entry(pl: Node3D) -> int:
-	return int(pl._locate(pl._fold(pl.motion_time() + pl._shift)[2]).x)
+	return int(pl._locate(pl._fold(pl.motion_time() + pl._shifts[0])[2]).x)
 
 
-## Jumps the world clock to just after the start of program entry `e` (forward channel, no schedule).
+## Jumps the world clock to just after the start of program entry `e` (forward channel).
 func _skip_to(pl: Node3D, e: int) -> void:
-	var now: float = pl.motion_time() + pl._shift
+	var now: float = pl.motion_time() + pl._shifts[0]
 	var f: Array = pl._fold(now)
 	var target: float = pl._unfold(f[0], false, pl._time_at(Vector2(e, 0)) + 0.05)
 	if target < now:

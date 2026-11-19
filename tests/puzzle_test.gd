@@ -27,9 +27,9 @@ func _run() -> void:
 
 	# --- 1 lift-off: the always-on lifts and ferry line up regularly ---
 	var o := _o(0)
-	var lift1: Node3D = _n(0, "LiftPath1/Lift1")
-	var ferry: Node3D = _n(0, "FerryPath/Ferry")
-	var lift2: Node3D = _n(0, "LiftPath2/Lift2")
+	var lift1: Node3D = _n(0, "LiftTrack1") # the tracks: their program math
+	var ferry: Node3D = _n(0, "FerryTrack")
+	var lift2: Node3D = _n(0, "LiftTrack2")
 	var up_meets := 0
 	var across_meets := 0
 	for i in 2400: # 2 minutes in 0.05 s steps
@@ -41,15 +41,15 @@ func _run() -> void:
 		across_meets += int(f.x > 19.0 and l2.y < 3.6)
 	_check(up_meets > 20 and across_meets > 20, "1: lift 1 meets the ferry and the ferry meets lift 2, again and again (%d / %d)" % [up_meets, across_meets])
 	await _at_time(0, 600.0) # lift 2 waiting low (all three share a 6 s cycle)
-	await _place(lift2.global_position + Vector3(0, 1, 0))
+	await _place(lift2.platform().global_position + Vector3(0, 1, 0))
 	await _wait(200)
 	await _hold(RIGHT, 50)
 	_check(_reached(1), "1: ride lift 2 up and step onto puzzle 2")
 
 	# --- 2 drawbridges: bridge 2 to the middle, ride bridge 1, reverse bridge 2 from on top ---
 	o = _o(1)
-	var b1: Node3D = _n(1, "Bridge1Path/Bridge1")
-	var b2: Node3D = _n(1, "Bridge2Path/Bridge2")
+	var b1: Node3D = _n(1, "Bridge1Track/Bridge1")
+	var b2: Node3D = _n(1, "Bridge2Track/Bridge2")
 	_n(1, "Bridge2Power").interact(p)
 	await _wait(280)
 	_check(absf(b2.global_position.x - o.x - 25.5) < 0.1, "2: bridge 2 power: it comes to the middle and stays")
@@ -82,13 +82,13 @@ func _run() -> void:
 		if i > 20 and (p.is_on_floor() or p.state_name == &"death"):
 			break
 	_release_all()
-	var lane1: Node3D = _n(2, "Lane1Path/Lane1")
+	var lane1: Node3D = _n(2, "Lane1Track/Lane1")
 	_check(p.is_on_floor() and absf(p.global_position.x - lane1.global_position.x) < 2.2, "3: dash-jump over 10 m of void onto a passing lane")
 
 	# --- 4 express: too slow at x1, fast enough at x3 ---
 	o = _o(3)
 	await _warp_key(KEY_4)
-	var express: Node3D = _n(3, "FerryPath/Ferry")
+	var express: Node3D = _n(3, "FerryTrack/Ferry")
 	_n(3, "Run").interact(p)
 	await _wait(340)
 	_check(express.global_position.y - o.y < 3.5, "4: at x1 the ferry stops far below the exit when RUN ends")
@@ -107,7 +107,7 @@ func _run() -> void:
 
 	# --- 5 grand circuit: ride all 6 paths and both loops, step off at the top ---
 	o = _o(4)
-	var circ: Node3D = _n(4, "Circuit")
+	var circ: Node3D = _n(4, "Circuit") # the circuit group: 6 tracks, one platform
 	var dur: float = circ._duration
 	var step := 0.0
 	var t5 := 0.0
@@ -116,7 +116,7 @@ func _run() -> void:
 		t5 += 0.02
 	_check(circ._get_configuration_warnings().is_empty() and step < 0.15, "5: 6 paths joined without a jump (max step %.3f m)" % step)
 	await _at_time(4, 2.0 * dur * 20.0) # docked, about to leave
-	await _place(circ.global_position + Vector3(0, 1, 0))
+	await _place(circ.platform().global_position + Vector3(0, 1, 0))
 	var airborne := 0
 	for i in roundi((dur - 1.0) * 60.0):
 		await _wait(1)
@@ -126,11 +126,11 @@ func _run() -> void:
 
 	# --- 6 layovers: 2.5 s stops are too slow, no stops make it ---
 	o = _o(5)
-	var train: Node3D = _n(5, "Train")
+	var train: Node3D = _n(5, "Circuit") # 6 tracks, one platform: the train
 	_check(train.point_at(18.0).y - o.y < 4.1, "6: with 2.5 s stops the train is still low when its 18 s run ends")
 	_n(5, "StopsDown").interact(p)
 	_n(5, "StopsDown").interact(p)
-	await _place(train.global_position + Vector3(0, 1, 0))
+	await _place(train.platform().global_position + Vector3(0, 1, 0))
 	_n(5, "Run").interact(p)
 	await _wait(1080)
 	await _hold(RIGHT, 50)
@@ -157,7 +157,7 @@ func _run() -> void:
 	p.teleport(o + Vector3(2.5, 7.1, 2.5)) # white pad
 	await _wait(40)
 	_check(p.up_direction == Vector3.UP and p.is_on_floor(), "8: white pad drops the player back on the pad")
-	var fb: Node3D = _n(7, "FerryPath/Ferry")
+	var fb: Node3D = _n(7, "FerryTrack/Ferry")
 	await _place(fb.global_position + Vector3(0, 1, 0))
 	await _wait(780)
 	await _hold(RIGHT, 50)
@@ -190,7 +190,7 @@ func _run() -> void:
 	# --- 10 clockwork: power the lift, move the ball, dash-jump, swing to the finish ---
 	o = _o(9)
 	_n(9, "LiftPower").interact(p)
-	var lift: Node3D = _n(9, "Lift1")
+	var lift: Node3D = _n(9, "Circuit/Lift")
 	await _place(lift.global_position + Vector3(0, 1, 0))
 	for i in 600:
 		await _wait(1)
@@ -201,7 +201,7 @@ func _run() -> void:
 	_check(p.is_on_floor() and p.global_position.x - o.x > 16.0 and p.global_position.y - o.y > 9.5, "10: the powered lift brings the player up to the ledge")
 	_n(9, "BallPower").interact(p)
 	await _wait(300)
-	await _swing(o + Vector3(20, 10, 0), _n(9, "BallPath/BallCarrier/Ball").global_position, true, 28)
+	await _swing(o + Vector3(20, 10, 0), _n(9, "BallTrack/BallCarrier/Ball").global_position, true, 28)
 	_check(_reached(10), "10: dash-jump to the moved ball and swing onto the finish")
 
 	# --- checkpoints and teleport keys ---

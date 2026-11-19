@@ -117,7 +117,7 @@ func run() -> void:
 	var plat: Node3D = $Platform
 	var pbox: CollisionShape3D = insp.add(plat, "Box")
 	var pconvex: CollisionShape3D = insp.add(plat, "Convex")
-	await frames(2)
+	await physics_frames(2) # platforms redraw in _physics_process
 	check(plat.shapes() == [pbox, pconvex] and pbox.owner == self, "platform: add box + convex")
 	var pm: MeshInstance3D = pbox.get_children(true).filter(func(m): return m.name == &"ShapeMesh")[0]
 	check(pm.mesh is BoxMesh and pm.mesh.size == pbox.shape.size and pm.material_override.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL, "platform: box drawn as a lit BoxMesh")

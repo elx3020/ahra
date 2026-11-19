@@ -6,8 +6,8 @@ extends "res://tests/editor_test.gd"
 ## Enter, too few anchors), the 3D preview and its settings panel, the built
 ## PlatformTrackInstance (open, or closed by clicking the first anchor), the Shape Refs / Tracks
 ## menus (counts, select, remove, undo), grouping and the group's view settings, the channel
-## registry, adding a switch (channel picker, collisions refused) and the inspector's channel
-## dropdown.
+## registry, adding a switch (channel picker, collisions refused), the inspector's channel
+## dropdown and circuit mode (inspector checkbox, joined ends, new track into a circuit, Reconnect).
 ## It changes the preview's editor settings and puts the user's values back at the end.
 ## Godot_console.exe --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test
 
@@ -152,12 +152,12 @@ func run() -> void:
 	var inst: PlatformTrackInstance = built[0]
 	var path: Path3D = inst.get_node("Path")
 	var plat: MovingPlatform = inst.platform()
-	var seq: PlatformSequence = plat.get_node("Sequence")
-	check(inst.global_position.distance_to(pts[0]) < 0.01 and inst.paths() == [path], "instance sits at the first anchor, one path")
+	var seq: PlatformSequence = inst.sequences[0]
+	check(inst.global_position.distance_to(pts[0]) < 0.01 and inst.path() == path, "instance sits at the first anchor, one path")
 	check(path.curve.point_count == 3 and range(3).all(func(i): return path.to_global(path.curve.get_point_position(i)).distance_to(pts[i]) < 0.01), "path runs through the anchors")
 	check(plat.shapes().size() == 1 and plat.shapes()[0].shape is BoxShape3D and plat.shapes()[0].shape.size == Vector3(3, 0.5, 3), "default box platform")
-	check(seq.path == path and seq.laps == 2 and plat.get_children().filter(func(c): return c is PlatformSequence).size() == 1, "one loop sequence (2 laps) on the path")
-	check([inst, path, plat, plat.shapes()[0], seq].all(func(n): return n.owner == self), "all of it saved with the scene")
+	check(inst.sequences.size() == 1 and seq.start_anchor == 0 and seq.end_anchor == 2 and seq.round_trip and seq.trips == 0, "one sequence: round trips between the first and last anchor, forever")
+	check([inst, path, plat, plat.shapes()[0]].all(func(n): return n.owner == self), "all of it saved with the scene")
 	check(inst._get_configuration_warnings().is_empty(), "no configuration warnings")
 	check(EditorInterface.get_selection().get_selected_nodes() == [inst], "new track is selected")
 	await frames(3)
@@ -167,7 +167,7 @@ func run() -> void:
 	hist.undo()
 	check(_tracks(self).is_empty(), "undo removes the track")
 	hist.redo()
-	check(_tracks(self) == [inst] and inst.owner == self and seq.owner == self, "redo brings it back")
+	check(_tracks(self) == [inst] and inst.owner == self and inst.sequences == [seq], "redo brings it back")
 	await frames(1)
 	check(_open(pt).get_item_text(1) == "Tracks (1)", "builder menu counts the tracks (%s)" % _open(pt).get_item_text(1))
 
@@ -177,22 +177,22 @@ func run() -> void:
 	await frames(2)
 	check(pt._track_menu.visible and pt._track_menu.text == "", "track menu icon shows when a track (or a part of it) is selected")
 	var acts: PopupMenu = pt._track_menu.get_popup()
-	check(range(acts.item_count).map(func(i): return acts.get_item_text(i)) == ["Play in Editor", "Group...", "Switch..."], "track menu: Play in Editor, Group, Switch")
+	check(range(acts.item_count).map(func(i): return acts.get_item_text(i)) == ["Play in Editor", "Group...", "Switch...", "Reconnect"], "track menu: Play in Editor, Group, Switch, Reconnect")
 	acts.about_to_popup.emit()
-	check(not acts.is_item_checked(0) and not plat.preview, "not playing yet")
+	check(not acts.is_item_checked(0) and not inst.preview, "not playing yet")
 	acts.index_pressed.emit(0)
 	acts.about_to_popup.emit()
-	check(plat.preview and acts.is_item_checked(0), "Play in Editor: on, checked")
+	check(inst.preview and acts.is_item_checked(0), "Play in Editor: on, checked")
 	var was := plat.global_position
 	await get_tree().create_timer(1.2).timeout # longer than a lap wait
 	await physics_frames(2)
 	check(plat.global_position.distance_to(was) > 0.05, "the platform moves in the editor")
 	acts.index_pressed.emit(0)
-	check(not plat.preview, "picking it again stops it")
+	check(not inst.preview, "picking it again stops it")
 	hist.undo()
-	check(plat.preview, "undoable")
+	check(inst.preview, "undoable")
 	hist.undo()
-	check(not plat.preview, "back to not playing")
+	check(not inst.preview, "back to not playing")
 	EditorInterface.get_selection().clear()
 	await frames(2)
 	check(not pt._track_menu.visible, "and hides without one")
@@ -210,21 +210,21 @@ func run() -> void:
 	group.show_destination = false
 	group.preview = true
 	await frames(2)
-	check(not path.visible and _ghosts(inst).is_empty() and plat.preview, "group hides paths and ghosts, previews its platforms")
+	check(not path.visible and _ghosts(inst).is_empty() and inst._previewing(), "group hides paths and ghosts, previews its tracks")
 	group.show_paths = true
 	group.show_destination = true
 	group.preview = false
 	await frames(2)
-	check(path.visible and _ghosts(inst).size() == 1 and not plat.preview, "and back")
+	check(path.visible and _ghosts(inst).size() == 1 and not inst._previewing(), "and back")
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(inst)
 	await frames(1)
 	acts.index_pressed.emit(0)
 	await physics_frames(2)
-	check(group.preview and plat.preview, "Play in Editor on a grouped track plays its group")
+	check(inst.preview and not group.preview, "Play in Editor on a grouped track plays that track")
 	hist.undo()
 	await physics_frames(2)
-	check(not group.preview and not plat.preview, "undo")
+	check(not inst.preview, "undo")
 	var tmenu: PopupMenu = pt._tracks
 	_open(pt)
 	var ti := _item_for(tmenu, inst)
@@ -264,7 +264,7 @@ func run() -> void:
 	check(inst.get_parent() == null and _open(pt).get_item_text(1) == "Tracks (0)", "track removed, count updated")
 	hist.undo()
 	await frames(1)
-	check(inst.get_parent() == self and [inst, path, plat, plat.shapes()[0], seq].all(func(n): return n.owner == self) and _open(pt).get_item_text(1) == "Tracks (1)", "undo restores the track and everything in it")
+	check(inst.get_parent() == self and [inst, path, plat, plat.shapes()[0], ].all(func(n): return n.owner == self) and inst.sequences == [seq] and _open(pt).get_item_text(1) == "Tracks (1)", "undo restores the track and everything in it")
 
 	# closing a loop: click the first anchor again (3+ placed)
 	EditorInterface.get_selection().clear()
@@ -280,9 +280,10 @@ func run() -> void:
 	_click(pt, Vector3(12.05, 0, 0.05))
 	var lt: Node = EditorInterface.get_selection().get_selected_nodes()[0]
 	check(not pt._placing and lt is PlatformTrackInstance and lt != inst, "clicking it builds the track")
-	var lpath: Path3D = lt.paths()[0]
+	var lpath: Path3D = lt.path()
 	check(lpath.curve.closed and lpath.curve.point_count == 3, "a closed path, 3 points (no duplicate of the first)")
-	check(lt.platform().repeat == MovingPlatform.Repeat.RESTART and lt.platform().get_node("Sequence").laps == 1, "a loop: 1 lap, restart (round and round)")
+	var lq: PlatformSequence = lt.sequences[0]
+	check(lq.start_anchor == 0 and lq.end_anchor == 0 and not lq.round_trip and lq.trips == 0, "a loop: a full lap one way, forever (round and round)")
 	await frames(2)
 	var lg := _ghosts(lt)
 	check(lg.size() == 1 and lg[0].global_position.distance_to(loop_pts[0]) < 0.01, "a loop's ghost sits where a lap ends: its start")
@@ -295,7 +296,7 @@ func run() -> void:
 	pt.start_track()
 	pt._anchors = PackedVector3Array([Vector3(30, 0, 0), Vector3(36, 0, 0), Vector3(33, 0, 5), Vector3(30.1, 0, 0)])
 	var et: PlatformTrackInstance = pt.finish_track()
-	check(et.paths()[0].curve.closed and et.paths()[0].curve.point_count == 3, "Enter with the last anchor 0.1 m from the first: closed")
+	check(et.path().curve.closed and et.path().curve.point_count == 3, "Enter with the last anchor 0.1 m from the first: closed")
 	await frames(1)
 	check(_open(pt).get_item_text(1) == "Tracks (3)", "three tracks counted")
 
@@ -310,7 +311,7 @@ func run() -> void:
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(plat)
 	await frames(1)
-	check(plat.channel == &"" and plat.starts_on, "a new track starts on the world clock")
+	check(inst.channel == &"" and inst.starts_on, "a new track starts on the world clock")
 	acts.index_pressed.emit(2)
 	check(pt._switch_popup.visible, "Switch... opens the switch popup")
 	var picker = pt._switch_picker
@@ -328,12 +329,12 @@ func run() -> void:
 	check(sw is PlatformSwitch and sw.get_parent() == inst and sw.name == &"ReverseSwitch" and sw.channel == &"lift_test" and sw.action == PlatformSwitch.Action.REVERSE, "switch added to the track, with its channel and action")
 	check(sw.owner == self and sw.shapes().size() == 1 and sw.shapes()[0].owner == self and sw.shapes()[0].shape.size == Vector3(2, 2, 2), "switch saved with the scene, a 2 m box zone")
 	check(sw.global_position.distance_to(plat.global_position + Vector3(0, 1, 3)) < 0.01, "placed beside the platform's start")
-	check(plat.channel == &"lift_test" and not plat.starts_on, "the track's platform joins the channel and waits for the switch")
+	check(inst.channel == &"lift_test" and not inst.starts_on, "the track joins the channel and waits for the switch")
 	check(reg.channels().has("lift_test"), "the new channel is in the registry (open scene, unsaved)")
 	hist.undo()
-	check(sw.get_parent() == null and plat.channel == &"" and plat.starts_on, "undo: switch gone, platform back on the world clock")
+	check(sw.get_parent() == null and inst.channel == &"" and inst.starts_on, "undo: switch gone, track back on the world clock")
 	hist.redo()
-	check(sw.get_parent() == inst and plat.channel == &"lift_test", "redo")
+	check(sw.get_parent() == inst and inst.channel == &"lift_test", "redo")
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(lt)
 	await frames(1)
@@ -347,10 +348,12 @@ func run() -> void:
 	picker._options.item_selected.emit(shared)
 	check(picker.valid() and picker.value() == &"lift_test", "picking an existing channel shares it on purpose")
 	pt._switch_add.pressed.emit()
-	check(lt.platform().channel == &"lift_test", "second track on the same channel")
+	check(lt.channel == &"lift_test", "second track on the same channel")
 
 	# --- the inspector's channel dropdown ---
-	EditorInterface.edit_node(lt.platform())
+	EditorInterface.get_selection().clear() # a fresh inspector (it refreshes shown values on a timer)
+	await frames(1)
+	EditorInterface.edit_node(lt)
 	await frames(3)
 	var prop: EditorProperty = null
 	var stack: Array[Node] = [EditorInterface.get_inspector()]
@@ -359,15 +362,85 @@ func run() -> void:
 		if n.get_script() == load("res://addons/platform_tools/channel_property.gd"):
 			prop = n
 		stack.append_array(n.get_children())
-	check(prop != null and prop.get_edited_property() == &"channel", "inspector: a platform's channel is the channel dropdown")
+	check(prop != null and prop.get_edited_property() == &"channel", "inspector: a track's channel is the channel dropdown")
 	var opts: OptionButton = prop._picker._options
-	check(opts.get_selected_metadata() == "lift_test" and opts.get_item_metadata(0) == "", "it shows the current channel, and (none) for platforms")
+	check(opts.get_selected_metadata() == "lift_test" and opts.get_item_metadata(0) == "", "it shows the current channel, and (none) for tracks")
 	opts.select(0)
 	opts.item_selected.emit(0)
 	await frames(1)
-	check(lt.platform().channel == &"", "picking (none) clears the channel")
+	check(lt.channel == &"", "picking (none) clears the channel")
 	hist.undo()
-	check(lt.platform().channel == &"lift_test", "through the inspector, so undoable")
+	check(lt.channel == &"lift_test", "through the inspector, so undoable")
+
+	# --- circuit mode ---
+	EditorInterface.get_selection().clear()
+	await frames(1)
+	var ca: PlatformTrackInstance = pt.create_track(PackedVector3Array([Vector3(0, 0, 30), Vector3(8, 0, 30)]))
+	EditorInterface.get_selection().clear()
+	var cb: PlatformTrackInstance = pt.create_track(PackedVector3Array([Vector3(9, 0, 30), Vector3(9, 0, 38)])) # starts 1 m from A's end
+	var ca_plat := ca.platform()
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(ca)
+	EditorInterface.get_selection().add_node(cb)
+	await frames(1)
+	var cg: PlatformTrackGroup = pt.create_group("Line")
+	cg.after_last = PlatformProgram.End.PLAY_BACKWARDS # an open circuit: the last end doesn't join the first start
+	EditorInterface.edit_node(cg)
+	await frames(3)
+	var cprop: EditorProperty = null
+	stack = [EditorInterface.get_inspector()]
+	while stack:
+		var n: Node = stack.pop_back()
+		if n.get_script() == load("res://addons/platform_tools/plugin.gd").CircuitProperty:
+			cprop = n
+		stack.append_array(n.get_children())
+	check(cprop != null and not cg.circuit and not ca.get_property_list().filter(func(d): return d.name == "channel")[0].usage & PROPERTY_USAGE_EDITOR == 0, "inspector: the group's circuit checkbox; tracks show their own timing")
+	cprop._check.button_pressed = true
+	await physics_frames(2)
+	check(cg.circuit and cg.platform() == ca_plat and ca.platform() == ca_plat and cb.platform() == ca_plat and cb.get_children().filter(func(c): return c is MovingPlatform).is_empty() and ca_plat.owner == self, "circuit on: the first track's platform rides both, the other one goes")
+	check([ca, cb].all(func(t): return t.sequences.size() == 1 and t.sequences[0].trips == 1 and not t.sequences[0].round_trip and t.sequences[0].end_anchor == 1), "each track runs once, first anchor to last")
+	check(ca.last_point().distance_to(Vector3(8.5, 0, 30)) < 0.01 and cb.first_point().distance_to(Vector3(8.5, 0, 30)) < 0.01, "neighbouring ends meet halfway")
+	check(ca._get_configuration_warnings().is_empty() and cb._get_configuration_warnings().is_empty() and cg._get_configuration_warnings().is_empty(), "no warnings")
+	check(ca.get_property_list().filter(func(d): return d.name == "channel")[0].usage & PROPERTY_USAGE_EDITOR == 0 and not ca.plays() and cg.plays(), "the timing settings are the group's now")
+	var mid := cg.point_at(cg._plan[0][0] + cg._plan[1][0] + cg._plan[2][0] + cg._plan[3][0] + cg._plan[4][0] * 0.5)
+	check(mid.distance_to(Vector3(8.75, 0, 34)) < 0.05, "the shared platform rides A, then B (%s)" % mid)
+	hist.undo()
+	await physics_frames(1)
+	check(not cg.circuit and ca.platform() == ca_plat and cb.platform() != null and cb.platform() != ca_plat and ca.sequences[0].trips == 0 and ca.last_point().distance_to(Vector3(8, 0, 30)) < 0.01, "undo: own platforms, sequences and anchors back")
+	hist.redo()
+	await physics_frames(1)
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(cg)
+	await frames(1)
+	var cc: PlatformTrackInstance = pt.create_track(PackedVector3Array([Vector3(10, 0, 39), Vector3(0, 0, 39)]))
+	check(cc.get_parent() == cg and cc.platform() == ca_plat and cc.get_children().filter(func(c): return c is MovingPlatform).is_empty() and cc.sequences[0].trips == 1, "a new track in a circuit rides its platform, once along")
+	check(cb.last_point().distance_to(cc.first_point()) < 0.01 and cc.first_point().distance_to(Vector3(9.5, 0, 38.5)) < 0.01, "and joins the previous track's end halfway")
+	cb.path().curve.set_point_position(0, cb.path().curve.get_point_position(0) + Vector3(0, 0, 1))
+	check(not ca._get_configuration_warnings().is_empty(), "a joint pulled apart: warning")
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(ca)
+	await frames(1)
+	acts.about_to_popup.emit()
+	check(acts.get_item_text(3) == "Reconnect" and not acts.is_item_disabled(3), "track menu: Reconnect for a circuit track")
+	acts.index_pressed.emit(3)
+	check(ca.last_point().distance_to(cb.first_point()) < 0.01 and ca._get_configuration_warnings().is_empty(), "Reconnect joins them again")
+	acts.index_pressed.emit(0)
+	check(cg.preview and not ca.preview, "Play in Editor on a circuit track plays the circuit")
+	hist.undo()
+	EditorInterface.edit_node(cg)
+	await frames(3)
+	stack = [EditorInterface.get_inspector()]
+	while stack:
+		var n: Node = stack.pop_back()
+		if n.get_script() == load("res://addons/platform_tools/plugin.gd").CircuitProperty:
+			cprop = n
+		stack.append_array(n.get_children())
+	cprop._check.button_pressed = false
+	await physics_frames(1)
+	check(not cg.circuit and [ca, cb, cc].all(func(t): return t.get_children().filter(func(c): return c is MovingPlatform).size() == 1 and t.platform().owner == self) and ca.platform() == ca_plat, "circuit off: each track has its own platform again")
+	hist.undo()
+	await physics_frames(1)
+	check(cg.circuit and cg.platform() == ca_plat and cb.platform() == ca_plat, "undo: back to one shared platform")
 
 	var extra := MovingPlatform.new()
 	inst.add_child(extra)
