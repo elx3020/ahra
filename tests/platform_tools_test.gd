@@ -4,7 +4,9 @@ extends "res://tests/editor_test.gd"
 ## included), placing a track's anchors with viewport input (snapped / free / vertical, Esc,
 ## Enter, too few anchors), the 3D preview and its settings panel, the built
 ## PlatformTrackInstance (open, or closed by clicking the first anchor), the Shape Refs / Tracks
-## menus (counts, select, remove, undo), grouping and the group's view settings.
+## menus (counts, select, remove, undo), grouping and the group's view settings, the channel
+## registry, adding a switch (channel picker, collisions refused) and the inspector's channel
+## dropdown.
 ## It changes the preview's editor settings and puts the user's values back at the end.
 ## Godot_console.exe --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test
 
@@ -259,6 +261,76 @@ func run() -> void:
 	check(et.paths()[0].curve.closed and et.paths()[0].curve.point_count == 3, "Enter with the last anchor 0.1 m from the first: closed")
 	await frames(1)
 	check(pt._tracks.text == "Tracks (3)", "three tracks counted")
+
+	# --- channel registry ---
+	var reg: GDScript = load("res://addons/platform_tools/channel_registry.gd")
+	var known: Dictionary = reg.channels()
+	check(known.has("remote") and known["remote"].any(func(f): return f.ends_with("platforms_a.tscn")) and known["remote"].any(func(f): return f.ends_with("platforms_b.tscn")), "registry: channels of the saved scenes, with the scenes that use them")
+	check(reg.unique("remote", known) == "remote_2" and reg.unique("My Lift", known) == "my_lift" and reg.unique("2 fast", known).is_valid_ascii_identifier(), "registry: free, identifier-safe name suggestions")
+	check(reg.problem("remote", known).contains("platforms_a.tscn") and reg.problem("2fast", known) != "" and reg.problem("", known) != "" and reg.problem("fresh_one", known) == "", "registry: a taken, malformed or empty new name is refused")
+
+	# --- adding a switch ---
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(plat)
+	await frames(1)
+	check(pt._switch.visible, "Switch button shows while a track is selected")
+	check(plat.channel == &"" and plat.starts_on, "a new track starts on the world clock")
+	pt._open_switch_popup()
+	var picker = pt._switch_picker
+	check(picker.is_new() and picker.value() == StringName(reg.unique("Track", known)) and picker.valid(), "no channel yet: a new channel, named after the track (%s)" % picker.value())
+	picker._name.text = "remote"
+	picker._name.text_changed.emit("remote")
+	check(not picker.valid() and pt._switch_add.disabled and picker._note.text.contains("platforms_a.tscn"), "a name used elsewhere is refused, saying where")
+	picker._name.text = "lift_test"
+	picker._name.text_changed.emit("lift_test")
+	check(picker.valid() and not pt._switch_add.disabled, "a free name is accepted")
+	pt._switch_action.select(PlatformSwitch.Action.REVERSE)
+	pt._switch_starts.button_pressed = false
+	pt._switch_add.pressed.emit()
+	var sw: Node = EditorInterface.get_selection().get_selected_nodes()[0]
+	check(sw is PlatformSwitch and sw.get_parent() == inst and sw.name == &"ReverseSwitch" and sw.channel == &"lift_test" and sw.action == PlatformSwitch.Action.REVERSE, "switch added to the track, with its channel and action")
+	check(sw.owner == self and sw.shapes().size() == 1 and sw.shapes()[0].owner == self and sw.shapes()[0].shape.size == Vector3(2, 2, 2), "switch saved with the scene, a 2 m box zone")
+	check(sw.global_position.distance_to(plat.global_position + Vector3(0, 1, 3)) < 0.01, "placed beside the platform's start")
+	check(plat.channel == &"lift_test" and not plat.starts_on, "the track's platform joins the channel and waits for the switch")
+	check(reg.channels().has("lift_test"), "the new channel is in the registry (open scene, unsaved)")
+	hist.undo()
+	check(sw.get_parent() == null and plat.channel == &"" and plat.starts_on, "undo: switch gone, platform back on the world clock")
+	hist.redo()
+	check(sw.get_parent() == inst and plat.channel == &"lift_test", "redo")
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(lt)
+	await frames(1)
+	pt._open_switch_popup()
+	var shared := -1
+	for i in picker._options.item_count:
+		if picker._options.get_item_metadata(i) is String and picker._options.get_item_metadata(i) == "lift_test":
+			shared = i
+	check(shared >= 0 and picker._options.get_item_text(shared).contains(scene_file_path.get_file()), "the dropdown lists the new channel, with the scene using it")
+	picker._options.select(shared)
+	picker._options.item_selected.emit(shared)
+	check(picker.valid() and picker.value() == &"lift_test", "picking an existing channel shares it on purpose")
+	pt._switch_add.pressed.emit()
+	check(lt.platform().channel == &"lift_test", "second track on the same channel")
+
+	# --- the inspector's channel dropdown ---
+	EditorInterface.edit_node(lt.platform())
+	await frames(3)
+	var prop: EditorProperty = null
+	var stack: Array[Node] = [EditorInterface.get_inspector()]
+	while stack:
+		var n: Node = stack.pop_back()
+		if n.get_script() == load("res://addons/platform_tools/channel_property.gd"):
+			prop = n
+		stack.append_array(n.get_children())
+	check(prop != null and prop.get_edited_property() == &"channel", "inspector: a platform's channel is the channel dropdown")
+	var opts: OptionButton = prop._picker._options
+	check(opts.get_selected_metadata() == "lift_test" and opts.get_item_metadata(0) == "", "it shows the current channel, and (none) for platforms")
+	opts.select(0)
+	opts.item_selected.emit(0)
+	await frames(1)
+	check(lt.platform().channel == &"", "picking (none) clears the channel")
+	hist.undo()
+	check(lt.platform().channel == &"lift_test", "through the inspector, so undoable")
 
 	var extra := MovingPlatform.new()
 	inst.add_child(extra)

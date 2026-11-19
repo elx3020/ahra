@@ -11,10 +11,16 @@ extends EditorPlugin
 ##   the next anchor goes and the path being drawn;
 ## - Tracks (count): pick a track to select it, or remove the selected ones;
 ## - Preview: a panel to set the preview's colours, opacity and look (saved in editor settings);
-## - Group: shown while tracks are selected; names a new PlatformTrackGroup and moves them in.
+## - Group: shown while tracks are selected; names a new PlatformTrackGroup and moves them in;
+## - Switch: shown while tracks are selected; adds a PlatformSwitch next to the track and puts the
+##   tracks' platforms on its channel, picked from the channel registry or a new name that can't
+##   collide with one used anywhere in the project.
+## The inspector's `channel` field (platforms, switches) becomes the same channel dropdown.
 ## Every change is undoable.
 
 const TrackPreview := preload("track_preview.gd")
+const ChannelPicker := preload("channel_picker.gd")
+const SWITCH_SIZE := Vector3(2, 2, 2) ## a new switch's zone
 
 const SHAPES := {
 	Box = &"BoxShape3D",
@@ -44,6 +50,13 @@ var _group_popup: PopupPanel
 var _group_name: LineEdit
 var _look_popup: PopupPanel
 var _look_grid: GridContainer
+var _switch: Button
+var _switch_popup: PopupPanel
+var _switch_picker: VBoxContainer
+var _switch_action: OptionButton
+var _switch_starts: CheckBox
+var _switch_add: Button
+var _channel_inspector: EditorInspectorPlugin
 
 var _placing := false
 var _anchors := PackedVector3Array()
@@ -54,6 +67,8 @@ var _preview: Node3D ## TrackPreview, an internal child of the edited scene whil
 func _enter_tree() -> void:
 	set_input_event_forwarding_always_enabled()
 	TrackPreview.register()
+	_channel_inspector = ChannelInspector.new()
+	add_inspector_plugin(_channel_inspector)
 	_build_toolbar()
 	add_control_to_container(CONTAINER_SPATIAL_EDITOR_MENU, _bar)
 	EditorInterface.get_selection().selection_changed.connect(_refresh)
@@ -71,6 +86,7 @@ func _exit_tree() -> void:
 	scene_changed.disconnect(_on_scene_changed)
 	get_tree().node_added.disconnect(_on_tree_changed)
 	get_tree().node_removed.disconnect(_on_tree_changed)
+	remove_inspector_plugin(_channel_inspector)
 	remove_control_from_container(CONTAINER_SPATIAL_EDITOR_MENU, _bar)
 	_bar.queue_free()
 
@@ -90,6 +106,12 @@ func _build_toolbar() -> void:
 	_group_name = LineEdit.new()
 	_look_popup = PopupPanel.new()
 	_look_grid = GridContainer.new()
+	_switch = Button.new()
+	_switch_popup = PopupPanel.new()
+	_switch_picker = ChannelPicker.new()
+	_switch_action = OptionButton.new()
+	_switch_starts = CheckBox.new()
+	_switch_add = Button.new()
 	_toggle.text = "Platform Edit"
 	_toggle.toggle_mode = true
 	_toggle.icon = _icon(&"Path3D")
@@ -139,6 +161,35 @@ func _build_toolbar() -> void:
 		_group_name.select_all())
 	_tools.add_child(_group)
 
+	_switch.text = "Switch..."
+	_switch.icon = _icon(&"Signals")
+	_switch.tooltip_text = "Add a switch that controls the selected tracks"
+	_switch.pressed.connect(_open_switch_popup)
+	_tools.add_child(_switch)
+	var form := VBoxContainer.new()
+	form.custom_minimum_size = Vector2(320, 0)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	for row: Array in [["Channel", _switch_picker], ["Action", _switch_action], ["Track starts moving", _switch_starts]]:
+		var label := Label.new()
+		label.text = row[0]
+		grid.add_child(label)
+		row[1].size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(row[1])
+	for action: String in PlatformSwitch.Action.keys():
+		_switch_action.add_item(action.capitalize())
+	_switch_starts.tooltip_text = "Off: the platforms wait at their start until the switch is used"
+	form.add_child(grid)
+	_switch_add.text = "Add Switch"
+	_switch_add.pressed.connect(func() -> void:
+		_switch_popup.hide()
+		add_switch(_switch_picker.value(), _switch_action.selected, _switch_starts.button_pressed))
+	form.add_child(_switch_add)
+	_switch_picker.allow_none = false
+	_switch_picker.edited.connect(func() -> void: _switch_add.disabled = not _switch_picker.valid())
+	_switch_popup.add_child(form)
+	_bar.add_child(_switch_popup)
+
 	var look := Button.new()
 	look.text = "Preview"
 	look.icon = _icon(&"Tools")
@@ -177,6 +228,7 @@ func _refresh() -> void:
 	_cancel.visible = _placing
 	_status.text = "%d anchor%s | Shift: vertical plane | click the first anchor: close the loop | Enter: finish | Esc: cancel" % [_anchors.size(), "" if _anchors.size() == 1 else "s"]
 	_group.visible = not _placing and not selected_tracks().is_empty()
+	_switch.visible = _group.visible
 	_refs.text = "Shape Refs (%d)" % all_references().size()
 	_tracks.text = "Tracks (%d)" % all_tracks().size()
 
@@ -440,6 +492,72 @@ func pick(camera: Camera3D, screen: Vector2, vertical: bool) -> Dictionary:
 		normal = facing.normalized() if facing.length() > 0.01 else Vector3.FORWARD
 	var p: Variant = Plane(normal, through).intersects_ray(from, dir)
 	return {position = p if p != null else from + dir * 10.0, snapped = false}
+
+
+# --- switches and channels ---
+
+func _open_switch_popup() -> void:
+	var tracks := selected_tracks()
+	if tracks.is_empty():
+		return
+	var plat: MovingPlatform = tracks[0].platform()
+	_switch_picker.setup(plat.channel if plat else &"", String(tracks[0].name))
+	_switch_starts.button_pressed = plat.starts_on if plat else true
+	_switch_popup.popup(Rect2i(Vector2i(_switch.get_screen_position() + Vector2(0, _switch.size.y)), Vector2i(340, 0)))
+
+
+## Undoable: a PlatformSwitch (box zone) on `channel` doing `action`, placed beside the first
+## selected track's platform as a child of that track (move it anywhere), and every selected
+## track's platform put on that channel with `starts_on`.
+func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSwitch:
+	var tracks := selected_tracks()
+	if tracks.is_empty() or channel == &"":
+		return null
+	var host: PlatformTrackInstance = tracks[0]
+	var sw := PlatformSwitch.new()
+	sw.name = String(PlatformSwitch.Action.keys()[action]).to_pascal_case() + "Switch"
+	sw.channel = channel
+	sw.action = action
+	var cs := CollisionShape3D.new()
+	cs.name = "Box"
+	var box := BoxShape3D.new()
+	box.size = SWITCH_SIZE
+	box.resource_local_to_scene = true
+	cs.shape = box
+	sw.add_child(cs)
+	var plat := host.platform()
+	var start := plat.global_position if plat else host.global_position
+	sw.transform = host.global_transform.affine_inverse() * Transform3D(host.global_basis, start + Vector3(0, 1, 3)) # beside the platform's start
+	var built := [sw] + sw.find_children("*", "", true, false)
+	var ur := EditorInterface.get_editor_undo_redo()
+	ur.create_action("Add %s switch on channel %s" % [PlatformSwitch.Action.keys()[action].capitalize(), channel], UndoRedo.MERGE_DISABLE, host)
+	ur.add_do_method(self, &"_attach", host, sw, built, EditorInterface.get_edited_scene_root())
+	ur.add_do_reference(sw)
+	ur.add_undo_method(host, &"remove_child", sw)
+	for t: PlatformTrackInstance in tracks:
+		var p := t.platform()
+		if p:
+			ur.add_do_property(p, &"channel", channel)
+			ur.add_undo_property(p, &"channel", p.channel)
+			ur.add_do_property(p, &"starts_on", starts_on)
+			ur.add_undo_property(p, &"starts_on", p.starts_on)
+	ur.commit_action()
+	_select(sw)
+	return sw
+
+
+## The inspector's `channel` field on platforms and switches: the channel picker.
+class ChannelInspector extends EditorInspectorPlugin:
+	const ChannelProperty := preload("channel_property.gd")
+
+	func _can_handle(o: Object) -> bool:
+		return o is MovingPlatform or o is PlatformSwitch
+
+	func _parse_property(_o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
+		if name != "channel":
+			return false
+		add_property_editor(name, ChannelProperty.new())
+		return true
 
 
 # --- preview settings ---
