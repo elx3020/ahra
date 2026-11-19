@@ -1,8 +1,11 @@
 @tool
 extends "res://tests/editor_test.gd"
-## Editor-side test of the Platform Tools plugin: edit mode toolbar, shape references, placing a
-## track's anchors with viewport input (snapped / free / vertical, Esc, Enter, too few anchors),
-## the built PlatformTrackInstance, undo, grouping and the group's view settings.
+## Editor-side test of the Platform Tools plugin: edit mode toolbar, shape references (plane
+## included), placing a track's anchors with viewport input (snapped / free / vertical, Esc,
+## Enter, too few anchors), the 3D preview and its settings panel, the built
+## PlatformTrackInstance (open, or closed by clicking the first anchor), the Shape Refs / Tracks
+## menus (counts, select, remove, undo), grouping and the group's view settings.
+## It changes the preview's editor settings and puts the user's values back at the end.
 ## Godot_console.exe --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test
 
 var cam: Camera3D
@@ -22,6 +25,10 @@ func run() -> void:
 	var ur := EditorInterface.get_editor_undo_redo()
 	var hist := ur.get_history_undo_redo(ur.get_object_history_id(self))
 	cam = EditorInterface.get_editor_viewport_3d(0).get_camera_3d()
+	var prefs := {} # the user's preview settings, restored at the end
+	for st: Array in pt.TrackPreview.SETTINGS:
+		prefs[st[0]] = pt.TrackPreview.value(st[0])
+	pt.reset_look()
 
 	# --- shape reference ---
 	var ref: ShapeReference = pt.add_shape_reference("Box")
@@ -36,20 +43,88 @@ func run() -> void:
 	check(is_equal_approx(cap.shapes()[0].shape.radius, 2.0) and is_equal_approx(cap.shapes()[0].shape.height, 8.0), "capsule reference: radius and height scaled")
 	cap.position = Vector3(0, 0, -40) # out of the way
 
+	# a plane reference is infinite: casts hit it anywhere, at any tilt
+	var flat: ShapeReference = pt.add_shape_reference("Plane")
+	check(flat.shapes()[0].shape is WorldBoundaryShape3D, "Plane reference: a WorldBoundaryShape3D")
+	flat.position = Vector3(0, 3, 0)
+	var far: Dictionary = flat.cast(Vector3(500, 10, -300), Vector3.DOWN)
+	check(not far.is_empty() and far.position.distance_to(Vector3(500, 3, -300)) < 0.001, "plane: hit 580 m away from its origin")
+	flat.rotation_degrees.x = 90.0 # now upright, facing +z
+	var wall: Dictionary = flat.cast(Vector3(7, 5, 10), Vector3.FORWARD)
+	check(not wall.is_empty() and wall.position.distance_to(Vector3(7, 5, 0)) < 0.001 and absf(wall.normal.z) > 0.99, "plane: tilted upright, hit from the side")
+	hist.undo() # remove it: an infinite plane would catch every free anchor below
+	check(flat.get_parent() == null, "plane reference removed (undo)")
+
+	# the Shape Refs menu: count, select one to edit it, remove the selected ones
+	await frames(1)
+	check(pt._refs.text == "Shape Refs (2)", "toolbar counts the shape references (%s)" % pt._refs.text)
+	var rmenu: PopupMenu = pt._refs.get_popup()
+	rmenu.about_to_popup.emit()
+	var cap_i := _item_for(rmenu, cap)
+	check(cap_i >= 0 and rmenu.get_item_text(cap_i) == "CapsuleRef" and _item_for(rmenu, ref) >= 0, "Shape Refs menu lists each reference")
+	rmenu.index_pressed.emit(cap_i)
+	await frames(2)
+	check(EditorInterface.get_selection().get_selected_nodes() == [cap] and EditorInterface.get_inspector().get_edited_object() == cap, "picking one selects it, the inspector edits it")
+	rmenu.about_to_popup.emit()
+	var rm_i := _remove_item(rmenu)
+	check(rm_i >= 0 and not rmenu.is_item_disabled(rm_i) and rmenu.get_item_metadata(rm_i) == [cap], "Remove selected offers the selected reference")
+	rmenu.index_pressed.emit(rm_i)
+	await frames(1)
+	check(cap.get_parent() == null and pt._refs.text == "Shape Refs (1)", "removed, count updated")
+	hist.undo()
+	await frames(1)
+	check(cap.get_parent() == self and cap.owner == self and cap.shapes()[0].owner == self and pt._refs.text == "Shape Refs (2)", "undo puts it back, saved with the scene")
+
 	# --- placing anchors ---
 	_aim()
 	var hit: Dictionary = pt.pick(cam, cam.unproject_position(Vector3(-3, 1, 0)), false)
 	check(hit.snapped and hit.position.distance_to(Vector3(-3, 1, 0)) < 0.01, "pick snaps onto the reference's surface")
 	pt.start_track()
 	check(pt._finish.visible and pt._cancel.visible and not pt._group.visible, "placing shows Finish / Cancel")
+	var pv: Node3D = pt._preview
+	check(is_instance_valid(pv) and pv.get_parent() == self and pv.owner == null and not get_children().has(pv), "preview: an internal, unsaved child of the scene")
+	_move(pt, Vector3(-3, 1, 0))
+	var snap_col: Color = pt.TrackPreview.value("snap_color")
+	check(pv.get_child_count() == 1 and pv.get_child(0).global_position.distance_to(Vector3(-3, 1, 0)) < 0.01 and pv.get_child(0).material_override.albedo_color.is_equal_approx(snap_col), "before the first anchor: a cursor where it would go, snap colour on a reference")
+	_move(pt, Vector3(30, 0, 0))
+	check(pv.get_child(0).material_override.albedo_color.is_equal_approx(pt.TrackPreview.value("cursor_color")), "free cursor colour off the reference")
 	check(_click(pt, Vector3(-3, 1, 0)) == EditorPlugin.AFTER_GUI_INPUT_STOP, "clicks are taken while placing")
 	_click(pt, Vector3(20, 1, 0)) # off the reference: horizontal plane through the last anchor
+	_move(pt, Vector3(20, 5, 0), true)
+	# 2 segments (placed path + next segment to the cursor) then 2 anchor markers and the cursor
+	check(pv.get_child_count() == 5, "preview: path, next segment, 2 anchors, cursor (%d nodes)" % pv.get_child_count())
+	var seg: MeshInstance3D = pv.get_child(0)
+	check(seg.mesh is CylinderMesh and seg.global_position.distance_to(Vector3(8.5, 1, 0)) < 0.01 and absf(seg.global_basis.y.length() - 23.0) < 0.01, "path tube spans the first two anchors")
+	check(seg.material_override.albedo_color.is_equal_approx(pt.TrackPreview.value("path_color")) and pv.get_child(1).material_override.albedo_color.is_equal_approx(pt.TrackPreview.value("next_color")), "path and next segment colours")
+	check(pv.get_child(1).global_position.distance_to(Vector3(20, 3, 0)) < 0.01, "next segment runs to the cursor (Shift raises it)")
+	pt.set_look("marker_size", 1.0)
+	pt.set_look("marker_shape", 1)
+	pt.set_look("opacity", 0.5)
+	pt.set_look("on_top", false)
+	var cursor: MeshInstance3D = pv.get_child(pv.get_child_count() - 1)
+	check(cursor.mesh is BoxMesh and cursor.mesh.size.is_equal_approx(Vector3.ONE * 1.4), "settings: cube markers, size (cursor 1.4x)")
+	check(not cursor.material_override.no_depth_test, "settings: Draw on top off, markers depth tested again")
+	check(is_equal_approx(seg_alpha(pv), pt.TrackPreview.value("path_color").a * 0.5), "settings: opacity halves the alpha")
+	pt.set_look("marker_shape", 2)
+	cursor = pv.get_child(pv.get_child_count() - 1)
+	check(cursor.mesh is SphereMesh and cursor.mesh.radial_segments == 4, "settings: diamond markers")
+	pt._fill_look_panel()
+	var swatch: ColorPickerButton = pt._look_grid.get_node("path_color")
+	check(pt._look_grid.get_child_count() == pt.TrackPreview.SETTINGS.size() * 2 and swatch.edit_alpha, "panel: a row per setting, colours with alpha")
+	swatch.color_changed.emit(Color(1, 0, 0, 0.5))
+	check(pt.TrackPreview.value("path_color") == Color(1, 0, 0, 0.5) and pv.get_child(0).material_override.albedo_color.r == 1.0 and pv.get_child(0).material_override.albedo_color.g == 0.0, "panel: picking a colour saves it and recolours the preview")
+	pt._look_grid.get_node("path_width").value = 0.5
+	check(is_equal_approx(pv.get_child(0).mesh.top_radius, 0.25), "panel: path width")
+	pt.reset_look()
+	check(pt.TrackPreview.SETTINGS.all(func(st): return pt.TrackPreview.value(st[0]) == st[2]) and pv.get_child(pv.get_child_count() - 1).mesh is SphereMesh, "Reset to defaults")
 	_click(pt, Vector3(20, 5, 0), true) # Shift: vertical plane facing the camera
 	var a: PackedVector3Array = pt._anchors
 	check(a.size() == 3 and a[0].distance_to(Vector3(-3, 1, 0)) < 0.01 and a[1].distance_to(Vector3(20, 1, 0)) < 0.01 and a[2].distance_to(Vector3(20, 5, 0)) < 0.01, "anchors: on the reference, free, free raised with Shift: %s" % [a])
-	check(pt._status.text == "3 anchors", "toolbar counts the anchors")
+	check(pt._status.text.begins_with("3 anchors"), "toolbar counts the anchors")
 	_key(pt, KEY_ESCAPE)
 	check(not pt._placing and _tracks(self).is_empty(), "Esc cancels, nothing built")
+	await frames(1)
+	check(not is_instance_valid(pv), "and the preview goes away")
 	pt.start_track()
 	_click(pt, Vector3(-3, 1, 0))
 	_key(pt, KEY_ENTER)
@@ -61,6 +136,7 @@ func run() -> void:
 	_click(pt, pts[1])
 	_click(pt, pts[2], true)
 	_key(pt, KEY_KP_ENTER)
+	check(pt._preview == null, "finishing removes the preview")
 	var built := _tracks(self)
 	check(built.size() == 1, "Enter builds one track")
 	var inst: PlatformTrackInstance = built[0]
@@ -82,6 +158,8 @@ func run() -> void:
 	check(_tracks(self).is_empty(), "undo removes the track")
 	hist.redo()
 	check(_tracks(self) == [inst] and inst.owner == self and seq.owner == self, "redo brings it back")
+	await frames(1)
+	check(pt._tracks.text == "Tracks (1)", "toolbar counts the tracks (%s)" % pt._tracks.text)
 
 	# --- group ---
 	EditorInterface.get_selection().clear()
@@ -108,6 +186,13 @@ func run() -> void:
 	group.preview = false
 	await frames(2)
 	check(path.visible and _ghosts(inst).size() == 1 and not plat.preview, "and back")
+	var tmenu: PopupMenu = pt._tracks.get_popup()
+	tmenu.about_to_popup.emit()
+	var ti := _item_for(tmenu, inst)
+	check(ti >= 0 and tmenu.get_item_text(ti) == "Lift Group/Track", "Tracks menu lists each track under its group")
+	tmenu.index_pressed.emit(ti)
+	await frames(1)
+	check(EditorInterface.get_selection().get_selected_nodes() == [inst], "picking a track selects it")
 
 	# new track into the selected (rotated) group
 	group.rotation_degrees.y = 90.0
@@ -128,12 +213,61 @@ func run() -> void:
 	hist.undo() # the group
 	check(inst.get_parent() == self and inst.global_transform.is_equal_approx(before) and group.get_parent() == null, "undo the group: track back in place, group gone")
 
+	# remove a track from the Tracks menu (selected through its path), then undo
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(path)
+	await frames(1)
+	tmenu.about_to_popup.emit()
+	var trm := _remove_item(tmenu)
+	check(trm >= 0 and tmenu.get_item_metadata(trm) == [inst], "Remove selected tracks offers the track holding the selected path")
+	tmenu.index_pressed.emit(trm)
+	await frames(1)
+	check(inst.get_parent() == null and pt._tracks.text == "Tracks (0)", "track removed, count updated")
+	hist.undo()
+	await frames(1)
+	check(inst.get_parent() == self and [inst, path, plat, plat.shapes()[0], seq].all(func(n): return n.owner == self) and pt._tracks.text == "Tracks (1)", "undo restores the track and everything in it")
+
+	# closing a loop: click the first anchor again (3+ placed)
+	EditorInterface.get_selection().clear()
+	await frames(1)
+	pt.start_track()
+	var loop_pts := [Vector3(12, 0, 0), Vector3(20, 0, 0), Vector3(16, 0, -6)]
+	for q in loop_pts:
+		_click(pt, q)
+	_move(pt, Vector3(12.05, 0, 0.05)) # a hair off the first anchor
+	check(pt._hover.get("closes", false) and pt._hover.position.distance_to(loop_pts[0]) < 0.01, "near the first anchor the cursor snaps onto it")
+	var pvc: Node3D = pt._preview
+	check(pvc.get_child(pvc.get_child_count() - 1).material_override.albedo_color.is_equal_approx(pt.TrackPreview.value("close_color")), "and takes the close colour")
+	_click(pt, Vector3(12.05, 0, 0.05))
+	var lt: Node = EditorInterface.get_selection().get_selected_nodes()[0]
+	check(not pt._placing and lt is PlatformTrackInstance and lt != inst, "clicking it builds the track")
+	var lpath: Path3D = lt.paths()[0]
+	check(lpath.curve.closed and lpath.curve.point_count == 3, "a closed path, 3 points (no duplicate of the first)")
+	check(lt.platform().repeat == MovingPlatform.Repeat.RESTART and lt.platform().get_node("Sequence").laps == 1, "a loop: 1 lap, restart (round and round)")
+	await frames(2)
+	var lg := _ghosts(lt)
+	check(lg.size() == 1 and lg[0].global_position.distance_to(loop_pts[0]) < 0.01, "a loop's ghost sits where a lap ends: its start")
+	pt.start_track()
+	_click(pt, Vector3(12, 0, 10))
+	_click(pt, Vector3(20, 0, 10))
+	_click(pt, Vector3(12, 0, 10))
+	check(pt._placing and pt._anchors.size() == 3, "with only 2 anchors, the first one is just another anchor")
+	pt.cancel_track()
+	pt.start_track()
+	pt._anchors = PackedVector3Array([Vector3(30, 0, 0), Vector3(36, 0, 0), Vector3(33, 0, 5), Vector3(30.1, 0, 0)])
+	var et: PlatformTrackInstance = pt.finish_track()
+	check(et.paths()[0].curve.closed and et.paths()[0].curve.point_count == 3, "Enter with the last anchor 0.1 m from the first: closed")
+	await frames(1)
+	check(pt._tracks.text == "Tracks (3)", "three tracks counted")
+
 	var extra := MovingPlatform.new()
 	inst.add_child(extra)
 	check(not inst._get_configuration_warnings().is_empty(), "two platforms in a track: warning")
 	extra.free()
 	pt._toggle.button_pressed = false
 	check(not pt._tools.visible, "edit mode off hides the tools")
+	for k: String in prefs:
+		pt.TrackPreview.set_value(k, prefs[k])
 	finished = true
 
 
@@ -165,6 +299,35 @@ func _click(pt, at: Vector3, shift := false) -> int:
 	up.pressed = false
 	pt._forward_3d_gui_input(cam, up)
 	return r
+
+
+## Index of the menu entry for `node` (-1 if missing).
+func _item_for(menu: PopupMenu, node: Node) -> int:
+	for i in menu.item_count:
+		var m: Variant = menu.get_item_metadata(i)
+		if m is Node and m == node:
+			return i
+	return -1
+
+
+## Index of the "Remove selected" entry (its metadata is the list to remove).
+func _remove_item(menu: PopupMenu) -> int:
+	for i in menu.item_count:
+		if menu.get_item_metadata(i) is Array:
+			return i
+	return -1
+
+
+func _move(pt, at: Vector3, shift := false) -> void:
+	_aim()
+	var e := InputEventMouseMotion.new()
+	e.shift_pressed = shift
+	e.position = cam.unproject_position(at)
+	pt._forward_3d_gui_input(cam, e)
+
+
+func seg_alpha(pv: Node3D) -> float:
+	return pv.get_child(0).material_override.albedo_color.a
 
 
 func _key(pt, key: Key) -> void:

@@ -102,4 +102,5 @@ func _place_ghosts(plat: MovingPlatform, tracks: Array[Path3D], shown: bool) -> 
 	for i in _ghosts.size():
 		var curve := tracks[i].curve
 		if curve and curve.point_count > 0:
-			_ghosts[i].global_transform = Transform3D(plat.global_basis, tracks[i].to_global(curve.get_point_position(curve.point_count - 1)))
+			var end := 0 if curve.closed else curve.point_count - 1 # a lap of a loop ends where it starts
+			_ghosts[i].global_transform = Transform3D(plat.global_basis, tracks[i].to_global(curve.get_point_position(end)))

@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://d04y0644r3fyg"]
+
+[sub_resource type="Environment" id="Environment_1agrf"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[node name="ShapeRef" type="Node3D" unique_id=925775439]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1928250560]
+environment = SubResource("Environment_1agrf")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=733421153]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1769107020]
+projection = 1
+current = true
+size = 20.0
+far = 500.0

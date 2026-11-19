@@ -40,12 +40,20 @@ func shapes() -> Array[CollisionShape3D]:
 
 
 ## Nearest point where the ray (global space) meets one of its shapes, as {position, normal},
-## or {} if it misses. Works for any shape type: it casts against the shape's debug mesh.
+## or {} if it misses. Any shape type: it casts against the shape's debug mesh, except a
+## WorldBoundaryShape3D (a plane), which is infinite while its debug mesh is a 20 m square.
 func cast(from: Vector3, dir: Vector3) -> Dictionary:
 	var best := {}
 	for cs in shapes():
 		var to_local := cs.global_transform.affine_inverse()
-		var hit := cs.shape.get_debug_mesh().generate_triangle_mesh().intersect_ray(to_local * from, to_local.basis * dir)
+		var hit := {}
+		if cs.shape is WorldBoundaryShape3D:
+			var plane := (cs.shape as WorldBoundaryShape3D).plane
+			var at: Variant = plane.intersects_ray(to_local * from, to_local.basis * dir)
+			if at != null:
+				hit = {position = at, normal = plane.normal}
+		else:
+			hit = cs.shape.get_debug_mesh().generate_triangle_mesh().intersect_ray(to_local * from, to_local.basis * dir)
 		if hit.is_empty():
 			continue
 		var p: Vector3 = cs.global_transform * hit.position
