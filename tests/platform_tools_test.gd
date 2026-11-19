@@ -8,7 +8,8 @@ extends "res://tests/editor_test.gd"
 ## menus (counts, select, remove, undo), grouping and the group's view settings, the channel
 ## registry, adding a switch (channel picker, collisions refused), the inspector's channel
 ## dropdown, circuit mode (inspector checkbox, joined ends, new track into a circuit, Reconnect),
-## grid snap, anchors dragged with the Path3D tools landing on references, and the timing preview.
+## grid snap, anchors dragged with the Path3D tools landing on references, the timing preview and
+## multipath (Add Path: junction snap, a run added when the track's program ends there, undo).
 ## It changes the preview's editor settings and puts the user's values back at the end.
 ## Godot_console.exe --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test
 
@@ -221,7 +222,7 @@ func run() -> void:
 	await frames(2)
 	check(pt._track_menu.visible and pt._track_menu.text == "", "track menu icon shows when a track (or a part of it) is selected")
 	var acts: PopupMenu = pt._track_menu.get_popup()
-	check(range(acts.item_count).map(func(i): return acts.get_item_text(i)) == ["Play in Editor", "Group...", "Switch...", "Reconnect"], "track menu: Play in Editor, Group, Switch, Reconnect")
+	check(range(acts.item_count).map(func(i): return acts.get_item_text(i)) == ["Play in Editor", "Group...", "Switch...", "Reconnect", "Add Path"], "track menu: Play in Editor, Group, Switch, Reconnect, Add Path")
 	acts.about_to_popup.emit()
 	check(not acts.is_item_checked(0) and not inst.preview, "not playing yet")
 	acts.index_pressed.emit(0)
@@ -434,6 +435,44 @@ func run() -> void:
 	check(PlatformProgram.editor_clock < 0.0 and not pt._timing.visible, "picking it again: off, tracks back to their own preview")
 	pt._timing_mode.select(pt.MANUAL)
 
+	# --- end signals: in the timing preview and the inspector ---
+	EditorInterface.get_selection().clear()
+	var sa: PlatformTrackInstance = pt.create_track(PackedVector3Array([Vector3(0, 0, 50), Vector3(6, 0, 50)]))
+	EditorInterface.get_selection().clear()
+	var sb: PlatformTrackInstance = pt.create_track(PackedVector3Array([Vector3(0, 0, 55), Vector3(6, 0, 55)]))
+	var sq: PlatformSequence = sa.sequences[0]
+	sq.round_trip = false
+	sq.trips = 1
+	sq.end_signal = &"sig_test"
+	sb.channel = &"sig_test"
+	sb.starts_on = false
+	await physics_frames(2)
+	var sig_end: float = sa._signals[0][0] # [0.5 wait][3 s][0.5 wait]
+	pt.set_timing_preview(true)
+	pt.set_clock(sig_end - 1.0)
+	await physics_frames(2)
+	check(is_equal_approx(sig_end, 4.0) and sb.platform().global_position.distance_to(sb.point_at(0.0)) < 0.01, "timing preview: a track waiting for a signal stays put until the signalling sequence ends")
+	pt.set_clock(sig_end + 1.5)
+	await physics_frames(2)
+	check(is_equal_approx(sb.woken_at(), sig_end) and sb.platform().global_position.distance_to(sb.point_at(1.5)) < 0.01, "then it runs from that moment")
+	pt.set_timing_preview(false)
+	check(load("res://addons/platform_tools/channel_registry.gd").channels().has("sig_test"), "registry: a sequence's end signal counts as a channel use")
+	EditorInterface.get_selection().clear()
+	await frames(1)
+	EditorInterface.edit_resource(sq)
+	await frames(3)
+	var sprop: EditorProperty = null
+	stack = [EditorInterface.get_inspector()]
+	while stack:
+		var n: Node = stack.pop_back()
+		if n.get_script() == load("res://addons/platform_tools/channel_property.gd"):
+			sprop = n
+		stack.append_array(n.get_children())
+	check(sprop != null and sprop.get_edited_property() == &"end_signal" and sprop._picker._options.get_selected_metadata() == "sig_test", "inspector: a sequence's end_signal is the channel dropdown")
+	hist.undo()
+	hist.undo()
+	check(sa.get_parent() == null and sb.get_parent() == null, "(test tracks removed)")
+
 	# --- circuit mode ---
 	EditorInterface.get_selection().clear()
 	await frames(1)
@@ -503,6 +542,43 @@ func run() -> void:
 	hist.undo()
 	await physics_frames(1)
 	check(cg.circuit and cg.platform() == ca_plat and cb.platform() == ca_plat, "undo: back to one shared platform")
+
+	# --- multipath: Add Path ---
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(inst) # path (-3, 1, 0) (20, 1, 0) (20, 5, 0), ping-pong forever
+	await frames(1)
+	acts.about_to_popup.emit()
+	check(acts.get_item_text(4) == "Add Path", "track menu: Add Path")
+	acts.index_pressed.emit(4)
+	check(pt._placing and pt._into == inst and pt._status.text.begins_with("Adding a path to " + inst.name), "Add Path: placing anchors for a new path of the track")
+	_click(pt, Vector3(20.1, 1, 0.1)) # by the track's anchor 1: a junction
+	_click(pt, Vector3(20, 1, 10))
+	_key(pt, KEY_ENTER)
+	var p2: Path3D = inst.paths()[-1]
+	check(inst.paths().size() == 2 and p2.owner == self and p2.to_global(p2.curve.get_point_position(0)).distance_to(Vector3(20, 1, 0)) < 0.001, "a second path, starting exactly on the track's anchor")
+	check(inst.sequences.size() == 1 and EditorInterface.get_selection().get_selected_nodes() == [p2], "its ping-pong never ends, so no run is added; the new path is selected")
+	await frames(2)
+	check(seq.path_names == "Path," + p2.name and _ghosts(inst).size() == 2, "a sequence's path dropdown lists both paths; a ghost at each path's end")
+	seq.round_trip = false
+	seq.trips = 1 # now the program ends on anchor 2 (20, 5, 0)
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(inst)
+	await frames(1)
+	pt.start_track(inst)
+	_click(pt, Vector3(20, 5, 0))
+	_click(pt, Vector3(25, 5, 0))
+	pt.finish_track()
+	var p3: Path3D = inst.paths()[-1]
+	var run: PlatformSequence = inst.sequences[-1]
+	await physics_frames(2) # programs recompile in the editor's physics frames
+	check(inst.paths().size() == 3 and inst.sequences.size() == 2 and run.path == 2 and run.start_anchor == 0 and run.end_anchor == 1 and not run.round_trip and run.trips == 1, "Add Path where the program ends: a one-way run along it is added")
+	check(inst._get_configuration_warnings().is_empty() and inst.to_local(inst.point_at(inst._duration - 0.001)).distance_to(inst.to_local(p3.to_global(p3.curve.get_point_position(1)))) < 0.01, "the program goes on along the new path, ending at its end")
+	hist.undo()
+	check(inst.paths().size() == 2 and inst.sequences == [seq], "undo: path and run gone in one step")
+	hist.undo()
+	check(inst.paths() == [path], "undo the first one too")
+	seq.round_trip = true
+	seq.trips = 0
 
 	var extra := MovingPlatform.new()
 	inst.add_child(extra)

@@ -15,7 +15,7 @@ static func channels() -> Dictionary:
 	var open_path := open.scene_file_path if open else ""
 	var files := []
 	_scene_files(EditorInterface.get_resource_filesystem().get_filesystem(), files)
-	var line := RegEx.create_from_string("(?m)^channel = &\"([^\"]+)\"$")
+	var line := RegEx.create_from_string("(?m)^(?:channel|end_signal) = &\"([^\"]+)\"$")
 	for path: String in files:
 		if path != open_path: # the open scene is read from its nodes below
 			for m in line.search_all(FileAccess.get_file_as_string(path)):
@@ -24,6 +24,10 @@ static func channels() -> Dictionary:
 		for n in [open] + open.find_children("*", "", true, false):
 			if (n is PlatformSwitch or n is PlatformProgram and n.plays()) and n.channel != &"":
 				_add(found, String(n.channel), open_path if open_path else "(unsaved scene)")
+			if n is PlatformTrackInstance:
+				for q in n.sequences:
+					if q and q.end_signal != &"":
+						_add(found, String(q.end_signal), open_path if open_path else "(unsaved scene)")
 	var names := found.keys()
 	names.sort()
 	var out := {}

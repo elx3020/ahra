@@ -229,6 +229,24 @@ func _run() -> void:
 	seqt = area.get_node("Bays/Sequences/Track")
 	_check(seqt._rates.is_equal_approx(Vector3(1.5, 1.5, 0.5)), "speed/wait changes survive leaving and reloading the area")
 
+	# --- end signals: the relay bay ---
+	var lifts: Array = [area.get_node("Bays/Relay/LiftA"), area.get_node("Bays/Relay/LiftB")]
+	var lift_y: Array = lifts.map(func(l): return l.platform().position.y)
+	await _wait(30)
+	_check(is_zero_approx(world.drive(&"relay", false)) and lifts.all(func(l): return l.platform().position.y == lift_y[lifts.find(l)]), "relay: both lifts wait for a signal")
+	area.get_node("Bays/Relay/Go").interact(p)
+	var go_at: float = world.time
+	await _wait(150) # ferry: [0.5 wait][3.5 s across] -> its first sequence ends 4 s after GO
+	_check(not world.channels.has(&"relay"), "not before the ferry's first sequence ends")
+	await _wait(120)
+	_check(world.channels[&"relay"].flip and absf(world.drive(&"relay", false) - (world.time - go_at - 4.0)) < 0.05 and not world.channels.has(&"relay_back"), "the end of its first sequence powers on the relay channel, on time (%.2f s)" % (world.time - go_at - world.drive(&"relay", false)))
+	await _wait(90)
+	_check(lifts.all(func(l): return absf(l.platform().position.y - lift_y[lifts.find(l)]) > 0.1), "one signal, two tracks: both lifts on its channel move")
+	world.time += 30.0 # its second sequence ([4 s][3.5 s back]) ends 11.5 s after GO, during the skip
+	await _wait(2)
+	_check(absf(world.drive(&"relay_back", false) - (world.time - go_at - 11.5)) < 0.05, "the end of its second sequence signals the shuttle, back-dated across a clock skip")
+	_check(world.signals.values() == [1, 1], "each signal sent once (%s)" % world.signals)
+
 	# --- platform shapes: any shape type; a surface zone wraps each shape ---
 	var plat_script: GDScript = load("res://world/moving_platform.gd")
 	var slow_ice := EnvProfile.new()
@@ -299,6 +317,29 @@ func _run() -> void:
 	t3.round_trip = true
 	trips._compile()
 	_check(t3.finish_anchor() == 0 and is_zero_approx(_px(trips, 99.0)) and is_equal_approx(trips._duration, 3 * (0.5 + 2.0 + 0.5 + 2.0)), "3 round trips: there and back three times, ending at the start")
+
+	# --- multipath: up a branch, back down, on along the main path ---
+	var fork := _track([Vector3(0, 0, 0), Vector3(4, 0, 0), Vector3(8, 0, 0)], [[0, 1, false, 1], [0, 1, false, 1], [0, 0, false, 1], [0, 2, false, 1]])
+	var branch := Path3D.new()
+	branch.curve = Curve3D.new()
+	branch.curve.add_point(Vector3(4, 0, 0)) # starts on the main path's anchor 1
+	branch.curve.add_point(Vector3(4, 4, 0))
+	fork.add_child(branch)
+	fork.sequences[1].path = 1 # up the branch
+	fork.sequences[2].path = 1 # back down
+	fork.after_last = 0 # stop
+	fork.add_child(_platform())
+	fork.position = Vector3(120, 80, 140)
+	area.add_child(fork)
+	await _wait(1)
+	var fq: Array = fork.sequences
+	var at := func(t: float) -> Vector3: return fork.to_local(fork.point_at(t)).snapped(Vector3.ONE * 0.0001)
+	# each [0.5 wait][2 s at 2 m/s][0.5]: main 0 -> 1, branch 0 -> 1, branch 1 -> 0, main 1 -> 2
+	_check(fq[1].start_anchor == 0 and fq[2].start_anchor == 1 and fq[3].start_anchor == 1 and fork._get_configuration_warnings().is_empty(), "multipath: a sequence on another path starts at its anchor where the platform is (a junction)")
+	_check(at.call(1.5) == Vector3(2, 0, 0) and at.call(4.5) == Vector3(4, 2, 0) and at.call(5.8) == Vector3(4, 4, 0) and at.call(7.5) == Vector3(4, 2, 0)
+		and at.call(10.5) == Vector3(6, 0, 0) and at.call(99.0) == Vector3(8, 0, 0), "multipath: along the main path, up the branch and down, then on to the end")
+	branch.curve.set_point_position(0, Vector3(4, 0, 1))
+	_check(not fork._get_configuration_warnings().is_empty(), "a branch that doesn't meet the main path: warning")
 
 	# --- circuit: tracks sharing one platform, played in turn ---
 	var circuit: Node3D = load("res://world/platform_track_group.gd").new()

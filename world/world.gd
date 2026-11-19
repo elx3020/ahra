@@ -1,7 +1,7 @@
 extends Node
 ## Autoload "World": state that outlives scene changes. The world clock and the
 ## platform channels live here, so every area computes its platforms from the same
-## timeline. Saving the game = saving `time` and `channels` (plain data).
+## timeline. Saving the game = saving `time`, `channels` and `signals` (plain data).
 
 var time := 0.0 ## world seconds; pauses with the tree, keeps running across scene changes
 var spawn: StringName ## marker the next area puts the player at (set by SceneDoor)
@@ -12,6 +12,9 @@ var spawn: StringName ## marker the next area puts the player at (set by SceneDo
 ##   changes: rate history [[time, drive off, drive on, speed, start wait, end wait]],
 ##   bounds: run-once platforms' ends {track path#platform: [starts_on, low, high]}
 var channels := {}
+## end signals tracks have sent (PlatformSequence.end_signal): "track path#signal" -> how many
+## times, so an area loading later neither misses nor repeats them
+var signals := {}
 
 
 func _physics_process(delta: float) -> void:
@@ -20,8 +23,9 @@ func _physics_process(delta: float) -> void:
 
 ## Motion seconds a channel has given its platforms so far: grows while they move,
 ## shrinks while reversed, held between the ends of any run-once platform on it.
-## starts_on: platforms that move until a POWER switch stops them.
-func drive(channel: StringName, starts_on: bool) -> float:
+## starts_on: platforms that move until a POWER switch stops them. `bounded` false: ignore the
+## run-once ends, as if they kept going since the last change (when did they pass a point).
+func drive(channel: StringName, starts_on: bool, bounded := true) -> float:
 	var c: Dictionary = channels.get(channel, {})
 	if c.is_empty():
 		return time if starts_on else 0.0
@@ -34,7 +38,7 @@ func drive(channel: StringName, starts_on: bool) -> float:
 		if b[0] == starts_on:
 			low = minf(low, b[1])
 			high = maxf(high, b[2])
-	return clampf(d, low, high) if low <= high else d
+	return clampf(d, low, high) if bounded and low <= high else d
 
 
 func changes(channel: StringName) -> Array:
@@ -68,6 +72,20 @@ func set_rates(channel: StringName, r: Vector3) -> void:
 	var c := _settle(channel)
 	c.rates = r
 	c.changes.append([time, c.drive[0], c.drive[1], r.x, r.y, r.z])
+
+
+## A track's end signal: the tracks on `channel` waiting for a switch start moving (like POWER;
+## nothing happens if they already do), as if switched on at world time `at`, which is earlier
+## than now when the signal fired while the area was away or the clock skipped.
+func power_on(channel: StringName, at: float) -> void:
+	var since: float = channels.get(channel, {}).get("t0", 0.0)
+	var c := _settle(channel)
+	if c.flip:
+		return
+	c.flip = true
+	var late := clampf(time - at, 0.0, time - since)
+	c.drive[0] += c.dir * late # the waiting tracks have been moving since `at`...
+	c.drive[1] -= c.dir * late # ...and always-on ones on the channel stopped then, as with POWER
 
 
 ## A run-once platform's program ends, in drive seconds (see PlatformProgram._rebase).

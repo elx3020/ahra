@@ -23,7 +23,10 @@ extends EditorPlugin
 ## - Switch: adds a PlatformSwitch next to the track and puts the tracks on its channel, picked
 ##   from the channel registry or a new name that can't collide with one used anywhere in the
 ##   project;
-## - Reconnect: joins a circuit's track ends again (halfway between them).
+## - Reconnect: joins a circuit's track ends again (halfway between them);
+## - Add Path: draws another path into the track (multipath), anchors placed as for New Track,
+##   snapping onto the track's own anchors (junctions); if the track's last sequence ends where
+##   the new path starts, a run along it is added.
 ## Inspector: `channel` (tracks, circuits, switches) is the same channel dropdown, and a group's
 ## `circuit` checkbox turns circuit mode on or off with set_circuit().
 ## Every change is undoable.
@@ -72,6 +75,7 @@ var _timing_slider: HSlider
 var _timing_label: Label
 
 var _placing := false
+var _into: PlatformTrackInstance ## while placing: the track a new path goes into (null: a new track)
 var _anchors := PackedVector3Array()
 var _hover := {} ## where a click would put the next anchor: {position, snapped}
 var _preview: Node3D ## TrackPreview, an internal child of the edited scene while placing
@@ -163,6 +167,9 @@ func _build_toolbar() -> void:
 		for c in _circuits():
 			join_circuit(c))
 	tm.set_item_tooltip(3, "Their circuit's track ends meet again, halfway between them")
+	tm.add_icon_item(_icon(&"Curve3D"), "Add Path")
+	tm.set_item_metadata(4, func() -> void: start_track(selected_tracks()[0]))
+	tm.set_item_tooltip(4, "Draw another path into the selected track (multipath); it can start on one of the track's anchors")
 	tm.about_to_popup.connect(func() -> void:
 		tm.set_item_checked(0, is_playing())
 		tm.set_item_disabled(3, _circuits().is_empty()))
@@ -250,7 +257,7 @@ func _build_toolbar() -> void:
 func _refresh() -> void:
 	for c: Control in [_status, _finish, _cancel]:
 		c.visible = _placing
-	_status.text = "%d anchor%s | Shift: vertical plane | click the first anchor: close the loop | Enter: finish | Esc: cancel" % [_anchors.size(), "" if _anchors.size() == 1 else "s"]
+	_status.text = ("Adding a path to %s | " % _into.name if is_instance_valid(_into) else "") + "%d anchor%s | Shift: vertical plane | click the first anchor: close the loop | Enter: finish | Esc: cancel" % [_anchors.size(), "" if _anchors.size() == 1 else "s"]
 	_track_menu.visible = not _placing and not selected_tracks().is_empty()
 	_timing.visible = PlatformProgram.editor_clock >= 0.0
 
@@ -406,12 +413,14 @@ func _view_centre() -> Vector3:
 
 # --- new track ---
 
-func start_track() -> void:
+## Starts placing anchors: for a new track, or for a new path in track `into`.
+func start_track(into: PlatformTrackInstance = null) -> void:
 	var root := EditorInterface.get_edited_scene_root()
 	if root == null:
 		return
 	cancel_track()
 	_placing = true
+	_into = into
 	_preview = TrackPreview.new()
 	root.add_child(_preview, false, Node.INTERNAL_MODE_BACK) # not saved, not in the scene tree dock
 	_refresh()
@@ -420,6 +429,7 @@ func start_track() -> void:
 
 func cancel_track() -> void:
 	_placing = false
+	_into = null
 	_anchors.clear()
 	_hover = {}
 	if is_instance_valid(_preview):
@@ -437,15 +447,46 @@ func _on_scene_changed(_root: Node) -> void:
 	cancel_track() # the preview and anchors belong to the scene that was open
 
 
-## Builds the track from the anchors placed so far (2+), else just ends placing. A closed path
-## when `close`, or when the last of 4+ anchors came back to the first one.
-func finish_track(close := false) -> PlatformTrackInstance:
+## Builds the track (or the new path) from the anchors placed so far (2+), else just ends
+## placing. A closed path when `close`, or when the last of 4+ anchors came back to the first one.
+func finish_track(close := false) -> Node3D:
 	var points := _anchors.duplicate()
+	var into := _into
 	cancel_track()
 	if not close and points.size() >= 4 and points[-1].distance_to(points[0]) <= CLOSE_DISTANCE:
 		points.remove_at(points.size() - 1)
 		close = true
-	return create_track(points, close) if points.size() >= 2 else null
+	if points.size() < 2:
+		return null
+	return add_path(into, points, close) if is_instance_valid(into) else create_track(points, close)
+
+
+## Undoable: another path through `points` in `track` (multipath), selected for editing. If the
+## track's last sequence ends (not forever) where the new path starts, a one-way run along the
+## new path is added after it.
+func add_path(track: PlatformTrackInstance, points: PackedVector3Array, closed := false) -> Path3D:
+	var path := Path3D.new()
+	path.name = "Path%d" % (track.paths().size() + 1)
+	path.curve = Curve3D.new()
+	path.curve.closed = closed
+	for p in points:
+		path.curve.add_point(track.to_local(p))
+	var seqs := track.sequences.duplicate()
+	var last: PlatformSequence = null
+	for q in track.sequences:
+		if track.path_of(q):
+			last = q
+	if last and last.trips > 0 and track.last_point().distance_to(points[0]) <= PlatformTrackInstance.JOIN:
+		var run := PlatformSequence.new()
+		run.path = track.paths().size() # the new path comes last
+		run.end_anchor = 0 if closed else points.size() - 1
+		run.speed = last.speed
+		seqs.append(run)
+	_add(track, path, "Add path to %s" % track.name, func(ur: EditorUndoRedoManager) -> void:
+		if seqs != track.sequences:
+			ur.add_do_property(track, &"sequences", seqs)
+			ur.add_undo_property(track, &"sequences", track.sequences))
+	return path
 
 
 ## A PlatformTrackInstance at points[0]: a Path3D through `points` and a box platform going
@@ -528,10 +569,17 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 ## when the mouse is on it (3+ placed: closes the loop), else the nearest ShapeReference surface
 ## under the mouse, else a plane through the last anchor (y 0 for the first): horizontal, or
 ## with `vertical` upright and facing the camera, to raise or lower the track. Then the grid.
+## Adding a path, the track's own anchors come first (junctions).
 func pick(camera: Camera3D, screen: Vector2, vertical: bool) -> Dictionary:
 	if _anchors.size() >= 3 and not camera.is_position_behind(_anchors[0]) \
 			and camera.unproject_position(_anchors[0]).distance_to(screen) <= CLOSE_PIXELS:
 		return {position = _anchors[0], snapped = true, closes = true}
+	if is_instance_valid(_into): # a new path can start (or meet) the track's own anchors
+		for line in _into.paths():
+			for i in line.curve.point_count:
+				var g := line.to_global(line.curve.get_point_position(i))
+				if not camera.is_position_behind(g) and camera.unproject_position(g).distance_to(screen) <= CLOSE_PIXELS:
+					return {position = g, snapped = true}
 	var from := camera.project_ray_origin(screen)
 	var dir := camera.project_ray_normal(screen)
 	var hit := _cast_references(from, dir)
@@ -695,17 +743,17 @@ func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSw
 	return sw
 
 
-## Inspector: `channel` on tracks, circuits and switches is the channel picker; a group's
-## `circuit` checkbox goes through set_circuit (moves the platforms, joins the tracks).
+## Inspector: `channel` on tracks, circuits and switches, and a sequence's `end_signal`, are the
+## channel picker; a group's `circuit` checkbox goes through set_circuit.
 class ChannelInspector extends EditorInspectorPlugin:
 	const ChannelProperty := preload("channel_property.gd")
 	var plugin: EditorPlugin
 
 	func _can_handle(o: Object) -> bool:
-		return o is PlatformProgram or o is PlatformSwitch
+		return o is PlatformProgram or o is PlatformSwitch or o is PlatformSequence
 
 	func _parse_property(o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
-		if name == "channel":
+		if name == "channel" or name == "end_signal":
 			add_property_editor(name, ChannelProperty.new())
 			return true
 		if name == "circuit" and o is PlatformTrackGroup:
@@ -787,8 +835,8 @@ func set_circuit(group: PlatformTrackGroup, on: bool) -> void:
 	ur.commit_action()
 
 
-## Undoable: each circuit track's end and the next one's start meet halfway between them (the
-## last track's end and the first's start too when the circuit starts over).
+## Undoable: where each circuit track leaves the platform and where the next one picks it up
+## meet halfway between them (the last track and the first too when the circuit starts over).
 func join_circuit(group: PlatformTrackGroup) -> void:
 	var ur := EditorInterface.get_editor_undo_redo()
 	ur.create_action("Join circuit tracks", UndoRedo.MERGE_DISABLE, group)
@@ -797,7 +845,7 @@ func join_circuit(group: PlatformTrackGroup) -> void:
 
 
 func _add_joins(ur: EditorUndoRedoManager, group: PlatformTrackGroup) -> void:
-	var ts := group.tracks().filter(func(t: PlatformTrackInstance) -> bool: return t.path() != null and t.path().curve != null and t.path().curve.point_count > 1)
+	var ts := group.tracks().filter(func(t: PlatformTrackInstance) -> bool: return t.path() != null and t.paths().all(func(p: Path3D) -> bool: return p.curve != null and p.curve.point_count > 1))
 	var pairs := []
 	for i in ts.size() - 1:
 		pairs.append([ts[i], ts[i + 1]])
@@ -805,12 +853,11 @@ func _add_joins(ur: EditorUndoRedoManager, group: PlatformTrackGroup) -> void:
 		pairs.append([ts[-1], ts[0]])
 	var moved := {} # curve -> {anchor: new local position}: later joins see earlier ones
 	for pair: Array in pairs:
-		var a: Path3D = pair[0].path()
-		var b: Path3D = pair[1].path()
-		var ai := 0 if a.curve.closed else a.curve.point_count - 1
-		var mid := (a.to_global(_anchor(moved, a.curve, ai)) + b.to_global(_anchor(moved, b.curve, 0))) * 0.5
-		moved.get_or_add(a.curve, {})[ai] = a.to_local(mid)
-		moved.get_or_add(b.curve, {})[0] = b.to_local(mid)
+		var a: Array = pair[0].exit() # [path, anchor] where it leaves the platform...
+		var b: Array = pair[1].entry() # ...and where the next one picks it up
+		var mid: Vector3 = (a[0].to_global(_anchor(moved, a[0].curve, a[1])) + b[0].to_global(_anchor(moved, b[0].curve, b[1]))) * 0.5
+		moved.get_or_add(a[0].curve, {})[a[1]] = a[0].to_local(mid)
+		moved.get_or_add(b[0].curve, {})[b[1]] = b[0].to_local(mid)
 	for curve: Curve3D in moved:
 		for i: int in moved[curve]:
 			ur.add_do_method(curve, &"set_point_position", i, moved[curve][i])
@@ -821,15 +868,9 @@ func _anchor(moved: Dictionary, curve: Curve3D, i: int) -> Vector3:
 	return moved.get(curve, {}).get(i, curve.get_point_position(i))
 
 
-## Its sequences take the platform from its first anchor to its last (closed path: round to the
-## first again), and end.
+## Its sequences all have a usable path and end (none repeats forever), so a circuit can go on.
 func _runs_through(t: PlatformTrackInstance) -> bool:
-	var line := t.path()
-	if line == null or line.curve == null or t.sequences.is_empty() or t.sequences.has(null):
-		return false
-	var end := 0 if line.curve.closed else line.curve.point_count - 1
-	return t.sequences[0].start_anchor == 0 and t.sequences.all(func(q: PlatformSequence) -> bool: return q.trips > 0) \
-		and t.sequences[-1].finish_anchor() == end
+	return not t.sequences.is_empty() and t.sequences.all(func(q: PlatformSequence) -> bool: return t.path_of(q) != null and q.trips > 0)
 
 
 func _move_node(node: Node, parent: Node, index: int) -> void:
@@ -1021,13 +1062,15 @@ func _group_out(group: PlatformTrackGroup, homes: Array) -> void:
 
 ## Undoable: adds `node` and the subtree built under it to `parent`, saved with the scene, and
 ## selects it. Only the nodes built here get saved, not what their scripts add in the editor.
-func _add(parent: Node, node: Node, action: String) -> void:
+func _add(parent: Node, node: Node, action: String, extra := Callable()) -> void:
 	var built := [node] + node.find_children("*", "", true, false)
 	var ur := EditorInterface.get_editor_undo_redo()
 	ur.create_action(action, UndoRedo.MERGE_DISABLE, parent)
 	ur.add_do_method(self, &"_attach", parent, node, built, EditorInterface.get_edited_scene_root())
 	ur.add_do_reference(node)
 	ur.add_undo_method(parent, &"remove_child", node)
+	if extra.is_valid():
+		extra.call(ur) # more changes in the same undo step
 	ur.commit_action()
 	_select(node)
 

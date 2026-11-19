@@ -529,6 +529,82 @@ size = Vector3(12, 12, 2)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_amqgn"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
+[sub_resource type="Curve3D" id="Curve3D_relay_ferry"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, -0.25, 0, 0, 0, 0, 0, 0, 0, 3.5, -0.25, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_relay_lift_a"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 6.5, -0.25, 1.75, 0, 0, 0, 0, 0, 0, 6.5, 4.75, 1.75),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_relay_lift_b"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 6.5, -0.25, -1.75, 0, 0, 0, 0, 0, 0, 6.5, 4.75, -1.75),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_relay_shuttle"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -3.5, 2.75, -6, 0, 0, 0, 0, 0, 0, 3.5, 2.75, -6),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_relay_go"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_relay_ferry"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_relay_lift_a"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_relay_lift_b"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_relay_shuttle"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="Resource" id="PlatformSequence_relay_across"]
+script = ExtResource("6_ygd4d")
+start_wait = 0.5
+end_wait = 0.0
+end_signal = &"relay"
+
+[sub_resource type="Resource" id="PlatformSequence_relay_back"]
+script = ExtResource("6_ygd4d")
+start_anchor = 1
+end_anchor = 0
+start_wait = 4.0
+end_wait = 0.0
+end_signal = &"relay_back"
+
+[sub_resource type="Resource" id="PlatformSequence_relay_lift_a"]
+script = ExtResource("6_ygd4d")
+round_trip = true
+trips = 0
+start_wait = 1.0
+end_wait = 1.0
+
+[sub_resource type="Resource" id="PlatformSequence_relay_lift_b"]
+script = ExtResource("6_ygd4d")
+round_trip = true
+trips = 0
+start_wait = 1.0
+end_wait = 1.0
+
+[sub_resource type="Resource" id="PlatformSequence_relay_shuttle"]
+script = ExtResource("6_ygd4d")
+round_trip = true
+trips = 0
+
 [node name="PlatformsA" type="Node3D" unique_id=1661674038]
 script = ExtResource("1_ns0vu")
 bounds_center = Vector3(120, 0, 0)
@@ -1463,6 +1539,114 @@ color = Color(1, 1, 1, 0.05)
 [node name="Box" type="CollisionShape3D" parent="Bays/Wall/BackNet" unique_id=2141974719]
 shape = SubResource("BoxShape3D_zone23")
 
+[node name="Relay" type="Node3D" parent="Bays"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Relay"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, 4)
+
+[node name="Label" type="Label3D" parent="Bays/Relay"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "RELAY: GO sends the ferry across; the end of its first sequence signals 'relay': both lifts start
+4 s later it comes back; the end of its second sequence signals 'relay_back': the shuttle starts"
+font_size = 56
+outline_size = 14
+
+[node name="Go" type="Area3D" parent="Bays/Relay"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
+script = ExtResource("7_a6hic")
+channel = &"relay_go"
+color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Relay/Go"]
+shape = SubResource("BoxShape3D_relay_go")
+
+[node name="GoLabel" type="Label3D" parent="Bays/Relay"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
+pixel_size = 0.01
+billboard = 1
+text = "GO"
+outline_size = 10
+
+[node name="HighLedge" type="CSGBox3D" parent="Bays/Relay"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 4.5, 0)
+use_collision = true
+size = Vector3(5, 1, 8)
+material = SubResource("StandardMaterial3D_4ynua")
+
+[node name="Ferry" type="Node3D" parent="Bays/Relay"]
+script = ExtResource("90_instance")
+sequences = Array[ExtResource("6_ygd4d")]([SubResource("PlatformSequence_relay_across"), SubResource("PlatformSequence_relay_back")])
+after_last = 0
+channel = &"relay_go"
+starts_on = false
+
+[node name="Path" type="Path3D" parent="Bays/Relay/Ferry"]
+curve = SubResource("Curve3D_relay_ferry")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Relay/Ferry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, -0.25, 0)
+script = ExtResource("5_qwj2d")
+color = Color(0.95, 0.55, 0.25, 1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Relay/Ferry/Platform"]
+shape = SubResource("BoxShape3D_relay_ferry")
+
+[node name="LiftA" type="Node3D" parent="Bays/Relay"]
+script = ExtResource("90_instance")
+sequences = Array[ExtResource("6_ygd4d")]([SubResource("PlatformSequence_relay_lift_a")])
+channel = &"relay"
+starts_on = false
+
+[node name="Path" type="Path3D" parent="Bays/Relay/LiftA"]
+curve = SubResource("Curve3D_relay_lift_a")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Relay/LiftA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, -0.25, 1.75)
+script = ExtResource("5_qwj2d")
+color = Color(0.3, 0.8, 0.75, 1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Relay/LiftA/Platform"]
+shape = SubResource("BoxShape3D_relay_lift_a")
+
+[node name="LiftB" type="Node3D" parent="Bays/Relay"]
+script = ExtResource("90_instance")
+sequences = Array[ExtResource("6_ygd4d")]([SubResource("PlatformSequence_relay_lift_b")])
+offset = 3.5
+channel = &"relay"
+starts_on = false
+
+[node name="Path" type="Path3D" parent="Bays/Relay/LiftB"]
+curve = SubResource("Curve3D_relay_lift_b")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Relay/LiftB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, -0.25, -1.75)
+script = ExtResource("5_qwj2d")
+color = Color(0.3, 0.8, 0.75, 1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Relay/LiftB/Platform"]
+shape = SubResource("BoxShape3D_relay_lift_b")
+
+[node name="Shuttle" type="Node3D" parent="Bays/Relay"]
+script = ExtResource("90_instance")
+sequences = Array[ExtResource("6_ygd4d")]([SubResource("PlatformSequence_relay_shuttle")])
+channel = &"relay_back"
+starts_on = false
+
+[node name="Path" type="Path3D" parent="Bays/Relay/Shuttle"]
+curve = SubResource("Curve3D_relay_shuttle")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/Relay/Shuttle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 2.75, -6)
+script = ExtResource("5_qwj2d")
+color = Color(0.95, 0.55, 0.25, 1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Relay/Shuttle/Platform"]
+shape = SubResource("BoxShape3D_relay_shuttle")
+
 [node name="Walkway0" type="CSGBox3D" parent="." unique_id=867493350]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -0.5, 0)
 use_collision = true
@@ -1530,13 +1714,13 @@ size = Vector3(10, 1, 16)
 material = SubResource("StandardMaterial3D_amqgn")
 
 [node name="Walkway11" type="CSGBox3D" parent="." unique_id=750404821]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 227.5, -0.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 230, -0.5, 0)
 use_collision = true
-size = Vector3(45, 1, 16)
+size = Vector3(50, 1, 16)
 material = SubResource("StandardMaterial3D_amqgn")
 
 [node name="PitFloor" type="CSGBox3D" parent="." unique_id=1791858657]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120.0298, -4.5, -3.0154457)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 132.5298, -4.5, -3.0154457)
 use_collision = true
-size = Vector3(260, 1, 22)
+size = Vector3(285, 1, 22)
 material = SubResource("StandardMaterial3D_4ynua")

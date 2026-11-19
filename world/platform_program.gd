@@ -15,6 +15,7 @@ enum End {
 	PLAY_BACKWARDS, ## play them backwards to the start, then forwards again...
 }
 
+const GROUP := &"platform_programs"
 const PROGRAM := [&"after_last", &"offset", &"platforms", &"channel", &"starts_on", &"show_track"]
 
 @export_group("Program")
@@ -32,6 +33,7 @@ const PROGRAM := [&"after_last", &"offset", &"platforms", &"channel", &"starts_o
 ## instead of its own preview; -1 = off.
 static var editor_clock := -1.0
 
+var _signals: Array = [] ## end signals: [seconds into the plan when the sequence ends, channel]
 var _plan: Array = [] ## compiled program, one entry per wait or leg: [seconds, path, from, to] (distances along the path)
 var _duration := 0.0 ## seconds of the whole plan
 var _loop_from := -1.0 ## seconds into the plan where a forever sequence's repeating part starts (-1: none)
@@ -67,6 +69,7 @@ func _validate_property(p: Dictionary) -> void:
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	if not plays():
 		return
 	_compile()
@@ -91,10 +94,25 @@ func _physics_process(_delta: float) -> void:
 func motion_time(rider := 0) -> float:
 	var t := offset + rider * _spacing
 	if Engine.is_editor_hint():
-		if editor_clock >= 0.0:
-			return t + editor_clock # switched tracks too: as if switched on at 0
-		return t + (Time.get_ticks_msec() * 0.001 if _previewing() else 0.0)
+		var clock := editor_clock if editor_clock >= 0.0 else (Time.get_ticks_msec() * 0.001 if _previewing() else -1.0)
+		if clock < 0.0:
+			return t
+		return t + maxf(0.0, clock - woken_at()) # a switched track as if switched on at 0, unless a signal wakes it
 	return t + (World.drive(channel, starts_on) if channel else World.time)
+
+
+## Editor: the clock time a track's end signal powers this program on (0 if none: it doesn't
+## wait for a switch, or nothing signals its channel).
+func woken_at(seen: Array = []) -> float:
+	if starts_on or channel == &"" or seen.has(self):
+		return 0.0
+	var best := INF
+	for p: PlatformProgram in get_tree().get_nodes_in_group(GROUP):
+		if p.plays():
+			for s: Array in p._signals:
+				if s[1] == channel:
+					best = minf(best, p.woken_at(seen + [self]) + s[0] - p.offset)
+	return maxf(best, 0.0) if best < INF else 0.0
 
 
 ## Where rider i is after t program seconds.
@@ -119,6 +137,33 @@ func _follow() -> void:
 	for i in _riders.size():
 		if is_instance_valid(_riders[i]):
 			_riders[i].global_position = point_at(motion_time(i), i)
+	if not _signals.is_empty() and not _shifts.is_empty() and not Engine.is_editor_hint():
+		_send_signals()
+
+
+## Each end of a signalling sequence (counted in World.signals, so loading the area later
+## neither misses nor repeats one) powers on its channel, back-dated to when it happened. Program
+## time here ignores a run-once program's end stop, which would hide how long ago it passed.
+func _send_signals() -> void:
+	var t := offset + _shifts[0] + (World.drive(channel, starts_on, false) if channel else World.time)
+	for i in _signals.size():
+		var e: float = _signals[i][0]
+		var key := "%s#%d" % [get_path(), i]
+		var sent: int = World.signals.get(key, 0)
+		var ends := _ends_by(t, e)
+		if ends > sent:
+			World.signals[key] = ends
+			var at := e + sent * (2.0 * _duration if after_last == End.PLAY_BACKWARDS else _duration) # the first unsent end
+			World.power_on(_signals[i][1], World.time - (t - at))
+
+
+## How many times the program has passed plan second e, going forwards, by program time t.
+func _ends_by(t: float, e: float) -> int:
+	if t < e:
+		return 0
+	if _loop_from >= 0.0 or after_last == End.STOP:
+		return 1
+	return int(floorf((t - e) / (2.0 * _duration if after_last == End.PLAY_BACKWARDS else _duration))) + 1
 
 
 ## Distance s along `path`, as a world point: closed paths wrap, open ones stop at their ends.
@@ -129,15 +174,13 @@ func _at(path: Path3D, s: float) -> Vector3:
 
 func _compile() -> void:
 	_plan.clear()
+	_signals.clear()
 	_duration = 0.0
 	_loop_from = -1.0
 	for t: PlatformTrackInstance in tracks():
 		t.chain_sequences()
-		var path := t.path()
-		if path == null or path.curve == null or path.curve.point_count < 2:
-			continue
 		for q in t.sequences:
-			if q == null or not _add_legs(q, path):
+			if t.path_of(q) == null or not _add_legs(q, t.path_of(q)):
 				continue
 			if q.trips == 0:
 				break # it never ends: nothing after it plays
@@ -174,6 +217,8 @@ func _add_legs(q: PlatformSequence, path: Path3D) -> bool:
 			_push([q.start_wait * _rates.y, path, a, a])
 			_push([travel, path, a, a + span])
 			_push([q.end_wait * _rates.z, path, a + span, a + span])
+	if q.end_signal != &"" and q.trips > 0:
+		_signals.append([_duration, q.end_signal])
 	return true
 
 
@@ -302,15 +347,15 @@ func _draw_tracks() -> void:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_color = Color(platform().color if platform() else Color.WHITE, 1.0).lightened(0.4)
 	for t: PlatformTrackInstance in tracks():
-		var path := t.path()
-		if path == null or path.curve == null:
-			continue
-		var im := ImmediateMesh.new()
-		im.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-		for v in path.curve.get_baked_points(): # closed curves bake their closing segment too
-			im.surface_add_vertex(v)
-		im.surface_end()
-		var mi := MeshInstance3D.new()
-		mi.mesh = im
-		mi.material_override = m
-		path.add_child(mi)
+		for path in t.paths():
+			if path.curve == null:
+				continue
+			var im := ImmediateMesh.new()
+			im.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+			for v in path.curve.get_baked_points(): # closed curves bake their closing segment too
+				im.surface_add_vertex(v)
+			im.surface_end()
+			var mi := MeshInstance3D.new()
+			mi.mesh = im
+			mi.material_override = m
+			path.add_child(mi)
