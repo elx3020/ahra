@@ -1,0 +1,24 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://dapx53t7ucpoi"]
+
+[ext_resource type="Texture2D" uid="uid://qnc6s1l0ybba" path="res://demo/materials/pbr/ice_floor/ice_floor_albedo.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://70so6x3wssow" path="res://demo/materials/pbr/ice_floor/ice_floor_normal.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://gyuls5ulsaoo" path="res://demo/materials/pbr/ice_floor/ice_floor_heightmap.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://ba6vvtinv3kyo" path="res://demo/materials/pbr/ice_floor/ice_floor_sss.png" id="6"]
+
+[resource]
+transparency = 1
+albedo_color = Color(1.1913072, 1.1913072, 1.1913072, 1)
+albedo_texture = ExtResource("1")
+roughness = 0.13
+normal_enabled = true
+normal_texture = ExtResource("3")
+heightmap_enabled = true
+heightmap_scale = 14.25
+heightmap_deep_parallax = true
+heightmap_min_layers = 8
+heightmap_max_layers = 32
+heightmap_texture = ExtResource("4")
+subsurf_scatter_enabled = true
+subsurf_scatter_strength = 1.0
+subsurf_scatter_texture = ExtResource("6")
+uv1_scale = Vector3(8.445, 8.445, 8.445)

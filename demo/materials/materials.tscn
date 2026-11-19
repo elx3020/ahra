@@ -3,23 +3,23 @@
 [ext_resource type="Script" uid="uid://bq5ppfecr7quu" path="res://demo/materials/materials.gd" id="1_3dhh3"]
 [ext_resource type="VoxelGIData" uid="uid://lwhmtpi1vol5" path="res://demo/materials/materials.VoxelGI_data.res" id="2_axvij"]
 [ext_resource type="Material" path="res://demo/materials/pbr/glass.tres" id="2_ro6ug"]
-[ext_resource type="Material" path="res://demo/materials/pbr/raw_crystal.tres" id="3_axvij"]
-[ext_resource type="Material" path="res://demo/materials/pbr/quartz.tres" id="4_7dlvy"]
-[ext_resource type="Material" path="res://demo/materials/pbr/water.tres" id="5_78ye3"]
-[ext_resource type="Material" path="res://demo/materials/pbr/wood.tres" id="6_epvmr"]
-[ext_resource type="Material" path="res://demo/materials/pbr/wax.tres" id="7_syyq7"]
-[ext_resource type="Material" path="res://demo/materials/pbr/leather.tres" id="8_inced"]
-[ext_resource type="Material" path="res://demo/materials/pbr/paper.tres" id="9_pra5q"]
-[ext_resource type="Material" path="res://demo/materials/pbr/cloth.tres" id="10_2u312"]
-[ext_resource type="Material" path="res://demo/materials/pbr/dirt.tres" id="11_mqqim"]
-[ext_resource type="Material" path="res://demo/materials/pbr/grass.tres" id="12_48ugy"]
-[ext_resource type="Material" path="res://demo/materials/pbr/clay.tres" id="13_uv53t"]
-[ext_resource type="Material" path="res://demo/materials/pbr/lava.tres" id="14_hf0jx"]
-[ext_resource type="Material" path="res://demo/materials/pbr/marble.tres" id="15_45mfk"]
+[ext_resource type="Material" uid="uid://cxmbhjciupixj" path="res://demo/materials/pbr/raw_crystal.tres" id="3_axvij"]
+[ext_resource type="Material" uid="uid://bea572gaokf1h" path="res://demo/materials/pbr/quartz.tres" id="4_7dlvy"]
+[ext_resource type="Material" uid="uid://87n4illb205n" path="res://demo/materials/pbr/water.tres" id="5_78ye3"]
+[ext_resource type="Material" uid="uid://bpf3wjmd2jsxj" path="res://demo/materials/pbr/wood.tres" id="6_epvmr"]
+[ext_resource type="Material" uid="uid://b5wawqmnmvoed" path="res://demo/materials/pbr/wax.tres" id="7_syyq7"]
+[ext_resource type="Material" uid="uid://b6wgvxiay8u56" path="res://demo/materials/pbr/leather.tres" id="8_inced"]
+[ext_resource type="Material" uid="uid://dkgc7ox7bgn47" path="res://demo/materials/pbr/paper.tres" id="9_pra5q"]
+[ext_resource type="Material" uid="uid://b8j0wiwnliavu" path="res://demo/materials/pbr/cloth.tres" id="10_2u312"]
+[ext_resource type="Material" uid="uid://b1575kmd1miu0" path="res://demo/materials/pbr/dirt.tres" id="11_mqqim"]
+[ext_resource type="Material" uid="uid://c6abd1i7kej55" path="res://demo/materials/pbr/grass.tres" id="12_48ugy"]
+[ext_resource type="Material" uid="uid://db3iwd6dvtkf6" path="res://demo/materials/pbr/clay.tres" id="13_uv53t"]
+[ext_resource type="Material" uid="uid://bvnyrhi3ravm2" path="res://demo/materials/pbr/lava.tres" id="14_hf0jx"]
+[ext_resource type="Material" uid="uid://h4q8e5s5pll1" path="res://demo/materials/pbr/marble.tres" id="15_45mfk"]
 [ext_resource type="Material" path="res://demo/materials/pbr/plastic.tres" id="16_4y8w7"]
 [ext_resource type="Material" path="res://demo/materials/pbr/latex.tres" id="17_n0uph"]
-[ext_resource type="Material" path="res://demo/materials/pbr/asphalt.tres" id="18_plg6j"]
-[ext_resource type="Material" path="res://demo/materials/pbr/concrete.tres" id="19_wk261"]
+[ext_resource type="Material" uid="uid://dp3hb07x03q5p" path="res://demo/materials/pbr/asphalt.tres" id="18_plg6j"]
+[ext_resource type="Material" uid="uid://bp2yt7ypfb1pk" path="res://demo/materials/pbr/concrete.tres" id="19_wk261"]
 [ext_resource type="Material" path="res://demo/materials/pbr/titanium.tres" id="20_6lrfj"]
 
 [sub_resource type="Gradient" id="Gradient_6mryn"]
@@ -50,13 +50,12 @@ sdfgi_enabled = true
 sdfgi_use_occlusion = true
 glow_enabled = true
 
+[sub_resource type="PlaneMesh" id="PlaneMesh_bjaeg"]
+size = Vector2(40, 40)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ojvq2"]
 albedo_color = Color(0.5, 0.5, 0.5, 1)
 roughness = 0.85
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_bjaeg"]
-material = SubResource("StandardMaterial3D_ojvq2")
-size = Vector2(40, 40)
 
 [sub_resource type="BoxMesh" id="BoxMesh_2ixu5"]
 material = SubResource("StandardMaterial3D_ojvq2")
@@ -88,7 +87,7 @@ directional_shadow_max_distance = 40.0
 [node name="Lamps" type="Node3D" parent="." unique_id=529743095]
 
 [node name="Lamp" type="OmniLight3D" parent="Lamps" unique_id=309601673]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.4, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.6526701, 0)
 light_color = Color(1, 0.75, 0.45, 1)
 shadow_enabled = true
 omni_range = 8.0
@@ -101,7 +100,6 @@ omni_range = 8.0
 
 [node name="VoxelGI" type="VoxelGI" parent="." unique_id=1375743838]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -0.5)
-visible = false
 size = Vector3(20, 6, 14)
 data = ExtResource("2_axvij")
 
