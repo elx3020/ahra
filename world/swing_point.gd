@@ -5,7 +5,7 @@ extends Node3D
 
 @export var grab_radius := 7.0
 
-var _rope := MeshInstance3D.new()
+var _rope: MeshInstance3D
 
 
 func _ready() -> void:
@@ -20,6 +20,7 @@ func _ready() -> void:
 	c.top_radius = 0.03
 	c.bottom_radius = 0.03
 	c.height = 1.0
+	_rope = MeshInstance3D.new() # made here, not as a member default: a script reload would leak it
 	_rope.mesh = c
 	_rope.top_level = true
 	_rope.visible = false

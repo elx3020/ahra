@@ -130,6 +130,87 @@ resource_name = "Crosswind"
 script = ExtResource("env")
 wind = Vector3(5, 0, 0)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone1"]
+size = Vector3(440, 4, 120)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone2"]
+size = Vector3(6, 3, 8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone3"]
+size = Vector3(6, 3, 8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone4"]
+size = Vector3(16, 2, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone5"]
+size = Vector3(16, 2, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone6"]
+size = Vector3(8, 6, 14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone7"]
+size = Vector3(8, 6, 14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone8"]
+size = Vector3(14, 8, 14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone9"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone10"]
+size = Vector3(3, 3, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone11"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone12"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone13"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone14"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone15"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone16"]
+size = Vector3(2, 2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone17"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone18"]
+size = Vector3(1, 2, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone19"]
+size = Vector3(10, 8, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone20"]
+size = Vector3(12, 10, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone21"]
+size = Vector3(12, 6, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone22"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone23"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone24"]
+size = Vector3(22, 2, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone25"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone26"]
+size = Vector3(1, 4, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone27"]
+size = Vector3(2, 12, 18)
+
 [node name="Demo" type="Node3D" unique_id=944746598]
 script = ExtResource("demo")
 bounds_center = Vector3(150, 0, 0)
@@ -168,8 +249,10 @@ material = SubResource("m_floor")
 [node name="Void" type="Area3D" parent="." unique_id=1009379926]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 140, -14, 0)
 script = ExtResource("kill")
-size = Vector3(440, 4, 120)
 color = Color(1, 0, 0, 0.06)
+
+[node name="Box" type="CollisionShape3D" parent="Void"]
+shape = SubResource("BoxShape3D_zone1")
 
 [node name="Bays" type="Node3D" parent="." unique_id=1660876360]
 
@@ -241,15 +324,19 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1.5, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_cold")
-size = Vector3(6, 3, 8)
 color = Color(0.3, 0.5, 1, 0.25)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Temperature/Cold"]
+shape = SubResource("BoxShape3D_zone2")
 
 [node name="Hot" type="Area3D" parent="Bays/Temperature" unique_id=1659286375]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.5, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_hot")
-size = Vector3(6, 3, 8)
 color = Color(1, 0.3, 0.2, 0.25)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Temperature/Hot"]
+shape = SubResource("BoxShape3D_zone3")
 
 [node name="Mud" type="Node3D" parent="Bays" unique_id=2139402725]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 0)
@@ -269,8 +356,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -3.5)
 script = ExtResource("env_zone")
 profile = SubResource("e_mud")
-size = Vector3(16, 2, 6)
 color = Color(0.45, 0.3, 0.15, 0.45)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Mud/Mud"]
+shape = SubResource("BoxShape3D_zone4")
 
 [node name="Ice" type="Node3D" parent="Bays" unique_id=1742022417]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
@@ -290,8 +379,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -3.5)
 script = ExtResource("env_zone")
 profile = SubResource("e_ice")
-size = Vector3(16, 2, 6)
 color = Color(0.7, 0.95, 1, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Ice/Ice"]
+shape = SubResource("BoxShape3D_zone5")
 
 [node name="Wind" type="Node3D" parent="Bays" unique_id=1135620523]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
@@ -311,15 +402,19 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 3, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_gale")
-size = Vector3(8, 6, 14)
 color = Color(0.8, 0.8, 0.8, 0.12)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wind/Gale"]
+shape = SubResource("BoxShape3D_zone6")
 
 [node name="Updraft" type="Area3D" parent="Bays/Wind" unique_id=1991956718]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 3, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_updraft")
-size = Vector3(8, 6, 14)
 color = Color(0.6, 1, 0.6, 0.12)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wind/Updraft"]
+shape = SubResource("BoxShape3D_zone7")
 
 [node name="Wall" type="CSGBox3D" parent="Bays/Wind" unique_id=1310432439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.75, -4)
@@ -346,8 +441,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_water")
-size = Vector3(14, 8, 14)
 color = Color(0.2, 0.45, 0.9, 0.2)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Underwater/Water"]
+shape = SubResource("BoxShape3D_zone8")
 
 [node name="Low" type="CSGBox3D" parent="Bays/Underwater" unique_id=695656314]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.25, -4)
@@ -434,8 +531,10 @@ outline_size = 14
 [node name="Lever" type="Area3D" parent="Bays/Interact" unique_id=681163755]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1, 0)
 script = ExtResource("inter")
-size = Vector3(2, 2, 2)
 color = Color(1, 0.9, 0.2, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Interact/Lever"]
+shape = SubResource("BoxShape3D_zone9")
 
 [node name="Door" type="CSGBox3D" parent="Bays/Interact" unique_id=897812395]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -3)
@@ -461,8 +560,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.5, 0)
 script = ExtResource("cut")
 walk_to = NodePath("../WalkTo")
-size = Vector3(3, 3, 3)
 color = Color(0.7, 0.3, 1, 0.3)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Cinematic/Trigger"]
+shape = SubResource("BoxShape3D_zone10")
 
 [node name="WalkTo" type="Marker3D" parent="Bays/Cinematic" unique_id=412318475]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, -3)
@@ -485,8 +586,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, -3)
 script = ExtResource("tele")
 target = NodePath("../ExitA")
-size = Vector3(2, 2, 2)
 color = Color(0.2, 1, 0.8, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Teleport/PadA"]
+shape = SubResource("BoxShape3D_zone11")
 
 [node name="ExitA" type="Marker3D" parent="Bays/Teleport" unique_id=469136577]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 7, -3)
@@ -502,8 +605,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 3)
 script = ExtResource("tele")
 target = NodePath("../ExitB")
 rotate_momentum = true
-size = Vector3(2, 2, 2)
 color = Color(0.2, 0.6, 1, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Teleport/PadB"]
+shape = SubResource("BoxShape3D_zone12")
 
 [node name="ExitB" type="Marker3D" parent="Bays/Teleport" unique_id=59351446]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 4, 1, 3)
@@ -538,27 +643,35 @@ material = SubResource("m_block")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, 3)
 script = ExtResource("grav")
 gravity_dir = Vector3(0, 1, 0)
-size = Vector3(2, 1, 2)
 color = Color(1, 0.4, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ToCeiling"]
+shape = SubResource("BoxShape3D_zone13")
 
 [node name="ToWall" type="Area3D" parent="Bays/Gravity" unique_id=1020125885]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 3)
 script = ExtResource("grav")
 gravity_dir = Vector3(0, 0, -1)
-size = Vector3(2, 1, 2)
 color = Color(1, 0.6, 0.2, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ToWall"]
+shape = SubResource("BoxShape3D_zone14")
 
 [node name="ResetCeiling" type="Area3D" parent="Bays/Gravity" unique_id=224441881]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 6.5, 3)
 script = ExtResource("grav")
-size = Vector3(2, 1, 2)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ResetCeiling"]
+shape = SubResource("BoxShape3D_zone15")
 
 [node name="ResetWall" type="Area3D" parent="Bays/Gravity" unique_id=489487805]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, -6.5)
 script = ExtResource("grav")
-size = Vector3(2, 2, 1)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ResetWall"]
+shape = SubResource("BoxShape3D_zone16")
 
 [node name="LeftWall" type="CSGBox3D" parent="Bays/Gravity" unique_id=1302514877]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 3.5, 0)
@@ -570,14 +683,18 @@ material = SubResource("m_block")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -2)
 script = ExtResource("grav")
 gravity_dir = Vector3(-1, 0, 0)
-size = Vector3(2, 1, 2)
 color = Color(0.3, 1, 0.4, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ToLeftWall"]
+shape = SubResource("BoxShape3D_zone17")
 
 [node name="ResetLeftWall" type="Area3D" parent="Bays/Gravity" unique_id=730958116]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 4, -3)
 script = ExtResource("grav")
-size = Vector3(1, 2, 4)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Gravity/ResetLeftWall"]
+shape = SubResource("BoxShape3D_zone18")
 
 [node name="MixClimb" type="Node3D" parent="Bays" unique_id=1691985694]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 0, 0)
@@ -603,15 +720,19 @@ material = SubResource("m_climb")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -3.5)
 script = ExtResource("env_zone")
 profile = SubResource("e_icywall")
-size = Vector3(10, 8, 2)
 color = Color(0.7, 0.95, 1, 0.3)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixClimb/Icy"]
+shape = SubResource("BoxShape3D_zone19")
 
 [node name="Crosswind" type="Area3D" parent="Bays/MixClimb" unique_id=1631627022]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -3)
 script = ExtResource("env_zone")
 profile = SubResource("e_crosswind")
-size = Vector3(12, 10, 4)
 color = Color(0.8, 0.8, 0.8, 0.1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixClimb/Crosswind"]
+shape = SubResource("BoxShape3D_zone20")
 
 [node name="MixSwing" type="Node3D" parent="Bays" unique_id=1882432435]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, 0)
@@ -631,8 +752,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 3, 0)
 script = ExtResource("env_zone")
 profile = SubResource("e_water")
-size = Vector3(12, 6, 12)
 color = Color(0.2, 0.45, 0.9, 0.2)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixSwing/Pool"]
+shape = SubResource("BoxShape3D_zone21")
 
 [node name="Point" type="Node3D" parent="Bays/MixSwing" unique_id=1045396187]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 4, 0)
@@ -679,20 +802,26 @@ script = ExtResource("swing")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 0)
 script = ExtResource("grav")
 gravity_dir = Vector3(0, 1, 0)
-size = Vector3(2, 1, 2)
 color = Color(1, 0.4, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixCeilSwing/ToCeiling"]
+shape = SubResource("BoxShape3D_zone22")
 
 [node name="Reset" type="Area3D" parent="Bays/MixCeilSwing" unique_id=455120938]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 8.5, 0)
 script = ExtResource("grav")
-size = Vector3(2, 1, 2)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixCeilSwing/Reset"]
+shape = SubResource("BoxShape3D_zone23")
 
 [node name="SkyNet" type="Area3D" parent="Bays/MixCeilSwing" unique_id=1937740251]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 13, 0)
 script = ExtResource("grav")
-size = Vector3(22, 2, 12)
 color = Color(1, 1, 1, 0.05)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixCeilSwing/SkyNet"]
+shape = SubResource("BoxShape3D_zone24")
 
 [node name="MixWallSwing" type="Node3D" parent="Bays" unique_id=1269843305]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 300, 0, 0)
@@ -728,19 +857,25 @@ script = ExtResource("swing")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, -6)
 script = ExtResource("grav")
 gravity_dir = Vector3(-1, 0, 0)
-size = Vector3(2, 1, 2)
 color = Color(0.3, 1, 0.4, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixWallSwing/ToWall"]
+shape = SubResource("BoxShape3D_zone25")
 
 [node name="Reset" type="Area3D" parent="Bays/MixWallSwing" unique_id=1688259014]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 3, 7)
 script = ExtResource("grav")
-size = Vector3(1, 4, 2)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixWallSwing/Reset"]
+shape = SubResource("BoxShape3D_zone26")
 
 [node name="BackNet" type="Area3D" parent="Bays/MixWallSwing" unique_id=2141935178]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 5, 0)
 script = ExtResource("grav")
-size = Vector3(2, 12, 18)
 color = Color(1, 1, 1, 0.05)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/MixWallSwing/BackNet"]
+shape = SubResource("BoxShape3D_zone27")
 
 [connection signal="used" from="Bays/Interact/Lever" to="." method="_on_lever_used"]

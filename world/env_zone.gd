@@ -18,7 +18,12 @@ func _player_exited(p: Player) -> void:
 		p.water_zone = null
 
 
-## Height of the box's top face measured along `up` (works for any gravity direction).
-## ponytail: assumes the zone is not rotated.
+## Height of the zone's top measured along `up` (works for any gravity direction).
+## ponytail: the top of the shapes' bounding box, so a water sphere's surface is flat at its
+## highest point; sample the shape under the player if round water ever matters.
 func surface_height(up: Vector3) -> float:
-	return global_position.dot(up) + absf(size.dot(up.abs())) * 0.5
+	var b := bounds()
+	var top := -INF
+	for i in 8:
+		top = maxf(top, to_global(b.get_endpoint(i)).dot(up))
+	return top

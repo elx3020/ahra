@@ -208,6 +208,75 @@ point_count = 2
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_amqgn"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone1"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone2"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone3"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone4"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone5"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone6"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone7"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone8"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone9"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone10"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone11"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone12"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone13"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone14"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone15"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone16"]
+size = Vector3(1.6, 2, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone17"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone18"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone19"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone20"]
+size = Vector3(22, 2, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone21"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone22"]
+size = Vector3(2, 6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone23"]
+size = Vector3(12, 12, 2)
+
 [node name="PlatformsA" type="Node3D" unique_id=1661674038]
 script = ExtResource("1_ns0vu")
 bounds_center = Vector3(120, 0, 0)
@@ -275,8 +344,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
 script = ExtResource("7_a6hic")
 channel = &"pingpong"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/PingPong/Reverse"]
+shape = SubResource("BoxShape3D_zone1")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/PingPong" unique_id=1941687488]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -320,8 +391,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
 script = ExtResource("7_a6hic")
 channel = &"elevator"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Elevator/Reverse"]
+shape = SubResource("BoxShape3D_zone2")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/Elevator" unique_id=52698040]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -392,8 +465,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
 script = ExtResource("7_a6hic")
 channel = &"loop"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Loop/Reverse"]
+shape = SubResource("BoxShape3D_zone3")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/Loop" unique_id=1332397518]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -525,8 +600,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
 script = ExtResource("7_a6hic")
 channel = &"timed"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Timed/Reverse"]
+shape = SubResource("BoxShape3D_zone4")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/Timed" unique_id=2100218100]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -6)
@@ -555,8 +632,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
 script = ExtResource("7_a6hic")
 channel = &"bridge"
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Switch/Switch"]
+shape = SubResource("BoxShape3D_zone5")
 
 [node name="SwitchLabel" type="Label3D" parent="Bays/Switch" unique_id=809577879]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -637,8 +716,10 @@ script = ExtResource("7_a6hic")
 channel = &"rush"
 action = 1
 delay = 1.5
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/TimedSwitch/Switch"]
+shape = SubResource("BoxShape3D_zone6")
 
 [node name="SwitchLabel" type="Label3D" parent="Bays/TimedSwitch" unique_id=1454004147]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -707,8 +788,10 @@ laps = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 1, -7)
 script = ExtResource("7_a6hic")
 channel = &"program"
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/Power"]
+shape = SubResource("BoxShape3D_zone7")
 
 [node name="PowerLabel" type="Label3D" parent="Bays/Sequences" unique_id=343443351]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 2.5, -7)
@@ -722,8 +805,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.3, 1, -7)
 script = ExtResource("7_a6hic")
 channel = &"program"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/Reverse"]
+shape = SubResource("BoxShape3D_zone8")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/Sequences" unique_id=1038241248]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.3, 2.5, -7)
@@ -737,8 +822,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 1, -4.8)
 script = ExtResource("7_a6hic")
 channel = &"program"
 action = 3
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/SpeedUp"]
+shape = SubResource("BoxShape3D_zone9")
 
 [node name="SpeedUpLabel" type="Label3D" parent="Bays/Sequences" unique_id=50075883]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 2.5, -4.8)
@@ -753,8 +840,10 @@ script = ExtResource("7_a6hic")
 channel = &"program"
 action = 3
 step = -0.5
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/SpeedDown"]
+shape = SubResource("BoxShape3D_zone10")
 
 [node name="SpeedDownLabel" type="Label3D" parent="Bays/Sequences" unique_id=685573755]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.3, 2.5, -4.8)
@@ -769,8 +858,10 @@ script = ExtResource("7_a6hic")
 channel = &"program"
 action = 4
 limits = Vector2(0, 3)
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/LapWaitUp"]
+shape = SubResource("BoxShape3D_zone11")
 
 [node name="LapWaitUpLabel" type="Label3D" parent="Bays/Sequences" unique_id=1504009541]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 2.5, -2.6)
@@ -786,8 +877,10 @@ channel = &"program"
 action = 4
 step = -0.5
 limits = Vector2(0, 3)
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/LapWaitDown"]
+shape = SubResource("BoxShape3D_zone12")
 
 [node name="LapWaitDownLabel" type="Label3D" parent="Bays/Sequences" unique_id=63693034]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.3, 2.5, -2.6)
@@ -802,8 +895,10 @@ script = ExtResource("7_a6hic")
 channel = &"program"
 action = 5
 limits = Vector2(0, 3)
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/SequenceWaitUp"]
+shape = SubResource("BoxShape3D_zone13")
 
 [node name="SequenceWaitUpLabel" type="Label3D" parent="Bays/Sequences" unique_id=1589779302]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 2.5, -0.4)
@@ -819,8 +914,10 @@ channel = &"program"
 action = 5
 step = -0.5
 limits = Vector2(0, 3)
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/SequenceWaitDown"]
+shape = SubResource("BoxShape3D_zone14")
 
 [node name="SequenceWaitDownLabel" type="Label3D" parent="Bays/Sequences" unique_id=1564956825]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.3, 2.5, -0.4)
@@ -912,8 +1009,10 @@ outline_size = 14
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -3)
 script = ExtResource("7_a6hic")
 channel = &"drawbridge"
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/RunOnce/Power"]
+shape = SubResource("BoxShape3D_zone15")
 
 [node name="PowerLabel" type="Label3D" parent="Bays/RunOnce" unique_id=487535947]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -3)
@@ -927,8 +1026,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
 script = ExtResource("7_a6hic")
 channel = &"drawbridge"
 action = 2
-size = Vector3(1.6, 2, 1.6)
 color = Color(0.9, 0.7, 0.3, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/RunOnce/Reverse"]
+shape = SubResource("BoxShape3D_zone16")
 
 [node name="ReverseLabel" type="Label3D" parent="Bays/RunOnce" unique_id=1564307131]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.5, -6)
@@ -988,8 +1089,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -6)
 script = ExtResource("9_q5mm2")
 scene = "res://demo/platforms/platforms_b.tscn"
 spawn = &"FromA"
-size = Vector3(2, 2, 2)
 color = Color(0.3, 0.8, 0.6, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Remote/DoorToB"]
+shape = SubResource("BoxShape3D_zone17")
 
 [node name="FromB" type="Marker3D" parent="Bays/Remote" unique_id=88032268]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1, -2)
@@ -1040,20 +1143,26 @@ lap_wait = 1.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, 0)
 script = ExtResource("10_llfbc")
 gravity_dir = Vector3(0, 1, 0)
-size = Vector3(2, 1, 2)
 color = Color(1, 0.4, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Ceiling/ToCeiling"]
+shape = SubResource("BoxShape3D_zone18")
 
 [node name="Reset" type="Area3D" parent="Bays/Ceiling" unique_id=1825887328]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 5.5, 0)
 script = ExtResource("10_llfbc")
-size = Vector3(2, 1, 2)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Ceiling/Reset"]
+shape = SubResource("BoxShape3D_zone19")
 
 [node name="SkyNet" type="Area3D" parent="Bays/Ceiling" unique_id=931220249]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 script = ExtResource("10_llfbc")
-size = Vector3(22, 2, 12)
 color = Color(1, 1, 1, 0.05)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Ceiling/SkyNet"]
+shape = SubResource("BoxShape3D_zone20")
 
 [node name="Wall" type="Node3D" parent="Bays" unique_id=272896558]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240, 0, 0)
@@ -1101,20 +1210,26 @@ lap_wait = 1.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.5, -5)
 script = ExtResource("10_llfbc")
 gravity_dir = Vector3(0, 0, -1)
-size = Vector3(2, 1, 2)
 color = Color(1, 0.6, 0.2, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wall/ToWall"]
+shape = SubResource("BoxShape3D_zone21")
 
 [node name="Reset" type="Area3D" parent="Bays/Wall" unique_id=1036336618]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 3, -7.5)
 script = ExtResource("10_llfbc")
-size = Vector3(2, 6, 1)
 color = Color(1, 1, 1, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wall/Reset"]
+shape = SubResource("BoxShape3D_zone22")
 
 [node name="BackNet" type="Area3D" parent="Bays/Wall" unique_id=443552506]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -11)
 script = ExtResource("10_llfbc")
-size = Vector3(12, 12, 2)
 color = Color(1, 1, 1, 0.05)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wall/BackNet"]
+shape = SubResource("BoxShape3D_zone23")
 
 [node name="Walkway0" type="CSGBox3D" parent="." unique_id=867493350]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -0.5, 0)

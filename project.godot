@@ -19,6 +19,10 @@ config/icon="res://icon.svg"
 
 World="*res://world/world.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/zone_tools/plugin.cfg")
+
 [input]
 
 move_left={

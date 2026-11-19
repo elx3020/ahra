@@ -259,6 +259,32 @@ func _run() -> void:
 	_check(r.up.is_equal_approx(Vector3.RIGHT) and r.hang > 0.5, "wall: pad sets -x gravity, swing hangs toward the wall (-x) (%.2f)" % r.hang)
 	_check(r.landed and r.pos.z > 3.6 and r.up.is_equal_approx(Vector3.RIGHT), "wall: slingshot lands on the far wall")
 
+	# --- zone shapes: every type triggers (a Checkpoint sets the respawn point on its floor) ---
+	var kinds: Array[Shape3D] = [BoxShape3D.new(), SphereShape3D.new(), CapsuleShape3D.new(), CylinderShape3D.new(),
+		HeightMapShape3D.new(), BoxMesh.new().create_convex_shape(), BoxMesh.new().create_trimesh_shape()]
+	for i in kinds.size():
+		var cp := Checkpoint.new()
+		cp.add_shape(kinds[i])
+		cp.position = Vector3(-60 + i * 6, 40, 30) # open air
+		demo.add_child(cp)
+		var b := cp.bounds()
+		var want := cp.to_global(Vector3(b.get_center().x, b.position.y, b.get_center().z)) + Vector3.UP
+		p.checkpoint = Vector3.ZERO
+		await _place(p, cp.position + Vector3.UP * 3)
+		for f in 90:
+			await _wait(1)
+			if p.checkpoint != Vector3.ZERO:
+				break
+		_check(p.checkpoint.is_equal_approx(want), "%s zone triggers, checkpoint on its floor" % kinds[i].get_class())
+		cp.queue_free()
+	var pool := EnvZone.new()
+	var ball := SphereShape3D.new()
+	ball.radius = 2.0
+	pool.add_shape(ball, Vector3(0, 1, 0))
+	pool.position = Vector3(0, 50, 0)
+	demo.add_child(pool)
+	_check(is_equal_approx(pool.surface_height(Vector3.UP), 53.0) and is_equal_approx(pool.surface_height(Vector3.RIGHT), 2.0), "round zone: surface height is the top of its shape")
+
 	print("SMOKE: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 

@@ -20,6 +20,12 @@ script = ExtResource("4_mwsgm")
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_amqgn"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone1"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_zone2"]
+size = Vector3(2, 2, 4)
+
 [node name="PlatformsB" type="Node3D" unique_id=908010402]
 script = ExtResource("1_0t7uh")
 
@@ -68,16 +74,20 @@ material = SubResource("StandardMaterial3D_amqgn")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1, -3)
 script = ExtResource("5_b5aqb")
 channel = &"remote"
-size = Vector3(2, 2, 2)
 color = Color(0.3, 0.8, 0.6, 0.35)
+
+[node name="Box" type="CollisionShape3D" parent="Switch"]
+shape = SubResource("BoxShape3D_zone1")
 
 [node name="DoorToA" type="Area3D" parent="." unique_id=878331534]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1, 0)
 script = ExtResource("6_htgi3")
 scene = "res://demo/platforms/platforms_a.tscn"
 spawn = &"Bays/Remote/FromB"
-size = Vector3(2, 2, 4)
 color = Color(0.3, 0.8, 0.6, 0.4)
+
+[node name="Box" type="CollisionShape3D" parent="DoorToA"]
+shape = SubResource("BoxShape3D_zone2")
 
 [node name="FromA" type="Marker3D" parent="." unique_id=931323156]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1, 3)

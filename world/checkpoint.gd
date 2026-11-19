@@ -1,8 +1,12 @@
 @tool
 class_name Checkpoint
 extends Zone
-## Entering makes this the player's respawn point: the zone's floor (bottom face) + 1 m.
+## Entering makes this the player's respawn point: 1 m above the middle of the zone's floor
+## (the bottom of its shapes).
+## ponytail: assumes the zone is not rotated.
 
 
 func _player_entered(p: Player) -> void:
-	p.checkpoint = global_position + Vector3(0, 1.0 - size.y * 0.5, 0)
+	var b := bounds()
+	var c := b.get_center()
+	p.checkpoint = to_global(Vector3(c.x, b.position.y, c.z)) + Vector3.UP

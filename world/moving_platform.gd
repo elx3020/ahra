@@ -56,11 +56,12 @@ var _duration := 0.0
 var _rates := Vector3.ONE ## channel multipliers: speed, lap wait, sequence wait
 var _shift := 0.0 ## program clock shift that keeps motion continuous across rate changes
 var _rebased := -1 ## channel rate changes folded into _shift
-var _cs := CollisionShape3D.new()
+var _cs: CollisionShape3D
 var _warmup := 2 ## physics frames with collision off while the body travels from the scene origin to its place
 
 
 func _ready() -> void:
+	_cs = CollisionShape3D.new() # made here, not as a member default: a script reload would leak it
 	_cs.shape = _shape
 	# the body starts at the scene origin and its first placement is a physics move (Jolt
 	# moves kinematic bodies): keep collision off for it, or it carries whatever stands there
@@ -74,7 +75,9 @@ func _ready() -> void:
 	if surface:
 		var z := EnvZone.new()
 		z.profile = surface
-		z.size = size + Vector3.ONE * 0.6
+		var box := BoxShape3D.new()
+		box.size = size + Vector3.ONE * 0.6
+		z.add_shape(box)
 		z.color = Color(color, 0.12)
 		add_child(z)
 	_compile()

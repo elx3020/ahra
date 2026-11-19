@@ -22,7 +22,8 @@ enum Action {
 @export var on_color := Color(0.3, 1.0, 0.4, 0.5)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	super(delta)
 	if not Engine.is_editor_hint():
 		_mat.albedo_color = on_color if _lit() else color
 
