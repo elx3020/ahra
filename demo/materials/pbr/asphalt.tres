@@ -1,0 +1,31 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="Gradient" id="Gradient_3bfct"]
+offsets = PackedFloat32Array(0, 0.85, 1)
+colors = PackedColorArray(0.05, 0.05, 0.055, 1, 0.12, 0.12, 0.12, 1, 0.35, 0.34, 0.32, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_l8e4x"]
+noise_type = 2
+frequency = 0.08
+fractal_type = 0
+cellular_return_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_mvhvp"]
+noise = SubResource("FastNoiseLite_l8e4x")
+color_ramp = SubResource("Gradient_3bfct")
+seamless = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_lq037"]
+noise = SubResource("FastNoiseLite_l8e4x")
+seamless = true
+as_normal_map = true
+bump_strength = 4.0
+
+[resource]
+resource_name = "Asphalt"
+albedo_texture = SubResource("NoiseTexture2D_mvhvp")
+roughness = 0.85
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_lq037")
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true

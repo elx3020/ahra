@@ -1,0 +1,22 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_w1hmu"]
+frequency = 0.06
+fractal_octaves = 3
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_6kpou"]
+noise = SubResource("FastNoiseLite_w1hmu")
+seamless = true
+as_normal_map = true
+bump_strength = 0.6
+
+[resource]
+resource_name = "Paper"
+albedo_color = Color(0.95, 0.94, 0.9, 1)
+roughness = 0.95
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_6kpou")
+backlight_enabled = true
+backlight = Color(0.45, 0.44, 0.4, 1)
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true

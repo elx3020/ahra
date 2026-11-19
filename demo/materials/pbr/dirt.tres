@@ -1,0 +1,28 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="Gradient" id="Gradient_ha5a3"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.16, 0.1, 0.06, 1, 0.3, 0.2, 0.12, 1, 0.42, 0.32, 0.22, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6rkbi"]
+frequency = 0.012
+fractal_octaves = 6
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_tintw"]
+noise = SubResource("FastNoiseLite_6rkbi")
+color_ramp = SubResource("Gradient_ha5a3")
+seamless = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_oo4ls"]
+noise = SubResource("FastNoiseLite_6rkbi")
+seamless = true
+as_normal_map = true
+bump_strength = 14.0
+
+[resource]
+resource_name = "Dirt"
+albedo_texture = SubResource("NoiseTexture2D_tintw")
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_oo4ls")
+uv1_scale = Vector3(1.5, 1.5, 1.5)
+uv1_triplanar = true

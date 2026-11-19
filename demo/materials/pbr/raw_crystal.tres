@@ -1,0 +1,24 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_km8rl"]
+noise_type = 2
+frequency = 0.012
+fractal_octaves = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_kc7rn"]
+noise = SubResource("FastNoiseLite_km8rl")
+seamless = true
+as_normal_map = true
+bump_strength = 10.0
+
+[resource]
+resource_name = "Raw crystal"
+transparency = 1
+albedo_color = Color(0.58, 0.35, 0.82, 0.4)
+roughness = 0.3
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_kc7rn")
+refraction_enabled = true
+refraction_scale = 0.1
+uv1_scale = Vector3(1.5, 1.5, 1.5)
+uv1_triplanar = true
