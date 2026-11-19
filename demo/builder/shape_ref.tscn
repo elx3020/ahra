@@ -1,5 +1,13 @@
 [gd_scene format=3 uid="uid://d04y0644r3fyg"]
 
+[ext_resource type="Script" uid="uid://kuumo6tsrgp1" path="res://demo/demo.gd" id="1_6b7c1"]
+[ext_resource type="Script" uid="uid://dhm8i40j5tsdy" path="res://world/shape_reference.gd" id="1_fnfac"]
+[ext_resource type="Script" uid="uid://dpgik3h6qc4e4" path="res://world/platform_track_instance.gd" id="2_6e3mj"]
+[ext_resource type="Script" uid="uid://j86jv8iqe2ns" path="res://world/platform_track_group.gd" id="2_l1rbd"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_piypc"]
+[ext_resource type="Script" uid="uid://bukqeypryc24m" path="res://world/moving_platform.gd" id="3_l1rbd"]
+[ext_resource type="Script" uid="uid://b0s1eycar27vk" path="res://world/platform_sequence.gd" id="4_6b7c1"]
+
 [sub_resource type="Environment" id="Environment_1agrf"]
 background_mode = 1
 background_color = Color(0.11, 0.12, 0.15, 1)
@@ -7,7 +15,23 @@ ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.62, 0.7, 1)
 ambient_light_energy = 0.7
 
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_piypc"]
+resource_local_to_scene = true
+
+[sub_resource type="Curve3D" id="Curve3D_6b7c1"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -1.5, 0, 0, 0, 0, 0, 0, 0, 0, 22.52864, 0, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_6b7c1"]
+resource_local_to_scene = true
+height = 0.9951172
+radius = 1.4550781
+
 [node name="ShapeRef" type="Node3D" unique_id=925775439]
+script = ExtResource("1_6b7c1")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1928250560]
 environment = SubResource("Environment_1agrf")
@@ -17,7 +41,66 @@ transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.819
 shadow_enabled = true
 
 [node name="Camera" type="Camera3D" parent="." unique_id=1769107020]
+visible = false
 projection = 1
 current = true
 size = 20.0
 far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1022264104]
+
+[node name="Label" type="Label" parent="HUD" unique_id=1269165603]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." unique_id=29316199 instance=ExtResource("2_piypc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.526249, 1, 4.5)
+
+[node name="PlaneRef" type="StaticBody3D" parent="." unique_id=122191231]
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("1_fnfac")
+color = Color(0.3019608, 0.8, 1, 0.03137255)
+
+[node name="Plane" type="CollisionShape3D" parent="PlaneRef" unique_id=2128342728]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
+shape = SubResource("WorldBoundaryShape3D_piypc")
+debug_color = Color(1, 1, 1, 0.11764706)
+
+[node name="Start" type="Node3D" parent="." unique_id=1068835546]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0785673, 0, -0.04221487)
+script = ExtResource("2_l1rbd")
+preview = true
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=415696178]
+transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5.9800005, -13.5, -0.5, 0)
+use_collision = true
+size = Vector3(1, 1, 2)
+
+[node name="Floor2" type="CSGBox3D" parent="." unique_id=1603803223]
+transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5.9800005, 18.5, -0.5, 0)
+use_collision = true
+size = Vector3(1, 1, 2)
+
+[node name="Track" type="Node3D" parent="." unique_id=2134044147]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.029798, 0, 0.0069609927)
+script = ExtResource("2_6e3mj")
+
+[node name="Path" type="Path3D" parent="Track" unique_id=2133541031]
+curve = SubResource("Curve3D_6b7c1")
+
+[node name="Platform" type="AnimatableBody3D" parent="Track" unique_id=1731495478]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 0)
+script = ExtResource("3_l1rbd")
+
+[node name="Sequence" type="Node" parent="Track/Platform" unique_id=1324127379 node_paths=PackedStringArray("path")]
+script = ExtResource("4_6b7c1")
+path = NodePath("../../Path")
+laps = 2
+lap_wait = 5.0
+
+[node name="Cylinder" type="CollisionShape3D" parent="Track/Platform" unique_id=1202753675]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.50035, 0)
+shape = SubResource("CylinderShape3D_6b7c1")

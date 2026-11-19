@@ -1,20 +1,22 @@
 @tool
 extends EditorPlugin
-## Platform edit mode: a "Platform Edit" toggle in the 3D toolbar. While it is on the toolbar shows
+## Platform Track builder: one icon menu in the 3D toolbar with
 ## - Shape Refs (count): add a ShapeReference (pick its shape; Plane = an infinite plane) that
 ##   track anchors snap onto, pick one to select it (its inspector edits its shapes), or remove
 ##   the selected ones;
-## - New Track: click anchors in the viewport (on a ShapeReference's surface, else on a plane
-##   through the last anchor: horizontal, or vertical facing the camera with Shift), Enter or
-##   Finish to build a PlatformTrackInstance (2+ anchors), Esc or Cancel to drop it. Clicking
+## - Tracks (count): New Track, then each track (pick one to select it), then remove the selected
+##   ones. New Track: click anchors in the viewport (on a ShapeReference's surface, else on a
+##   plane through the last anchor: horizontal, or vertical facing the camera with Shift), Enter
+##   or Finish to build a PlatformTrackInstance (2+ anchors), Esc or Cancel to drop it. Clicking
 ##   the first anchor again (3+ placed) closes the loop and builds it. A 3D preview shows where
-##   the next anchor goes and the path being drawn;
-## - Tracks (count): pick a track to select it, or remove the selected ones;
-## - Preview: a panel to set the preview's colours, opacity and look (saved in editor settings);
-## - Group: shown while tracks are selected; names a new PlatformTrackGroup and moves them in;
-## - Switch: shown while tracks are selected; adds a PlatformSwitch next to the track and puts the
-##   tracks' platforms on its channel, picked from the channel registry or a new name that can't
-##   collide with one used anywhere in the project.
+##   the next anchor goes and the path being drawn; the toolbar shows Finish / Cancel meanwhile;
+## - Preview Settings: the preview's colours, opacity and look (saved in editor settings).
+## While tracks are selected a second icon menu acts on them:
+## - Play in Editor: their platforms move in the editor (a grouped track plays its whole group);
+## - Group: names a new PlatformTrackGroup and moves them in;
+## - Switch: adds a PlatformSwitch next to the track and puts the tracks' platforms on its
+##   channel, picked from the channel registry or a new name that can't collide with one used
+##   anywhere in the project.
 ## The inspector's `channel` field (platforms, switches) becomes the same channel dropdown.
 ## Every change is undoable.
 
@@ -37,20 +39,18 @@ const CLOSE_DISTANCE := 0.25 ## Enter with the last anchor this close (m) to the
 
 # toolbar controls, made in _build_toolbar (member defaults would leak on a script reload)
 var _bar: HBoxContainer
-var _toggle: Button
-var _tools: HBoxContainer
-var _refs: MenuButton
+var _main: MenuButton ## the Platform Track builder menu
+var _refs: PopupMenu ## its Shape Refs submenu
 var _ref_add: PopupMenu
-var _tracks: MenuButton
+var _tracks: PopupMenu ## its Tracks submenu
+var _track_menu: MenuButton ## shown while tracks are selected
 var _status: Label
 var _finish: Button
 var _cancel: Button
-var _group: Button
 var _group_popup: PopupPanel
 var _group_name: LineEdit
 var _look_popup: PopupPanel
 var _look_grid: GridContainer
-var _switch: Button
 var _switch_popup: PopupPanel
 var _switch_picker: VBoxContainer
 var _switch_action: OptionButton
@@ -74,8 +74,6 @@ func _enter_tree() -> void:
 	EditorInterface.get_selection().selection_changed.connect(_refresh)
 	EditorInterface.get_editor_settings().settings_changed.connect(_render)
 	scene_changed.connect(_on_scene_changed)
-	get_tree().node_added.connect(_on_tree_changed)
-	get_tree().node_removed.connect(_on_tree_changed)
 	_refresh()
 
 
@@ -84,8 +82,6 @@ func _exit_tree() -> void:
 	EditorInterface.get_selection().selection_changed.disconnect(_refresh)
 	EditorInterface.get_editor_settings().settings_changed.disconnect(_render)
 	scene_changed.disconnect(_on_scene_changed)
-	get_tree().node_added.disconnect(_on_tree_changed)
-	get_tree().node_removed.disconnect(_on_tree_changed)
 	remove_inspector_plugin(_channel_inspector)
 	remove_control_from_container(CONTAINER_SPATIAL_EDITOR_MENU, _bar)
 	_bar.queue_free()
@@ -93,79 +89,64 @@ func _exit_tree() -> void:
 
 func _build_toolbar() -> void:
 	_bar = HBoxContainer.new()
-	_toggle = Button.new()
-	_tools = HBoxContainer.new()
-	_refs = MenuButton.new()
+	_main = MenuButton.new()
+	_refs = PopupMenu.new()
 	_ref_add = PopupMenu.new()
-	_tracks = MenuButton.new()
+	_tracks = PopupMenu.new()
+	_track_menu = MenuButton.new()
 	_status = Label.new()
 	_finish = Button.new()
 	_cancel = Button.new()
-	_group = Button.new()
 	_group_popup = PopupPanel.new()
 	_group_name = LineEdit.new()
 	_look_popup = PopupPanel.new()
 	_look_grid = GridContainer.new()
-	_switch = Button.new()
 	_switch_popup = PopupPanel.new()
 	_switch_picker = ChannelPicker.new()
 	_switch_action = OptionButton.new()
 	_switch_starts = CheckBox.new()
 	_switch_add = Button.new()
-	_toggle.text = "Platform Edit"
-	_toggle.toggle_mode = true
-	_toggle.icon = _icon(&"Path3D")
-	_toggle.toggled.connect(func(on: bool) -> void:
-		if not on:
-			cancel_track()
-		_refresh())
-	_bar.add_child(_toggle)
-	_bar.add_child(_tools)
 
-	_refs.flat = false
-	_refs.icon = _icon(&"CollisionShape3D")
-	_refs.tooltip_text = "Shape references in this scene: add, select (to edit their shapes), remove"
+	# the Platform Track builder menu: Shape Refs, Tracks (New Track first), Preview Settings
+	_main.icon = _icon(&"Path3D")
+	_main.tooltip_text = "Platform Track builder"
+	var menu := _main.get_popup()
+	menu.add_child(_refs)
+	menu.add_child(_tracks)
+	_refs.add_child(_ref_add)
 	for kind: String in SHAPES:
 		_ref_add.add_icon_item(_icon(SHAPES[kind]), kind)
 	_ref_add.index_pressed.connect(func(i: int) -> void: add_shape_reference(SHAPES.keys()[i]))
-	_refs.get_popup().add_child(_ref_add)
-	_refs.get_popup().about_to_popup.connect(_fill_refs_menu)
-	_refs.get_popup().index_pressed.connect(func(i: int) -> void: _menu_pick(_refs.get_popup(), i))
-	_tools.add_child(_refs)
+	menu.about_to_popup.connect(_fill_main_menu)
+	for m: PopupMenu in [menu, _refs, _tracks]:
+		m.index_pressed.connect(func(i: int) -> void: _menu_pick(m, i))
+	_bar.add_child(_main)
 
-	var track := Button.new()
-	track.text = "New Track"
-	track.icon = _icon(&"Curve3D")
-	track.pressed.connect(start_track)
-	_tools.add_child(track)
-	_tracks.flat = false
-	_tracks.icon = _icon(&"Path3D")
-	_tracks.tooltip_text = "Platform tracks in this scene: select, remove"
-	_tracks.get_popup().about_to_popup.connect(_fill_tracks_menu)
-	_tracks.get_popup().index_pressed.connect(func(i: int) -> void: _menu_pick(_tracks.get_popup(), i))
-	_tools.add_child(_tracks)
-	_tools.add_child(_status)
+	# the selected tracks' menu
+	_track_menu.icon = _icon(&"AnimatableBody3D")
+	_track_menu.tooltip_text = "Selected platform tracks"
+	var tm := _track_menu.get_popup()
+	tm.add_icon_check_item(_icon(&"Play"), "Play in Editor")
+	tm.set_item_metadata(0, func() -> void: play_in_editor(not is_playing()))
+	tm.set_item_tooltip(0, "Move their platforms in the editor (a grouped track plays its whole group)")
+	tm.add_icon_item(_icon(&"Groups"), "Group...")
+	tm.set_item_metadata(1, _open_group_popup)
+	tm.add_icon_item(_icon(&"Signals"), "Switch...")
+	tm.set_item_metadata(2, _open_switch_popup)
+	tm.set_item_tooltip(2, "Add a switch that controls the selected tracks")
+	tm.about_to_popup.connect(func() -> void: tm.set_item_checked(0, is_playing()))
+	tm.index_pressed.connect(func(i: int) -> void: _menu_pick(tm, i))
+	_bar.add_child(_track_menu)
+
+	# while placing a track
+	_bar.add_child(_status)
 	_finish.text = "Finish"
 	_finish.pressed.connect(finish_track)
-	_tools.add_child(_finish)
+	_bar.add_child(_finish)
 	_cancel.text = "Cancel"
 	_cancel.pressed.connect(cancel_track)
-	_tools.add_child(_cancel)
+	_bar.add_child(_cancel)
 
-	_group.text = "Group..."
-	_group.icon = _icon(&"Groups")
-	_group.pressed.connect(func() -> void:
-		_group_name.text = "TrackGroup"
-		_group_popup.popup(Rect2i(Vector2i(_group.get_screen_position() + Vector2(0, _group.size.y)), Vector2i(240, 0)))
-		_group_name.grab_focus()
-		_group_name.select_all())
-	_tools.add_child(_group)
-
-	_switch.text = "Switch..."
-	_switch.icon = _icon(&"Signals")
-	_switch.tooltip_text = "Add a switch that controls the selected tracks"
-	_switch.pressed.connect(_open_switch_popup)
-	_tools.add_child(_switch)
 	var form := VBoxContainer.new()
 	form.custom_minimum_size = Vector2(320, 0)
 	var grid := GridContainer.new()
@@ -190,14 +171,6 @@ func _build_toolbar() -> void:
 	_switch_popup.add_child(form)
 	_bar.add_child(_switch_popup)
 
-	var look := Button.new()
-	look.text = "Preview"
-	look.icon = _icon(&"Tools")
-	look.tooltip_text = "Colours, opacity and look of the track builder's preview"
-	look.pressed.connect(func() -> void:
-		_fill_look_panel()
-		_look_popup.popup(Rect2i(Vector2i(look.get_screen_position() + Vector2(0, look.size.y)), Vector2i(300, 0))))
-	_tools.add_child(look)
 	var panel := VBoxContainer.new()
 	_look_grid.columns = 2
 	panel.add_child(_look_grid)
@@ -222,20 +195,15 @@ func _build_toolbar() -> void:
 
 
 func _refresh() -> void:
-	_tools.visible = _toggle.button_pressed
-	_status.visible = _placing
-	_finish.visible = _placing
-	_cancel.visible = _placing
+	for c: Control in [_status, _finish, _cancel]:
+		c.visible = _placing
 	_status.text = "%d anchor%s | Shift: vertical plane | click the first anchor: close the loop | Enter: finish | Esc: cancel" % [_anchors.size(), "" if _anchors.size() == 1 else "s"]
-	_group.visible = not _placing and not selected_tracks().is_empty()
-	_switch.visible = _group.visible
-	_refs.text = "Shape Refs (%d)" % all_references().size()
-	_tracks.text = "Tracks (%d)" % all_tracks().size()
+	_track_menu.visible = not _placing and not selected_tracks().is_empty()
 
 
-func _on_tree_changed(node: Node) -> void:
-	if node is ShapeReference or node is PlatformTrackInstance:
-		_refresh.call_deferred() # once the node is fully in or out
+## Shows `popup` below `button`.
+func _popup_under(popup: Popup, button: Control, width: int) -> void:
+	popup.popup(Rect2i(Vector2i(button.get_screen_position() + Vector2(0, button.size.y)), Vector2i(width, 0)))
 
 
 # --- managing references and tracks ---
@@ -253,18 +221,30 @@ func _in_scene(test: Callable) -> Array:
 	return [] if root == null else ([root] + root.find_children("*", "", true, false)).filter(test)
 
 
-func _fill_refs_menu() -> void:
-	var menu := _refs.get_popup()
+## Rebuilds the builder menu and its submenus (counts, lists) each time it opens.
+func _fill_main_menu() -> void:
+	var refs := all_references()
+	var tracks := all_tracks()
+	var menu := _main.get_popup()
 	menu.clear()
-	menu.add_submenu_node_item("Add", _ref_add)
+	menu.add_submenu_node_item("Shape Refs (%d)" % refs.size(), _refs)
+	menu.set_item_icon(0, _icon(&"CollisionShape3D"))
+	menu.add_submenu_node_item("Tracks (%d)" % tracks.size(), _tracks)
+	menu.set_item_icon(1, _icon(&"Path3D"))
 	menu.add_separator()
-	_fill_list(menu, all_references(), _selected_of(func(n: Node) -> bool: return n is ShapeReference), "references")
-
-
-func _fill_tracks_menu() -> void:
-	var menu := _tracks.get_popup()
-	menu.clear()
-	_fill_list(menu, all_tracks(), selected_tracks(), "tracks")
+	menu.add_icon_item(_icon(&"Tools"), "Preview Settings...")
+	menu.set_item_metadata(menu.item_count - 1, _open_look_popup)
+	menu.set_item_tooltip(menu.item_count - 1, "Colours, opacity and look of the track builder's preview")
+	_refs.clear()
+	_refs.add_submenu_node_item("Add", _ref_add)
+	_refs.set_item_icon(0, _icon(&"Add"))
+	_refs.add_separator()
+	_fill_list(_refs, refs, _selected_of(func(n: Node) -> bool: return n is ShapeReference), "references")
+	_tracks.clear()
+	_tracks.add_icon_item(_icon(&"Curve3D"), "New Track")
+	_tracks.set_item_metadata(0, start_track)
+	_tracks.add_separator()
+	_fill_list(_tracks, tracks, selected_tracks(), "tracks")
 
 
 ## An entry per node (picking it selects it), then "Remove selected" for `selected`.
@@ -285,9 +265,12 @@ func _fill_list(menu: PopupMenu, nodes: Array, selected: Array, what: String) ->
 	menu.set_item_disabled(menu.item_count - 1, selected.is_empty())
 
 
+## A menu entry was picked: its metadata is what to do (call it), a node to select, or nodes to remove.
 func _menu_pick(menu: PopupMenu, i: int) -> void:
 	var picked: Variant = menu.get_item_metadata(i)
-	if picked is Node:
+	if picked is Callable:
+		picked.call()
+	elif picked is Node:
 		_select(picked)
 	elif picked is Array:
 		remove_nodes(picked)
@@ -503,7 +486,7 @@ func _open_switch_popup() -> void:
 	var plat: MovingPlatform = tracks[0].platform()
 	_switch_picker.setup(plat.channel if plat else &"", String(tracks[0].name))
 	_switch_starts.button_pressed = plat.starts_on if plat else true
-	_switch_popup.popup(Rect2i(Vector2i(_switch.get_screen_position() + Vector2(0, _switch.size.y)), Vector2i(340, 0)))
+	_popup_under(_switch_popup, _track_menu, 340)
 
 
 ## Undoable: a PlatformSwitch (box zone) on `channel` doing `action`, placed beside the first
@@ -562,6 +545,11 @@ class ChannelInspector extends EditorInspectorPlugin:
 
 # --- preview settings ---
 
+func _open_look_popup() -> void:
+	_fill_look_panel()
+	_popup_under(_look_popup, _main, 300)
+
+
 ## Rebuilds the Preview panel's rows from the current editor settings.
 func _fill_look_panel() -> void:
 	for c in _look_grid.get_children():
@@ -618,6 +606,37 @@ func reset_look() -> void:
 	_render()
 
 
+# --- play in editor ---
+
+## What plays each selected track in the editor: its group (which plays all its tracks), else
+## its platform. Both have a `preview` flag.
+func _players() -> Array:
+	var out := []
+	for t: PlatformTrackInstance in selected_tracks():
+		var p: Node = t.get_parent() if t.get_parent() is PlatformTrackGroup else t.platform()
+		if p and not out.has(p):
+			out.append(p)
+	return out
+
+
+func is_playing() -> bool:
+	var players := _players()
+	return not players.is_empty() and players.all(func(p: Node) -> bool: return p.preview)
+
+
+## Undoable: the selected tracks' platforms move in the editor (or stop).
+func play_in_editor(on: bool) -> void:
+	var players := _players()
+	if players.is_empty():
+		return
+	var ur := EditorInterface.get_editor_undo_redo()
+	ur.create_action("Play platform tracks in the editor" if on else "Stop platform tracks in the editor", UndoRedo.MERGE_DISABLE, players[0])
+	for p: Node in players:
+		ur.add_do_property(p, &"preview", on)
+		ur.add_undo_property(p, &"preview", p.preview)
+	ur.commit_action()
+
+
 # --- groups ---
 
 ## The PlatformTrackInstances selected, directly or through one of their children.
@@ -644,6 +663,13 @@ func _selected_group() -> PlatformTrackGroup:
 		if n:
 			return n
 	return null
+
+
+func _open_group_popup() -> void:
+	_group_name.text = "TrackGroup"
+	_popup_under(_group_popup, _track_menu, 240)
+	_group_name.grab_focus()
+	_group_name.select_all()
 
 
 func _create_group_from_popup() -> void:

@@ -1,6 +1,7 @@
 @tool
 extends "res://tests/editor_test.gd"
-## Editor-side test of the Platform Tools plugin: edit mode toolbar, shape references (plane
+## Editor-side test of the Platform Tools plugin: the toolbar's two icon menus (builder, selected
+## tracks: Play in Editor, Group, Switch), shape references (plane
 ## included), placing a track's anchors with viewport input (snapped / free / vertical, Esc,
 ## Enter, too few anchors), the 3D preview and its settings panel, the built
 ## PlatformTrackInstance (open, or closed by clicking the first anchor), the Shape Refs / Tracks
@@ -20,10 +21,11 @@ func _init() -> void:
 
 func run() -> void:
 	var pt = _find_plugin()
-	check(pt != null, "Platform Edit toolbar found")
-	check(not pt._tools.visible, "tools hidden until edit mode is on")
-	pt._toggle.button_pressed = true
-	check(pt._tools.visible and not pt._finish.visible, "edit mode shows the tools (Finish only while placing)")
+	check(pt != null, "Platform Track builder icon found")
+	EditorInterface.get_selection().clear()
+	await frames(1)
+	check(pt._main.text == "" and _shown(pt) == [pt._main], "toolbar: just the builder icon (nothing selected, not placing)")
+	check([&"Path3D", &"AnimatableBody3D", &"Play", &"Groups", &"Signals", &"Tools", &"Curve3D"].all(func(i): return EditorInterface.get_editor_theme().has_icon(i, &"EditorIcons")), "menu icons exist in the editor theme")
 	var ur := EditorInterface.get_editor_undo_redo()
 	var hist := ur.get_history_undo_redo(ur.get_object_history_id(self))
 	cam = EditorInterface.get_editor_viewport_3d(0).get_camera_3d()
@@ -59,30 +61,32 @@ func run() -> void:
 
 	# the Shape Refs menu: count, select one to edit it, remove the selected ones
 	await frames(1)
-	check(pt._refs.text == "Shape Refs (2)", "toolbar counts the shape references (%s)" % pt._refs.text)
-	var rmenu: PopupMenu = pt._refs.get_popup()
-	rmenu.about_to_popup.emit()
+	var main: PopupMenu = _open(pt)
+	check(main.get_item_text(0) == "Shape Refs (2)" and main.get_item_submenu_node(0) == pt._refs and main.get_item_text(1) == "Tracks (0)" and main.get_item_submenu_node(1) == pt._tracks, "builder menu: Shape Refs and Tracks submenus, counted (%s, %s)" % [main.get_item_text(0), main.get_item_text(1)])
+	var rmenu: PopupMenu = pt._refs
 	var cap_i := _item_for(rmenu, cap)
 	check(cap_i >= 0 and rmenu.get_item_text(cap_i) == "CapsuleRef" and _item_for(rmenu, ref) >= 0, "Shape Refs menu lists each reference")
 	rmenu.index_pressed.emit(cap_i)
 	await frames(2)
 	check(EditorInterface.get_selection().get_selected_nodes() == [cap] and EditorInterface.get_inspector().get_edited_object() == cap, "picking one selects it, the inspector edits it")
-	rmenu.about_to_popup.emit()
+	_open(pt)
 	var rm_i := _remove_item(rmenu)
 	check(rm_i >= 0 and not rmenu.is_item_disabled(rm_i) and rmenu.get_item_metadata(rm_i) == [cap], "Remove selected offers the selected reference")
 	rmenu.index_pressed.emit(rm_i)
 	await frames(1)
-	check(cap.get_parent() == null and pt._refs.text == "Shape Refs (1)", "removed, count updated")
+	check(cap.get_parent() == null and _open(pt).get_item_text(0) == "Shape Refs (1)", "removed, count updated")
 	hist.undo()
 	await frames(1)
-	check(cap.get_parent() == self and cap.owner == self and cap.shapes()[0].owner == self and pt._refs.text == "Shape Refs (2)", "undo puts it back, saved with the scene")
+	check(cap.get_parent() == self and cap.owner == self and cap.shapes()[0].owner == self and _open(pt).get_item_text(0) == "Shape Refs (2)", "undo puts it back, saved with the scene")
 
 	# --- placing anchors ---
 	_aim()
 	var hit: Dictionary = pt.pick(cam, cam.unproject_position(Vector3(-3, 1, 0)), false)
 	check(hit.snapped and hit.position.distance_to(Vector3(-3, 1, 0)) < 0.01, "pick snaps onto the reference's surface")
-	pt.start_track()
-	check(pt._finish.visible and pt._cancel.visible and not pt._group.visible, "placing shows Finish / Cancel")
+	_open(pt)
+	check(pt._tracks.get_item_text(0) == "New Track", "Tracks menu: New Track first")
+	pt._tracks.index_pressed.emit(0)
+	check(pt._placing and _shown(pt) == [pt._main, pt._status, pt._finish, pt._cancel], "New Track starts placing; the toolbar adds the anchor count, Finish and Cancel")
 	var pv: Node3D = pt._preview
 	check(is_instance_valid(pv) and pv.get_parent() == self and pv.owner == null and not get_children().has(pv), "preview: an internal, unsaved child of the scene")
 	_move(pt, Vector3(-3, 1, 0))
@@ -110,7 +114,10 @@ func run() -> void:
 	pt.set_look("marker_shape", 2)
 	cursor = pv.get_child(pv.get_child_count() - 1)
 	check(cursor.mesh is SphereMesh and cursor.mesh.radial_segments == 4, "settings: diamond markers")
-	pt._fill_look_panel()
+	main = _open(pt)
+	check(main.get_item_text(main.item_count - 1) == "Preview Settings...", "builder menu: Preview Settings last")
+	main.index_pressed.emit(main.item_count - 1)
+	check(pt._look_popup.visible, "it opens the settings panel")
 	var swatch: ColorPickerButton = pt._look_grid.get_node("path_color")
 	check(pt._look_grid.get_child_count() == pt.TrackPreview.SETTINGS.size() * 2 and swatch.edit_alpha, "panel: a row per setting, colours with alpha")
 	swatch.color_changed.emit(Color(1, 0, 0, 0.5))
@@ -119,6 +126,7 @@ func run() -> void:
 	check(is_equal_approx(pv.get_child(0).mesh.top_radius, 0.25), "panel: path width")
 	pt.reset_look()
 	check(pt.TrackPreview.SETTINGS.all(func(st): return pt.TrackPreview.value(st[0]) == st[2]) and pv.get_child(pv.get_child_count() - 1).mesh is SphereMesh, "Reset to defaults")
+	pt._look_popup.hide()
 	_click(pt, Vector3(20, 5, 0), true) # Shift: vertical plane facing the camera
 	var a: PackedVector3Array = pt._anchors
 	check(a.size() == 3 and a[0].distance_to(Vector3(-3, 1, 0)) < 0.01 and a[1].distance_to(Vector3(20, 1, 0)) < 0.01 and a[2].distance_to(Vector3(20, 5, 0)) < 0.01, "anchors: on the reference, free, free raised with Shift: %s" % [a])
@@ -161,19 +169,39 @@ func run() -> void:
 	hist.redo()
 	check(_tracks(self) == [inst] and inst.owner == self and seq.owner == self, "redo brings it back")
 	await frames(1)
-	check(pt._tracks.text == "Tracks (1)", "toolbar counts the tracks (%s)" % pt._tracks.text)
+	check(_open(pt).get_item_text(1) == "Tracks (1)", "builder menu counts the tracks (%s)" % _open(pt).get_item_text(1))
 
 	# --- group ---
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(plat) # its platform: still counts as the track
 	await frames(2)
-	check(pt._group.visible, "Group button shows when a track (or a part of it) is selected")
+	check(pt._track_menu.visible and pt._track_menu.text == "", "track menu icon shows when a track (or a part of it) is selected")
+	var acts: PopupMenu = pt._track_menu.get_popup()
+	check(range(acts.item_count).map(func(i): return acts.get_item_text(i)) == ["Play in Editor", "Group...", "Switch..."], "track menu: Play in Editor, Group, Switch")
+	acts.about_to_popup.emit()
+	check(not acts.is_item_checked(0) and not plat.preview, "not playing yet")
+	acts.index_pressed.emit(0)
+	acts.about_to_popup.emit()
+	check(plat.preview and acts.is_item_checked(0), "Play in Editor: on, checked")
+	var was := plat.global_position
+	await get_tree().create_timer(1.2).timeout # longer than a lap wait
+	await physics_frames(2)
+	check(plat.global_position.distance_to(was) > 0.05, "the platform moves in the editor")
+	acts.index_pressed.emit(0)
+	check(not plat.preview, "picking it again stops it")
+	hist.undo()
+	check(plat.preview, "undoable")
+	hist.undo()
+	check(not plat.preview, "back to not playing")
 	EditorInterface.get_selection().clear()
 	await frames(2)
-	check(not pt._group.visible, "and hides without one")
+	check(not pt._track_menu.visible, "and hides without one")
 	EditorInterface.get_selection().add_node(inst)
 	await frames(2)
 	var before := inst.global_transform
+	acts.index_pressed.emit(1)
+	check(pt._group_popup.visible and pt._group_name.text == "TrackGroup", "Group... asks for the group's name")
+	pt._group_popup.hide()
 	var group: PlatformTrackGroup = pt.create_group("Lift Group")
 	check(group.name == &"Lift Group" and group.owner == self and group.get_parent() == self, "group created with its name")
 	check(inst.get_parent() == group and inst.owner == self and inst.global_transform.is_equal_approx(before), "track moved in, same place in the world")
@@ -188,8 +216,17 @@ func run() -> void:
 	group.preview = false
 	await frames(2)
 	check(path.visible and _ghosts(inst).size() == 1 and not plat.preview, "and back")
-	var tmenu: PopupMenu = pt._tracks.get_popup()
-	tmenu.about_to_popup.emit()
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(inst)
+	await frames(1)
+	acts.index_pressed.emit(0)
+	await physics_frames(2)
+	check(group.preview and plat.preview, "Play in Editor on a grouped track plays its group")
+	hist.undo()
+	await physics_frames(2)
+	check(not group.preview and not plat.preview, "undo")
+	var tmenu: PopupMenu = pt._tracks
+	_open(pt)
 	var ti := _item_for(tmenu, inst)
 	check(ti >= 0 and tmenu.get_item_text(ti) == "Lift Group/Track", "Tracks menu lists each track under its group")
 	tmenu.index_pressed.emit(ti)
@@ -219,15 +256,15 @@ func run() -> void:
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(path)
 	await frames(1)
-	tmenu.about_to_popup.emit()
+	_open(pt)
 	var trm := _remove_item(tmenu)
 	check(trm >= 0 and tmenu.get_item_metadata(trm) == [inst], "Remove selected tracks offers the track holding the selected path")
 	tmenu.index_pressed.emit(trm)
 	await frames(1)
-	check(inst.get_parent() == null and pt._tracks.text == "Tracks (0)", "track removed, count updated")
+	check(inst.get_parent() == null and _open(pt).get_item_text(1) == "Tracks (0)", "track removed, count updated")
 	hist.undo()
 	await frames(1)
-	check(inst.get_parent() == self and [inst, path, plat, plat.shapes()[0], seq].all(func(n): return n.owner == self) and pt._tracks.text == "Tracks (1)", "undo restores the track and everything in it")
+	check(inst.get_parent() == self and [inst, path, plat, plat.shapes()[0], seq].all(func(n): return n.owner == self) and _open(pt).get_item_text(1) == "Tracks (1)", "undo restores the track and everything in it")
 
 	# closing a loop: click the first anchor again (3+ placed)
 	EditorInterface.get_selection().clear()
@@ -260,7 +297,7 @@ func run() -> void:
 	var et: PlatformTrackInstance = pt.finish_track()
 	check(et.paths()[0].curve.closed and et.paths()[0].curve.point_count == 3, "Enter with the last anchor 0.1 m from the first: closed")
 	await frames(1)
-	check(pt._tracks.text == "Tracks (3)", "three tracks counted")
+	check(_open(pt).get_item_text(1) == "Tracks (3)", "three tracks counted")
 
 	# --- channel registry ---
 	var reg: GDScript = load("res://addons/platform_tools/channel_registry.gd")
@@ -273,9 +310,9 @@ func run() -> void:
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(plat)
 	await frames(1)
-	check(pt._switch.visible, "Switch button shows while a track is selected")
 	check(plat.channel == &"" and plat.starts_on, "a new track starts on the world clock")
-	pt._open_switch_popup()
+	acts.index_pressed.emit(2)
+	check(pt._switch_popup.visible, "Switch... opens the switch popup")
 	var picker = pt._switch_picker
 	check(picker.is_new() and picker.value() == StringName(reg.unique("Track", known)) and picker.valid(), "no channel yet: a new channel, named after the track (%s)" % picker.value())
 	picker._name.text = "remote"
@@ -300,7 +337,7 @@ func run() -> void:
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(lt)
 	await frames(1)
-	pt._open_switch_popup()
+	acts.index_pressed.emit(2)
 	var shared := -1
 	for i in picker._options.item_count:
 		if picker._options.get_item_metadata(i) is String and picker._options.get_item_metadata(i) == "lift_test":
@@ -336,8 +373,9 @@ func run() -> void:
 	inst.add_child(extra)
 	check(not inst._get_configuration_warnings().is_empty(), "two platforms in a track: warning")
 	extra.free()
-	pt._toggle.button_pressed = false
-	check(not pt._tools.visible, "edit mode off hides the tools")
+	EditorInterface.get_selection().clear()
+	await frames(1)
+	check(_shown(pt) == [pt._main], "nothing selected: back to just the builder icon")
 	for k: String in prefs:
 		pt.TrackPreview.set_value(k, prefs[k])
 	finished = true
@@ -347,10 +385,23 @@ func _find_plugin() -> EditorPlugin:
 	var stack: Array[Node] = [EditorInterface.get_base_control()]
 	while stack:
 		var n: Node = stack.pop_back()
-		if n is Button and n.text == "New Track":
-			return n.pressed.get_connections()[0].callable.get_object()
+		if n is MenuButton and n.tooltip_text == "Platform Track builder":
+			for c in n.get_popup().about_to_popup.get_connections():
+				if c.callable.get_object() is EditorPlugin:
+					return c.callable.get_object()
 		stack.append_array(n.get_children())
 	return null
+
+
+## The builder menu, filled as when it opens.
+func _open(pt) -> PopupMenu:
+	pt._main.get_popup().about_to_popup.emit()
+	return pt._main.get_popup()
+
+
+## The toolbar controls showing.
+func _shown(pt) -> Array:
+	return pt._bar.get_children().filter(func(c): return c is Control and c.visible)
 
 
 ## The editor moves its camera between frames: aim it right before using it.
