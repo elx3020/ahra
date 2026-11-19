@@ -8,6 +8,7 @@ const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down |
 
 @export var bounds_center := Vector3.ZERO
 @export var bounds_radius := 200.0 ## farther than this from bounds_center = fall death
+@export var area_id: StringName ## scopes its platform channels: `lift` here is `area_id:lift` (empty: the scene file's name)
 
 @onready var player: Player = $Player
 @onready var cam: Camera3D = $Camera

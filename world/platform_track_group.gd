@@ -9,6 +9,8 @@ extends PlatformProgram
 ##   Turn it on in the inspector: the Platform Tools move the platform, drop the others and join
 ##   each track's end to the next one's start, halfway between them (also the last back to the
 ##   first when the circuit starts over).
+## With `channel_scope` on, plain channel names inside it (tracks, switches, end signals) are
+## its own: placed twice, a set piece keeps two separate states (see Channels).
 
 @export var circuit := false: ## the tracks share one platform that rides them in order
 	set(v):
@@ -16,6 +18,7 @@ extends PlatformProgram
 		notify_property_list_changed()
 		for t in get_children():
 			t.notify_property_list_changed()
+@export var channel_scope := false ## plain channel names inside it are its own (`area:Name/lift`): a set piece placed twice keeps two states
 @export var show_paths := true ## show the tracks' Path3D curves in the editor
 @export var show_destination := true ## a ghost of the platform at the end of each path
 

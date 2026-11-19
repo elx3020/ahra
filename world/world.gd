@@ -5,14 +5,14 @@ extends Node
 
 var time := 0.0 ## world seconds; pauses with the tree, keeps running across scene changes
 var spawn: StringName ## marker the next area puts the player at (set by SceneDoor)
-## channel -> state, changed by PlatformSwitches, read by MovingPlatforms:
+## channel key ("area:name", see Channels) -> state, changed by PlatformSwitches, read by tracks:
 ##   t0: last change, drive: [drive of starts-off, of starts-on platforms] at t0,
 ##   flip: power toggled, dir: +1/-1, run_start/run_end: RUN window (forced on),
 ##   rates: (speed, start wait, end wait) multipliers,
 ##   changes: rate history [[time, drive off, drive on, speed, start wait, end wait]],
 ##   bounds: run-once platforms' ends {track path#platform: [starts_on, low, high]}
 var channels := {}
-## end signals tracks have sent (PlatformSequence.end_signal): "track path#signal" -> how many
+## end signals tracks have sent (PlatformSequence.end_signal): "area:track path#signal" -> how many
 ## times, so an area loading later neither misses nor repeats them
 var signals := {}
 

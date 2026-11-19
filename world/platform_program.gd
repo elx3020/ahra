@@ -23,7 +23,7 @@ const PROGRAM := [&"after_last", &"offset", &"platforms", &"channel", &"starts_o
 @export var offset := 0.0 ## seconds ahead on the timeline: shifts it against other tracks on the same clock
 @export_range(1, 16, 1, "or_greater") var platforms := 1 ## platforms riding it, spread evenly in time (copies of the first)
 @export_group("Switches")
-@export var channel: StringName ## PlatformSwitches on this channel control it (empty = world clock, no switches)
+@export var channel: StringName ## PlatformSwitches on this channel control it (empty = world clock, no switches; plain = this area's, see Channels)
 @export var starts_on := true ## always on: moves until a POWER switch stops it; off = waits for a switch
 @export_group("Display")
 @export var preview := false ## move the platforms in the editor, to check timing and sync
@@ -98,7 +98,7 @@ func motion_time(rider := 0) -> float:
 		if clock < 0.0:
 			return t
 		return t + maxf(0.0, clock - woken_at()) # a switched track as if switched on at 0, unless a signal wakes it
-	return t + (World.drive(channel, starts_on) if channel else World.time)
+	return t + (World.drive(Channels.key(self, channel), starts_on) if channel else World.time)
 
 
 ## Editor: the clock time a track's end signal powers this program on (0 if none: it doesn't
@@ -110,7 +110,7 @@ func woken_at(seen: Array = []) -> float:
 	for p: PlatformProgram in get_tree().get_nodes_in_group(GROUP):
 		if p.plays():
 			for s: Array in p._signals:
-				if s[1] == channel:
+				if s[1] == Channels.key(self, channel):
 					best = minf(best, p.woken_at(seen + [self]) + s[0] - p.offset)
 	return maxf(best, 0.0) if best < INF else 0.0
 
@@ -145,10 +145,10 @@ func _follow() -> void:
 ## neither misses nor repeats one) powers on its channel, back-dated to when it happened. Program
 ## time here ignores a run-once program's end stop, which would hide how long ago it passed.
 func _send_signals() -> void:
-	var t := offset + _shifts[0] + (World.drive(channel, starts_on, false) if channel else World.time)
+	var t := offset + _shifts[0] + (World.drive(Channels.key(self, channel), starts_on, false) if channel else World.time)
 	for i in _signals.size():
 		var e: float = _signals[i][0]
-		var key := "%s#%d" % [get_path(), i]
+		var key := "%s#%d" % [Channels.id(self), i]
 		var sent: int = World.signals.get(key, 0)
 		var ends := _ends_by(t, e)
 		if ends > sent:
@@ -182,6 +182,8 @@ func _compile() -> void:
 		for q in t.sequences:
 			if t.path_of(q) == null or not _add_legs(q, t.path_of(q)):
 				continue
+			if q.end_signal != &"" and q.trips > 0:
+				_signals.append([_duration, Channels.key(t, q.end_signal)])
 			if q.trips == 0:
 				break # it never ends: nothing after it plays
 		if _loop_from >= 0.0:
@@ -217,8 +219,6 @@ func _add_legs(q: PlatformSequence, path: Path3D) -> bool:
 			_push([q.start_wait * _rates.y, path, a, a])
 			_push([travel, path, a, a + span])
 			_push([q.end_wait * _rates.z, path, a + span, a + span])
-	if q.end_signal != &"" and q.trips > 0:
-		_signals.append([_duration, q.end_signal])
 	return true
 
 
@@ -286,7 +286,8 @@ func _time_at(at: Vector2) -> float:
 ## Speed / wait switches change entry lengths: shift each rider's clock so it carries on from
 ## the same entry and fraction of it instead of jumping.
 func _rebase() -> void:
-	var changes := World.changes(channel)
+	var key := Channels.key(self, channel)
+	var changes := World.changes(key)
 	if changes.size() == _rebased:
 		return
 	_rates = Vector3.ONE
@@ -309,7 +310,7 @@ func _rebase() -> void:
 		# instead of first unwinding the time it spent parked at the end
 		for i in _riders.size():
 			var start := offset + i * _spacing + _shifts[i]
-			World.bound(channel, "%s#%d" % [get_path(), i], starts_on, -start, _duration - start)
+			World.bound(key, "%s#%d" % [Channels.id(self), i], starts_on, -start, _duration - start)
 
 
 ## Copies of the platform for `platforms` > 1 (internal children: not saved, never counted as its platform).

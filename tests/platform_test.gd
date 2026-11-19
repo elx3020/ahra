@@ -118,16 +118,16 @@ func _run() -> void:
 	var sw: Node = area.get_node("Bays/Switch/Switch")
 	var y0 := bridge.position.y
 	await _wait(30)
-	_check(is_equal_approx(y0, bridge.position.y) and is_zero_approx(world.drive(&"bridge", false)), "switch platform waits until switched on")
+	_check(is_equal_approx(y0, bridge.position.y) and is_zero_approx(world.drive(&"platforms_a:bridge", false)), "switch platform waits until switched on")
 	sw.interact(p)
 	await _wait(120)
 	var y1 := bridge.position.y
-	_check(world.channels[&"bridge"].flip and y1 > y0 + 1.0, "power on: the bridge wave rises")
+	_check(world.channels[&"platforms_a:bridge"].flip and y1 > y0 + 1.0, "power on: the bridge wave rises")
 	sw.interact(p)
 	await _wait(1)
 	y1 = bridge.position.y
 	await _wait(60)
-	_check(not world.channels[&"bridge"].flip and is_equal_approx(y1, bridge.position.y), "power off: frozen in place")
+	_check(not world.channels[&"platforms_a:bridge"].flip and is_equal_approx(y1, bridge.position.y), "power off: frozen in place")
 	var wave := [1, 2, 3].map(func(i): return area.get_node("Bays/Switch/Track%d" % i).motion_time())
 	_check(is_equal_approx(wave[1] - wave[0], 0.5) and is_equal_approx(wave[2] - wave[1], 0.5), "switch group keeps its offsets through on/off")
 
@@ -142,7 +142,7 @@ func _run() -> void:
 	await _wait(1)
 	x0 = rush.position.x
 	await _wait(30)
-	_check(is_equal_approx(world.drive(&"rush", false), 6.0) and is_equal_approx(x0, rush.position.x), "timed switch: stops after 6 s of running")
+	_check(is_equal_approx(world.drive(&"platforms_a:rush", false), 6.0) and is_equal_approx(x0, rush.position.x), "timed switch: stops after 6 s of running")
 
 	# --- run once (one way, 1 trip, then stop) ---
 	var once: Node3D = area.get_node("Bays/RunOnce/Track/Platform")
@@ -222,7 +222,7 @@ func _run() -> void:
 	remote = area.get_node("Bays/Remote/Track/Platform")
 	p = area.get_node("Player")
 	_check(area.name == &"PlatformsA" and p.global_position.distance_to(area.get_node("Bays/Remote/FromB").global_position) < 1.5, "door back to area A at the remote bay")
-	_check(absf(world.drive(&"remote", false) - (world.time - on_at)) < 0.05 and not remote.position.is_equal_approx(start), "remote platform kept moving while the player was in area B")
+	_check(absf(world.drive(&"platforms_a:remote", false) - (world.time - on_at)) < 0.05 and not remote.position.is_equal_approx(start), "remote platform kept moving while the player was in area B")
 	before = remote.position
 	await _wait(30)
 	_check(not remote.position.is_equal_approx(before), "and it is still moving")
@@ -233,19 +233,47 @@ func _run() -> void:
 	var lifts: Array = [area.get_node("Bays/Relay/LiftA"), area.get_node("Bays/Relay/LiftB")]
 	var lift_y: Array = lifts.map(func(l): return l.platform().position.y)
 	await _wait(30)
-	_check(is_zero_approx(world.drive(&"relay", false)) and lifts.all(func(l): return l.platform().position.y == lift_y[lifts.find(l)]), "relay: both lifts wait for a signal")
+	_check(is_zero_approx(world.drive(&"platforms_a:relay", false)) and lifts.all(func(l): return l.platform().position.y == lift_y[lifts.find(l)]), "relay: both lifts wait for a signal")
 	area.get_node("Bays/Relay/Go").interact(p)
 	var go_at: float = world.time
 	await _wait(150) # ferry: [0.5 wait][3.5 s across] -> its first sequence ends 4 s after GO
-	_check(not world.channels.has(&"relay"), "not before the ferry's first sequence ends")
+	_check(not world.channels.has(&"platforms_a:relay"), "not before the ferry's first sequence ends")
 	await _wait(120)
-	_check(world.channels[&"relay"].flip and absf(world.drive(&"relay", false) - (world.time - go_at - 4.0)) < 0.05 and not world.channels.has(&"relay_back"), "the end of its first sequence powers on the relay channel, on time (%.2f s)" % (world.time - go_at - world.drive(&"relay", false)))
+	_check(world.channels[&"platforms_a:relay"].flip and absf(world.drive(&"platforms_a:relay", false) - (world.time - go_at - 4.0)) < 0.05 and not world.channels.has(&"platforms_a:relay_back"), "the end of its first sequence powers on the relay channel, on time (%.2f s)" % (world.time - go_at - world.drive(&"platforms_a:relay", false)))
 	await _wait(90)
 	_check(lifts.all(func(l): return absf(l.platform().position.y - lift_y[lifts.find(l)]) > 0.1), "one signal, two tracks: both lifts on its channel move")
 	world.time += 30.0 # its second sequence ([4 s][3.5 s back]) ends 11.5 s after GO, during the skip
 	await _wait(2)
-	_check(absf(world.drive(&"relay_back", false) - (world.time - go_at - 11.5)) < 0.05, "the end of its second sequence signals the shuttle, back-dated across a clock skip")
+	_check(absf(world.drive(&"platforms_a:relay_back", false) - (world.time - go_at - 11.5)) < 0.05, "the end of its second sequence signals the shuttle, back-dated across a clock skip")
 	_check(world.signals.values() == [1, 1], "each signal sent once (%s)" % world.signals)
+
+	# --- channel scopes ---
+	var ch: GDScript = load("res://world/channels.gd")
+	var go: Node = area.get_node("Bays/Relay/Go")
+	_check(ch.key(go, &"relay_go") == &"platforms_a:relay_go" and ch.key(go, &"world:power") == &"world:power" and ch.relative(go, &"platforms_a:relay_go") == &"relay_go"
+		and ch.relative(go, &"puzzles:p4") == &"puzzles:p4", "scopes: a plain name is the area's (platforms_a:...), a key stays as written")
+	var pieces := [] # a set piece placed twice: same local names, its own scope each
+	for i in 2:
+		var piece: Node3D = load("res://world/platform_track_group.gd").new()
+		piece.name = "Piece%d" % i
+		piece.channel_scope = true
+		var lift := _track([Vector3.ZERO, Vector3(4, 0, 0)], [[0, 1, true, 0]])
+		lift.channel = &"lift"
+		lift.starts_on = false
+		lift.add_child(_platform())
+		piece.add_child(lift)
+		var power: Node = load("res://world/platform_switch.gd").new()
+		power.channel = &"lift"
+		piece.add_child(power)
+		piece.position = Vector3(100 + 10 * i, 100, 180)
+		area.add_child(piece)
+		pieces.append(piece)
+	await _wait(1)
+	_check(ch.key(pieces[1].get_child(1), &"lift") == &"platforms_a:Piece1/lift", "a scoped group adds its name: platforms_a:Piece1/lift")
+	pieces[0].get_child(1).interact(p)
+	await _wait(60)
+	_check(world.channels.has(&"platforms_a:Piece0/lift") and not world.channels.has(&"platforms_a:Piece1/lift") and pieces[0].get_child(0).motion_time() > 0.5
+		and is_zero_approx(pieces[1].get_child(0).motion_time()), "placed twice: each copy's switch only drives its own lift")
 
 	# --- platform shapes: any shape type; a surface zone wraps each shape ---
 	var plat_script: GDScript = load("res://world/moving_platform.gd")

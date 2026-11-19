@@ -103,7 +103,7 @@ func _run() -> void:
 	_n(3, "Run").interact(p)
 	await _wait(340)
 	await _hold(RIGHT, 50)
-	_check(world.rates(&"p4").x == 3.0 and _reached(4), "4: at x3 it reaches the top in time")
+	_check(world.rates(&"puzzles:p4").x == 3.0 and _reached(4), "4: at x3 it reaches the top in time")
 
 	# --- 5 grand circuit: ride all 6 paths and both loops, step off at the top ---
 	o = _o(4)
@@ -134,7 +134,7 @@ func _run() -> void:
 	_n(5, "Run").interact(p)
 	await _wait(1080)
 	await _hold(RIGHT, 50)
-	_check(world.rates(&"p6").z == 0.0 and _reached(6), "6: no stops: the train reaches the top in 18 s")
+	_check(world.rates(&"puzzles:p6").z == 0.0 and _reached(6), "6: no stops: the train reaches the top in 18 s")
 
 	# --- 7 swing ferry: ball A onto the ferry track, ferry to ball B onto the exit ---
 	o = _o(6)

@@ -348,9 +348,14 @@ func run() -> void:
 	# --- channel registry ---
 	var reg: GDScript = load("res://addons/platform_tools/channel_registry.gd")
 	var known: Dictionary = reg.channels()
-	check(known.has("remote") and known["remote"].any(func(f): return f.ends_with("platforms_a.tscn")) and known["remote"].any(func(f): return f.ends_with("platforms_b.tscn")), "registry: channels of the saved scenes, with the scenes that use them")
-	check(reg.unique("remote", known) == "remote_2" and reg.unique("My Lift", known) == "my_lift" and reg.unique("2 fast", known).is_valid_ascii_identifier(), "registry: free, identifier-safe name suggestions")
-	check(reg.problem("remote", known).contains("platforms_a.tscn") and reg.problem("2fast", known) != "" and reg.problem("", known) != "" and reg.problem("fresh_one", known) == "", "registry: a taken, malformed or empty new name is refused")
+	var here: String = load("res://world/channels.gd").prefix(self) # this test scene's scope
+	check(here == "platform_tools_test:", "scope of a scene without an area_id: its file name (%s)" % here)
+	check(known.has("platforms_a:remote") and known["platforms_a:remote"].any(func(f): return f.ends_with("platforms_a.tscn")) and known["platforms_a:remote"].any(func(f): return f.ends_with("platforms_b.tscn")), "registry: channel keys of the saved scenes, a cross-area link listing both")
+	check(known.has("puzzles:p4") and known.has("platforms_a:pingpong") and known.has("platforms_a:relay_back"), "plain names scoped by their area; end signals count too")
+	check(reg.unique("remote", known, "platforms_a:") == "remote_2" and reg.unique("remote", known, "puzzles:") == "remote" and reg.unique("My Lift", known, here) == "my_lift" and reg.unique("2 fast", known, here).is_valid_ascii_identifier(), "registry: free names per scope")
+	check(reg.problem("remote", known, "platforms_a:") != "" and reg.problem("platforms_a:remote", known, "platforms_a:") != "" and reg.problem("remote", known, "puzzles:") == ""
+		and reg.problem("2fast", known, here) != "" and reg.problem("a:b:c", known, here) != "" and reg.problem("", known, here) != "" and reg.problem("fresh_one", known, here) == "", "registry: a name is only taken within its own scope")
+	check(reg.problem("platforms_a:remote", known, "puzzles:") == "" and reg.describe("platforms_a:remote", known).contains("platforms_b.tscn") and reg.describe("world:new_one", known).begins_with("Free"), "registry: area:name from elsewhere is a link, described with where it's used")
 
 	# --- adding a switch ---
 	EditorInterface.get_selection().clear()
@@ -360,10 +365,18 @@ func run() -> void:
 	acts.index_pressed.emit(2)
 	check(pt._switch_popup.visible, "Switch... opens the switch popup")
 	var picker = pt._switch_picker
-	check(picker.is_new() and picker.value() == StringName(reg.unique("Track", known)) and picker.valid(), "no channel yet: a new channel, named after the track (%s)" % picker.value())
+	check(picker.is_new() and picker.value() == StringName(here + reg.unique("Track", known, here)) and picker.valid(), "no channel yet: a new channel, named after the track (%s)" % picker.value())
+	var listed_here := true
+	for i in picker._options.item_count:
+		var m: Variant = picker._options.get_item_metadata(i)
+		listed_here = listed_here and (m == null or String(m).begins_with(here))
+	check(listed_here, "the dropdown lists only this scene's channels (no other areas')")
+	picker._name.text = "platforms_a:remote"
+	picker._name.text_changed.emit("platforms_a:remote")
+	check(picker.valid() and not pt._switch_add.disabled and picker._note.text.begins_with("Links to platforms_a:remote") and picker._note.text.contains("platforms_b.tscn"), "typing area:name links another area's channel, saying where it's used")
 	picker._name.text = "remote"
 	picker._name.text_changed.emit("remote")
-	check(not picker.valid() and pt._switch_add.disabled and picker._note.text.contains("platforms_a.tscn"), "a name used elsewhere is refused, saying where")
+	check(picker.valid() and picker.value() == StringName(here + "remote"), "the same plain name is free here: scoped to this area")
 	picker._name.text = "lift_test"
 	picker._name.text_changed.emit("lift_test")
 	check(picker.valid() and not pt._switch_add.disabled, "a free name is accepted")
@@ -375,7 +388,7 @@ func run() -> void:
 	check(sw.owner == self and sw.shapes().size() == 1 and sw.shapes()[0].owner == self and sw.shapes()[0].shape.size == Vector3(2, 2, 2), "switch saved with the scene, a 2 m box zone")
 	check(sw.global_position.distance_to(plat.global_position + Vector3(0, 1, 3)) < 0.01, "placed beside the platform's start")
 	check(inst.channel == &"lift_test" and not inst.starts_on, "the track joins the channel and waits for the switch")
-	check(reg.channels().has("lift_test"), "the new channel is in the registry (open scene, unsaved)")
+	check(reg.channels().has(here + "lift_test"), "the new channel is in the registry (open scene, unsaved)")
 	hist.undo()
 	check(sw.get_parent() == null and inst.channel == &"" and inst.starts_on, "undo: switch gone, track back on the world clock")
 	hist.redo()
@@ -386,12 +399,16 @@ func run() -> void:
 	acts.index_pressed.emit(2)
 	var shared := -1
 	for i in picker._options.item_count:
-		if picker._options.get_item_metadata(i) is String and picker._options.get_item_metadata(i) == "lift_test":
+		if picker._options.get_item_metadata(i) is String and picker._options.get_item_metadata(i) == here + "lift_test":
 			shared = i
 	check(shared >= 0 and picker._options.get_item_text(shared).contains(scene_file_path.get_file()), "the dropdown lists the new channel, with the scene using it")
 	picker._options.select(shared)
 	picker._options.item_selected.emit(shared)
-	check(picker.valid() and picker.value() == &"lift_test", "picking an existing channel shares it on purpose")
+	check(picker.valid() and picker.value() == StringName(here + "lift_test"), "picking an existing channel shares it on purpose")
+	var linked = pt.ChannelPicker.new()
+	linked.setup(&"platforms_a:remote", "x", lt)
+	check(linked._options.get_selected_metadata() == "platforms_a:remote" and linked._options.get_item_text(linked._options.selected).begins_with("platforms_a:remote"), "a node already linked to another area shows that link in its list")
+	linked.free()
 	pt._switch_add.pressed.emit()
 	check(lt.channel == &"lift_test", "second track on the same channel")
 
@@ -409,7 +426,7 @@ func run() -> void:
 		stack.append_array(n.get_children())
 	check(prop != null and prop.get_edited_property() == &"channel", "inspector: a track's channel is the channel dropdown")
 	var opts: OptionButton = prop._picker._options
-	check(opts.get_selected_metadata() == "lift_test" and opts.get_item_metadata(0) == "", "it shows the current channel, and (none) for tracks")
+	check(opts.get_selected_metadata() == here + "lift_test" and opts.get_item_metadata(0) == "", "it shows the current channel, and (none) for tracks")
 	opts.select(0)
 	opts.item_selected.emit(0)
 	await frames(1)
@@ -456,7 +473,7 @@ func run() -> void:
 	await physics_frames(2)
 	check(is_equal_approx(sb.woken_at(), sig_end) and sb.platform().global_position.distance_to(sb.point_at(1.5)) < 0.01, "then it runs from that moment")
 	pt.set_timing_preview(false)
-	check(load("res://addons/platform_tools/channel_registry.gd").channels().has("sig_test"), "registry: a sequence's end signal counts as a channel use")
+	check(load("res://addons/platform_tools/channel_registry.gd").channels().has(here + "sig_test"), "registry: a sequence's end signal counts as a channel use")
 	EditorInterface.get_selection().clear()
 	await frames(1)
 	EditorInterface.edit_resource(sq)
@@ -468,7 +485,7 @@ func run() -> void:
 		if n.get_script() == load("res://addons/platform_tools/channel_property.gd"):
 			sprop = n
 		stack.append_array(n.get_children())
-	check(sprop != null and sprop.get_edited_property() == &"end_signal" and sprop._picker._options.get_selected_metadata() == "sig_test", "inspector: a sequence's end_signal is the channel dropdown")
+	check(sprop != null and sprop.get_edited_property() == &"end_signal" and sprop._picker._options.get_selected_metadata() == here + "sig_test", "inspector: a sequence's end_signal is the channel dropdown")
 	hist.undo()
 	hist.undo()
 	check(sa.get_parent() == null and sb.get_parent() == null, "(test tracks removed)")

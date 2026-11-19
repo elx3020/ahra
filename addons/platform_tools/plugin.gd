@@ -700,14 +700,15 @@ func _open_switch_popup() -> void:
 	if tracks.is_empty():
 		return
 	var program: PlatformProgram = tracks[0].program()
-	_switch_picker.setup(program.channel, String(program.name))
+	_switch_picker.setup(program.channel, String(program.name), program)
 	_switch_starts.button_pressed = program.starts_on
 	_popup_under(_switch_popup, _track_menu, 340)
 
 
-## Undoable: a PlatformSwitch (box zone) on `channel` doing `action`, placed beside the first
-## selected track's platform as a child of that track (move it anywhere), and every selected
-## track (or its circuit) put on that channel with `starts_on`.
+## Undoable: a PlatformSwitch (box zone) on `channel` (a full key, see Channels) doing `action`,
+## placed beside the first selected track's platform as a child of that track (move it anywhere),
+## and every selected track (or its circuit) put on that channel with `starts_on`. Each node
+## stores the channel relative to its own scope.
 func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSwitch:
 	var tracks := selected_tracks()
 	if tracks.is_empty() or channel == &"":
@@ -715,7 +716,7 @@ func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSw
 	var host: PlatformTrackInstance = tracks[0]
 	var sw := PlatformSwitch.new()
 	sw.name = String(PlatformSwitch.Action.keys()[action]).to_pascal_case() + "Switch"
-	sw.channel = channel
+	sw.channel = Channels.relative(host, channel) # the switch goes into the host: same scope
 	sw.action = action
 	var cs := CollisionShape3D.new()
 	cs.name = "Box"
@@ -734,7 +735,7 @@ func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSw
 	ur.add_do_reference(sw)
 	ur.add_undo_method(host, &"remove_child", sw)
 	for p: PlatformProgram in _programs():
-		ur.add_do_property(p, &"channel", channel)
+		ur.add_do_property(p, &"channel", Channels.relative(p, channel))
 		ur.add_undo_property(p, &"channel", p.channel)
 		ur.add_do_property(p, &"starts_on", starts_on)
 		ur.add_undo_property(p, &"starts_on", p.starts_on)

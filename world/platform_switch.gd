@@ -2,6 +2,7 @@
 class_name PlatformSwitch
 extends Interactable
 ## Press interact to change every platform on `channel`, in any area (state lives in World).
+## A plain channel name is this area's (see Channels); `area:name` reaches another area.
 ## Lights up while its effect is active (toggled, running, reversed, multiplier not 1).
 
 enum Action {
@@ -29,7 +30,7 @@ func _process(delta: float) -> void:
 
 
 func _lit() -> bool:
-	var c: Dictionary = World.channels.get(channel, {})
+	var c: Dictionary = World.channels.get(Channels.key(self, channel), {})
 	if c.is_empty():
 		return false
 	match action:
@@ -40,13 +41,14 @@ func _lit() -> bool:
 
 
 func interact(p: Player) -> float:
+	var key := Channels.key(self, channel)
 	match action:
-		Action.POWER: World.toggle(channel)
-		Action.RUN: World.run(channel, delay, run_time)
-		Action.REVERSE: World.reverse(channel)
+		Action.POWER: World.toggle(key)
+		Action.RUN: World.run(key, delay, run_time)
+		Action.REVERSE: World.reverse(key)
 		_:
-			var r := World.rates(channel)
+			var r := World.rates(key)
 			var i := action - Action.SPEED
 			r[i] = clampf(r[i] + step, limits.x, limits.y)
-			World.set_rates(channel, r)
+			World.set_rates(key, r)
 	return super(p)
