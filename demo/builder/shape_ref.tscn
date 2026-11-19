@@ -29,6 +29,7 @@ script = ExtResource("4_6b7c1")
 start_anchor = 1
 end_anchor = 2
 speed = 6.0
+end_signal = &"left_platform"
 metadata/_custom_type_script = "uid://b0s1eycar27vk"
 
 [sub_resource type="Resource" id="Resource_keqb0"]
@@ -96,7 +97,6 @@ size = Vector3(3, 0.5, 3)
 script = ExtResource("4_6b7c1")
 end_anchor = 5
 round_trip = true
-trips = 0
 speed = 15.0
 
 [sub_resource type="Curve3D" id="Curve3D_lx5eq"]
@@ -123,7 +123,7 @@ _data = {
 }
 point_count = 4
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_n5r1g"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_piypc"]
 resource_local_to_scene = true
 size = Vector3(3, 0.5, 3)
 
@@ -195,7 +195,6 @@ sequences = Array[ExtResource("4_6b7c1")]([SubResource("Resource_lx5eq"), SubRes
 curve = SubResource("Curve3D_5t0ye")
 
 [node name="Platform" type="AnimatableBody3D" parent="Track" unique_id=659810966]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.99745, 0, 0)
 script = ExtResource("3_l1rbd")
 
 [node name="Box" type="CollisionShape3D" parent="Track/Platform" unique_id=434008500]
@@ -213,7 +212,7 @@ preview = true
 curve = SubResource("Curve3D_n5r1g")
 
 [node name="Platform" type="AnimatableBody3D" parent="Track2" unique_id=555787088]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.439814, 0, 0.08452127)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.7948093, 0, 0.02519492)
 script = ExtResource("3_l1rbd")
 
 [node name="PowerSwitch" type="Area3D" parent="Track2/Platform" unique_id=811244808]
@@ -239,7 +238,7 @@ transform = Transform3D(-1.0000001, 6.552966e-08, 0, -6.552966e-08, -1.0000001, 
 shape = SubResource("WorldBoundaryShape3D_lx5eq")
 
 [node name="Track3" type="Node3D" parent="." unique_id=379026920]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.43041, 0, -3.3691266)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.43041, -0.23665404, -3.3691266)
 script = ExtResource("2_6e3mj")
 sequences = Array[ExtResource("4_6b7c1")]([SubResource("Resource_5t0ye")])
 offset = -11.0
@@ -248,23 +247,23 @@ offset = -11.0
 curve = SubResource("Curve3D_6d3fr")
 
 [node name="Platform" type="AnimatableBody3D" parent="Track3" unique_id=1583113010]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.020064354, 0, -6.2399693)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2646904, 0, -20.690235)
 script = ExtResource("3_l1rbd")
 
 [node name="Box" type="CollisionShape3D" parent="Track3/Platform" unique_id=1961469053]
 shape = SubResource("BoxShape3D_2qsn5")
 
 [node name="Track4" type="Node3D" parent="." unique_id=914432451]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.463333, 0, 3.2300317)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.502611, -0.2581162, 3.2300317)
 script = ExtResource("2_6e3mj")
 sequences = Array[ExtResource("4_6b7c1")]([SubResource("Resource_piypc")])
+channel = &"left_platform"
 starts_on = false
 
 [node name="Path" type="Path3D" parent="Track4" unique_id=530713377]
 curve = SubResource("Curve3D_lx5eq")
 
 [node name="Platform" type="AnimatableBody3D" parent="Track4" unique_id=1139659251]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.00893, 0, 21.428371)
 script = ExtResource("3_l1rbd")
 
 [node name="Box" type="CollisionShape3D" parent="Track4/Platform" unique_id=118322188]
@@ -280,8 +279,7 @@ platforms = 4
 curve = SubResource("Curve3D_2qsn5")
 
 [node name="Platform" type="AnimatableBody3D" parent="Track5" unique_id=1326375966]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6212463e-05, 17.78395, 4.976635)
 script = ExtResource("3_l1rbd")
 
 [node name="Box" type="CollisionShape3D" parent="Track5/Platform" unique_id=575433331]
-shape = SubResource("BoxShape3D_n5r1g")
+shape = SubResource("BoxShape3D_piypc")

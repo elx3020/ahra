@@ -1,4 +1,4 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://dkgc7ox7bgn47"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_w1hmu"]
 frequency = 0.06

@@ -1,6 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cn3kho5jsael1"]
 
-[ext_resource type="Script" path="res://demo/materials/materials.gd" id="1_3dhh3"]
+[ext_resource type="Script" uid="uid://bq5ppfecr7quu" path="res://demo/materials/materials.gd" id="1_3dhh3"]
+[ext_resource type="VoxelGIData" uid="uid://lwhmtpi1vol5" path="res://demo/materials/materials.VoxelGI_data.res" id="2_axvij"]
 [ext_resource type="Material" path="res://demo/materials/pbr/glass.tres" id="2_ro6ug"]
 [ext_resource type="Material" path="res://demo/materials/pbr/raw_crystal.tres" id="3_axvij"]
 [ext_resource type="Material" path="res://demo/materials/pbr/quartz.tres" id="4_7dlvy"]
@@ -102,6 +103,7 @@ omni_range = 8.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -0.5)
 visible = false
 size = Vector3(20, 6, 14)
+data = ExtResource("2_axvij")
 
 [node name="Floor" type="MeshInstance3D" parent="." unique_id=1684515334]
 mesh = SubResource("PlaneMesh_bjaeg")

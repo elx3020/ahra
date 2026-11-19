@@ -1,4 +1,4 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://b8j0wiwnliavu"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_rkhp3"]
 noise_type = 5
