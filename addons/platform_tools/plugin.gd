@@ -9,8 +9,14 @@ extends EditorPlugin
 ##   plane through the last anchor: horizontal, or vertical facing the camera with Shift), Enter
 ##   or Finish to build a PlatformTrackInstance (2+ anchors), Esc or Cancel to drop it. Clicking
 ##   the first anchor again (3+ placed) closes the loop and builds it. A 3D preview shows where
-##   the next anchor goes and the path being drawn; the toolbar shows Finish / Cancel meanwhile;
-## - Preview Settings: the preview's colours, opacity and look (saved in editor settings).
+##   the next anchor goes and the path being drawn; the toolbar shows Finish / Cancel meanwhile.
+##   Preview All Platforms: every track in the scene follows one clock, scrubbed with a slider
+##   (manual) or running (automatic), with the time shown, to line platforms up;
+## - Snap to Grid: anchors go to the nearest grid point (then back onto their shape reference or
+##   plane);
+## - Preview Settings: the preview's colours, opacity and look, and the grid step (editor settings).
+## Dragging (or adding) an anchor of a track's path with Godot's Path3D tools also lands it on the
+## shape reference under it, and on the grid when Snap to Grid is on.
 ## While tracks are selected a second icon menu acts on them (on their circuit, for circuit tracks):
 ## - Play in Editor: their platforms move in the editor;
 ## - Group: names a new PlatformTrackGroup and moves them in;
@@ -37,6 +43,8 @@ const REF_SCALE := 4.0 ## shape references start this many times Godot's default
 const PLATFORM_SIZE := Vector3(3, 0.5, 3) ## a new track's platform: a box this size, back and forth forever (a closed path: round and round)
 const CLOSE_PIXELS := 12.0 ## the cursor this close to the first anchor (3+ placed) snaps there and closes the loop
 const CLOSE_DISTANCE := 0.25 ## Enter with the last anchor this close (m) to the first also closes it
+const MANUAL := 0 ## timing preview modes: the slider sets the clock...
+const AUTOMATIC := 1 ## ...or it runs
 
 # toolbar controls, made in _build_toolbar (member defaults would leak on a script reload)
 var _bar: HBoxContainer
@@ -58,11 +66,19 @@ var _switch_action: OptionButton
 var _switch_starts: CheckBox
 var _switch_add: Button
 var _channel_inspector: EditorInspectorPlugin
+var _timing: HBoxContainer ## the timing preview's controls
+var _timing_mode: OptionButton
+var _timing_slider: HSlider
+var _timing_label: Label
 
 var _placing := false
 var _anchors := PackedVector3Array()
 var _hover := {} ## where a click would put the next anchor: {position, snapped}
 var _preview: Node3D ## TrackPreview, an internal child of the edited scene while placing
+var _camera: Camera3D ## the viewport camera that last sent input
+var _drag_path: Path3D ## a track's path being edited while the mouse button is down
+var _drag_from := PackedVector3Array() ## its anchors when the button went down
+var _projecting := false
 
 
 func _enter_tree() -> void:
@@ -84,6 +100,8 @@ func _exit_tree() -> void:
 	EditorInterface.get_selection().selection_changed.disconnect(_refresh)
 	EditorInterface.get_editor_settings().settings_changed.disconnect(_render)
 	scene_changed.disconnect(_on_scene_changed)
+	set_timing_preview(false)
+	_end_drag()
 	remove_inspector_plugin(_channel_inspector)
 	remove_control_from_container(CONTAINER_SPATIAL_EDITOR_MENU, _bar)
 	_bar.queue_free()
@@ -98,6 +116,10 @@ func _build_toolbar() -> void:
 	_track_menu = MenuButton.new()
 	_status = Label.new()
 	_finish = Button.new()
+	_timing = HBoxContainer.new()
+	_timing_mode = OptionButton.new()
+	_timing_slider = HSlider.new()
+	_timing_label = Label.new()
 	_cancel = Button.new()
 	_group_popup = PopupPanel.new()
 	_group_name = LineEdit.new()
@@ -156,6 +178,28 @@ func _build_toolbar() -> void:
 	_cancel.pressed.connect(cancel_track)
 	_bar.add_child(_cancel)
 
+	# the timing preview
+	var clock := Label.new()
+	clock.text = "All platforms:"
+	_timing.add_child(clock)
+	_timing_mode.add_item("Manual", MANUAL)
+	_timing_mode.add_item("Automatic", AUTOMATIC)
+	_timing_mode.tooltip_text = "Manual: the slider sets the clock. Automatic: it runs"
+	_timing.add_child(_timing_mode)
+	_timing_slider.custom_minimum_size = Vector2(220, 0)
+	_timing_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_timing_slider.step = 0.01
+	_timing_slider.value_changed.connect(set_clock)
+	_timing.add_child(_timing_slider)
+	_timing_label.custom_minimum_size = Vector2(70, 0)
+	_timing.add_child(_timing_label)
+	var stop := Button.new()
+	stop.icon = _icon(&"Close")
+	stop.tooltip_text = "Stop previewing all platforms"
+	stop.pressed.connect(set_timing_preview.bind(false))
+	_timing.add_child(stop)
+	_bar.add_child(_timing)
+
 	var form := VBoxContainer.new()
 	form.custom_minimum_size = Vector2(320, 0)
 	var grid := GridContainer.new()
@@ -208,6 +252,7 @@ func _refresh() -> void:
 		c.visible = _placing
 	_status.text = "%d anchor%s | Shift: vertical plane | click the first anchor: close the loop | Enter: finish | Esc: cancel" % [_anchors.size(), "" if _anchors.size() == 1 else "s"]
 	_track_menu.visible = not _placing and not selected_tracks().is_empty()
+	_timing.visible = PlatformProgram.editor_clock >= 0.0
 
 
 ## Shows `popup` below `button`.
@@ -240,6 +285,10 @@ func _fill_main_menu() -> void:
 	menu.set_item_icon(0, _icon(&"CollisionShape3D"))
 	menu.add_submenu_node_item("Tracks (%d)" % tracks.size(), _tracks)
 	menu.set_item_icon(1, _icon(&"Path3D"))
+	menu.add_icon_check_item(_icon(&"SnapGrid"), "Snap to Grid (%s m)" % TrackPreview.value("grid_step"))
+	menu.set_item_checked(menu.item_count - 1, TrackPreview.value("grid_snap"))
+	menu.set_item_metadata(menu.item_count - 1, func() -> void: set_look("grid_snap", not TrackPreview.value("grid_snap")))
+	menu.set_item_tooltip(menu.item_count - 1, "New and dragged anchors go to the nearest grid point (step: Preview Settings)")
 	menu.add_separator()
 	menu.add_icon_item(_icon(&"Tools"), "Preview Settings...")
 	menu.set_item_metadata(menu.item_count - 1, _open_look_popup)
@@ -252,6 +301,10 @@ func _fill_main_menu() -> void:
 	_tracks.clear()
 	_tracks.add_icon_item(_icon(&"Curve3D"), "New Track")
 	_tracks.set_item_metadata(0, start_track)
+	_tracks.add_icon_check_item(_icon(&"Play"), "Preview All Platforms")
+	_tracks.set_item_checked(1, PlatformProgram.editor_clock >= 0.0)
+	_tracks.set_item_metadata(1, func() -> void: set_timing_preview(PlatformProgram.editor_clock < 0.0))
+	_tracks.set_item_tooltip(1, "Every track in the scene follows one clock (a slider, or running), to time platforms against each other")
 	_tracks.add_separator()
 	_fill_list(_tracks, tracks, selected_tracks(), "tracks")
 
@@ -437,9 +490,15 @@ func create_track(points: PackedVector3Array, closed := false) -> PlatformTrackI
 	return inst
 
 
-## Viewport input while placing anchors (forwarding is always on, whatever is selected).
+## Viewport input (forwarding is always on, whatever is selected, ahead of the Path3D editor):
+## placing anchors, and watching a track's path while the mouse button is down.
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
+	_camera = camera
 	if not _placing:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			_end_drag()
+			if event.pressed:
+				_start_drag()
 		return AFTER_GUI_INPUT_PASS
 	if event is InputEventMouseMotion:
 		_hover = pick(camera, event.position, event.shift_pressed)
@@ -468,28 +527,122 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 ## Where a click at `screen` puts an anchor, as {position, snapped, closes}: the first anchor
 ## when the mouse is on it (3+ placed: closes the loop), else the nearest ShapeReference surface
 ## under the mouse, else a plane through the last anchor (y 0 for the first): horizontal, or
-## with `vertical` upright and facing the camera, to raise or lower the track.
+## with `vertical` upright and facing the camera, to raise or lower the track. Then the grid.
 func pick(camera: Camera3D, screen: Vector2, vertical: bool) -> Dictionary:
 	if _anchors.size() >= 3 and not camera.is_position_behind(_anchors[0]) \
 			and camera.unproject_position(_anchors[0]).distance_to(screen) <= CLOSE_PIXELS:
 		return {position = _anchors[0], snapped = true, closes = true}
 	var from := camera.project_ray_origin(screen)
 	var dir := camera.project_ray_normal(screen)
-	var best := {}
-	for ref in camera.get_tree().get_nodes_in_group(ShapeSet.GROUP):
-		if ref is ShapeReference:
-			var hit: Dictionary = ref.cast(from, dir)
-			if not hit.is_empty() and (best.is_empty() or from.distance_to(hit.position) < from.distance_to(best.position)):
-				best = hit
-	if not best.is_empty():
-		return {position = best.position, snapped = true}
+	var hit := _cast_references(from, dir)
+	if not hit.is_empty():
+		hit.snapped = true
+		return _on_grid(hit)
 	var through := _anchors[-1] if not _anchors.is_empty() else Vector3.ZERO
 	var normal := Vector3.UP
 	if vertical and not _anchors.is_empty():
 		var facing := Vector3(dir.x, 0, dir.z)
 		normal = facing.normalized() if facing.length() > 0.01 else Vector3.FORWARD
-	var p: Variant = Plane(normal, through).intersects_ray(from, dir)
-	return {position = p if p != null else from + dir * 10.0, snapped = false}
+	var plane := Plane(normal, through)
+	var p: Variant = plane.intersects_ray(from, dir)
+	return _on_grid({position = p if p != null else from + dir * 10.0, snapped = false, plane = plane})
+
+
+## The nearest ShapeReference surface along the ray: {position, normal, ref}, or {}.
+func _cast_references(from: Vector3, dir: Vector3) -> Dictionary:
+	var best := {}
+	for ref in get_tree().get_nodes_in_group(ShapeSet.GROUP):
+		if ref is ShapeReference:
+			var hit: Dictionary = ref.cast(from, dir)
+			if not hit.is_empty() and (best.is_empty() or from.distance_to(hit.position) < from.distance_to(best.position)):
+				best = hit
+				best.ref = ref
+	return best
+
+
+## With Snap to Grid on, `at` moves to the nearest grid point, then back onto what it lies on:
+## its shape reference's surface (along the normal), or its plane. A point the grid would pull
+## off its shape stays where it was.
+func _on_grid(at: Dictionary) -> Dictionary:
+	if not TrackPreview.value("grid_snap"):
+		return at
+	var q: Vector3 = at.position.snapped(Vector3.ONE * TrackPreview.value("grid_step"))
+	if at.has("ref"):
+		var back: Dictionary = at.ref.cast(q + at.normal * 100.0, -at.normal)
+		q = back.position if not back.is_empty() else at.position
+	elif at.has("plane"):
+		q = at.plane.project(q)
+	at.position = q
+	return at
+
+
+# --- editing a track's path ---
+
+## Mouse button down: if a track's path is selected (the Path3D editor works on the selection),
+## watch its anchors until the button goes up.
+func _start_drag() -> void:
+	var sel := EditorInterface.get_selection().get_selected_nodes()
+	if sel.size() == 1 and sel[0] is Path3D and sel[0].get_parent() is PlatformTrackInstance and sel[0].curve:
+		_drag_path = sel[0]
+		_drag_from = PackedVector3Array()
+		for i in _drag_path.curve.point_count:
+			_drag_from.append(_drag_path.curve.get_point_position(i))
+		_drag_path.curve.changed.connect(_on_drag_changed)
+
+
+func _end_drag() -> void:
+	if is_instance_valid(_drag_path) and _drag_path.curve and _drag_path.curve.changed.is_connected(_on_drag_changed):
+		_drag_path.curve.changed.disconnect(_on_drag_changed)
+	_drag_path = null
+
+
+## The Path3D editor moved or added an anchor: land it on the shape reference under it (seen
+## from the camera, so where the mouse is), and on the grid. Godot's own undo step for the drag
+## records the landed position.
+func _on_drag_changed() -> void:
+	if _projecting or not is_instance_valid(_camera) or not is_instance_valid(_drag_path):
+		return
+	var curve := _drag_path.curve
+	_projecting = true
+	for i in curve.point_count:
+		var p := curve.get_point_position(i)
+		if _drag_from.has(p): # untouched (an insertion shifts indices, not positions)
+			continue
+		var g := _drag_path.to_global(p)
+		var screen := _camera.unproject_position(g)
+		var at := _cast_references(_camera.project_ray_origin(screen), _camera.project_ray_normal(screen))
+		var landed: Vector3 = _on_grid(at if not at.is_empty() else {position = g}).position
+		if not landed.is_equal_approx(g):
+			curve.set_point_position(i, _drag_path.to_local(landed))
+	_projecting = false
+
+
+# --- previewing all platforms ---
+
+## Every track in the scene follows one clock (PlatformProgram.editor_clock), from 0.
+func set_timing_preview(on: bool) -> void:
+	PlatformProgram.editor_clock = 0.0 if on else -1.0
+	if on:
+		var longest := 10.0
+		for p in _in_scene(func(n: Node) -> bool: return n is PlatformProgram and n.plays()):
+			longest = maxf(longest, 2.0 * p._cycle())
+		_timing_slider.max_value = longest
+		set_clock(0.0)
+	_refresh()
+
+
+func set_clock(t: float) -> void:
+	if PlatformProgram.editor_clock < 0.0:
+		return
+	PlatformProgram.editor_clock = maxf(t, 0.0)
+	_timing_slider.max_value = maxf(_timing_slider.max_value, t)
+	_timing_slider.set_value_no_signal(t)
+	_timing_label.text = "%.2f s" % t
+
+
+func _process(delta: float) -> void:
+	if PlatformProgram.editor_clock >= 0.0 and _timing_mode.get_selected_id() == AUTOMATIC:
+		set_clock(PlatformProgram.editor_clock + delta)
 
 
 # --- switches and channels ---

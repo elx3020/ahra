@@ -3,7 +3,8 @@ extends Node3D
 ## The track builder's 3D preview, shown while placing anchors: a cursor marker where the next
 ## anchor goes (its colour tells a snap onto a ShapeReference from a free point), markers on the
 ## anchors placed so far, and the path that finishing would build, as a tube.
-## Its look comes from editor settings under platform_tools/preview/ (toolbar: Preview).
+## Its look comes from editor settings under platform_tools/preview/ (toolbar: Preview Settings),
+## which also hold the anchors' grid snap (grid_snap, grid_step).
 
 const PREFIX := "platform_tools/preview/"
 ## [name, label, default, hint, hint string]
@@ -19,6 +20,8 @@ const SETTINGS := [
 	["path_width", "Path width", 0.08, PROPERTY_HINT_RANGE, "0.01,1,0.01"],
 	["marker_shape", "Marker shape", 0, PROPERTY_HINT_ENUM, "Sphere,Cube,Diamond"],
 	["on_top", "Draw on top", true, PROPERTY_HINT_NONE, ""],
+	["grid_snap", "Snap anchors to grid", false, PROPERTY_HINT_NONE, ""],
+	["grid_step", "Grid step (m)", 1.0, PROPERTY_HINT_RANGE, "0.05,10,0.05"],
 ]
 
 

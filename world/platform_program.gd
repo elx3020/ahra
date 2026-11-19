@@ -28,6 +28,10 @@ const PROGRAM := [&"after_last", &"offset", &"platforms", &"channel", &"starts_o
 @export var preview := false ## move the platforms in the editor, to check timing and sync
 @export var show_track := true ## draw the path in game, so players can read where it goes
 
+## Editor only: the scene timing preview's clock (Platform Tools), which every program shows
+## instead of its own preview; -1 = off.
+static var editor_clock := -1.0
+
 var _plan: Array = [] ## compiled program, one entry per wait or leg: [seconds, path, from, to] (distances along the path)
 var _duration := 0.0 ## seconds of the whole plan
 var _loop_from := -1.0 ## seconds into the plan where a forever sequence's repeating part starts (-1: none)
@@ -87,6 +91,8 @@ func _physics_process(_delta: float) -> void:
 func motion_time(rider := 0) -> float:
 	var t := offset + rider * _spacing
 	if Engine.is_editor_hint():
+		if editor_clock >= 0.0:
+			return t + editor_clock # switched tracks too: as if switched on at 0
 		return t + (Time.get_ticks_msec() * 0.001 if _previewing() else 0.0)
 	return t + (World.drive(channel, starts_on) if channel else World.time)
 

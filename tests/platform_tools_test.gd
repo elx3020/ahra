@@ -7,7 +7,8 @@ extends "res://tests/editor_test.gd"
 ## PlatformTrackInstance (open, or closed by clicking the first anchor), the Shape Refs / Tracks
 ## menus (counts, select, remove, undo), grouping and the group's view settings, the channel
 ## registry, adding a switch (channel picker, collisions refused), the inspector's channel
-## dropdown and circuit mode (inspector checkbox, joined ends, new track into a circuit, Reconnect).
+## dropdown, circuit mode (inspector checkbox, joined ends, new track into a circuit, Reconnect),
+## grid snap, anchors dragged with the Path3D tools landing on references, and the timing preview.
 ## It changes the preview's editor settings and puts the user's values back at the end.
 ## Godot_console.exe --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test
 
@@ -170,6 +171,49 @@ func run() -> void:
 	check(_tracks(self) == [inst] and inst.owner == self and inst.sequences == [seq], "redo brings it back")
 	await frames(1)
 	check(_open(pt).get_item_text(1) == "Tracks (1)", "builder menu counts the tracks (%s)" % _open(pt).get_item_text(1))
+
+	# --- editing the path: an anchor dragged with the Path3D tools lands on the reference under it ---
+	EditorInterface.get_selection().clear()
+	EditorInterface.get_selection().add_node(path)
+	await frames(1)
+	_aim()
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	pt._forward_3d_gui_input(cam, down) # the Path3D editor grabs anchor 1...
+	var keep2 := path.curve.get_point_position(2)
+	path.curve.set_point_position(1, path.to_local(Vector3(1, 8, 12.5))) # ...and drags it, in the air, with the box's top (2, 1, 0) behind it
+	var landed := path.to_global(path.curve.get_point_position(1))
+	check(landed.distance_to(Vector3(2, 1, 0)) < 0.02 and path.curve.get_point_position(2) == keep2, "a dragged anchor lands on the reference under it (%s), the others stay" % landed)
+	var up := down.duplicate()
+	up.pressed = false
+	pt._forward_3d_gui_input(cam, up)
+	path.curve.set_point_position(1, path.to_local(pts[1]))
+	check(path.to_global(path.curve.get_point_position(1)).distance_to(pts[1]) < 0.01, "button up: edits stay as made (inspector, undo)")
+
+	# --- grid snap ---
+	var grid_i := -1
+	main = _open(pt)
+	for i in main.item_count:
+		if main.get_item_text(i).begins_with("Snap to Grid"):
+			grid_i = i
+	check(grid_i >= 0 and not main.is_item_checked(grid_i), "builder menu: Snap to Grid, off")
+	main.index_pressed.emit(grid_i)
+	check(pt.TrackPreview.value("grid_snap") and _open(pt).is_item_checked(grid_i), "picking it turns it on")
+	var on_ref: Dictionary = pt.pick(cam, cam.unproject_position(Vector3(-2.7, 1, 0.3)), false)
+	check(on_ref.position.distance_to(Vector3(-3, 1, 0)) < 0.01, "on a reference: the nearest grid point, still on its surface (%s)" % on_ref.position)
+	var loose: Dictionary = pt.pick(cam, cam.unproject_position(Vector3(20.3, 0, 0.4)), false)
+	check(loose.position.distance_to(Vector3(20, 0, 0)) < 0.01, "free: the nearest grid point on its plane (%s)" % loose.position)
+	pt.set_look("grid_step", 0.5)
+	loose = pt.pick(cam, cam.unproject_position(Vector3(20.3, 0, 0.4)), false)
+	check(loose.position.distance_to(Vector3(20.5, 0, 0.5)) < 0.01, "grid step from the settings (0.5 m)")
+	pt._forward_3d_gui_input(cam, down)
+	path.curve.set_point_position(2, path.to_local(Vector3(20.2, 5.1, 0.1))) # dragged in the air, nothing under it
+	check(path.to_global(path.curve.get_point_position(2)).distance_to(Vector3(20, 5, 0)) < 0.01, "a dragged anchor snaps to the grid too")
+	pt._forward_3d_gui_input(cam, up)
+	path.curve.set_point_position(2, keep2)
+	pt.set_look("grid_snap", false)
+	pt.set_look("grid_step", 1.0)
 
 	# --- group ---
 	EditorInterface.get_selection().clear()
@@ -371,6 +415,24 @@ func run() -> void:
 	check(lt.channel == &"", "picking (none) clears the channel")
 	hist.undo()
 	check(lt.channel == &"lift_test", "through the inspector, so undoable")
+
+	# --- previewing all platforms: one clock ---
+	_open(pt)
+	check(pt._tracks.get_item_text(1) == "Preview All Platforms" and not pt._tracks.is_item_checked(1), "Tracks menu: Preview All Platforms")
+	pt._tracks.index_pressed.emit(1)
+	check(PlatformProgram.editor_clock == 0.0 and pt._timing.visible and pt._timing_mode.get_selected_id() == pt.MANUAL and pt._timing_label.text == "0.00 s", "on: every track on one clock from 0, manual by default")
+	pt._timing_slider.value = 2.0
+	await physics_frames(2)
+	check(PlatformProgram.editor_clock == 2.0 and pt._timing_label.text == "2.00 s" and [lt, et, inst].all(func(t): return t.platform().global_position.distance_to(t.point_at(2.0 + t.offset)) < 0.01), "manual: the slider sets the clock, every platform shows where it is at 2 s")
+	pt._timing_mode.select(pt.AUTOMATIC)
+	var clock0 := PlatformProgram.editor_clock
+	await get_tree().create_timer(0.5).timeout
+	check(PlatformProgram.editor_clock > clock0 + 0.3 and pt._timing_label.text == "%.2f s" % PlatformProgram.editor_clock and absf(pt._timing_slider.value - PlatformProgram.editor_clock) < 0.011, "automatic: the clock runs, time shown")
+	_open(pt)
+	check(pt._tracks.is_item_checked(1), "the menu shows it on")
+	pt._tracks.index_pressed.emit(1)
+	check(PlatformProgram.editor_clock < 0.0 and not pt._timing.visible, "picking it again: off, tracks back to their own preview")
+	pt._timing_mode.select(pt.MANUAL)
 
 	# --- circuit mode ---
 	EditorInterface.get_selection().clear()
