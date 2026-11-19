@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/shape_editor_test.gd" id="1"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="2"]
+[ext_resource type="Script" path="res://world/moving_platform.gd" id="3"]
+
+[node name="ShapeEditorTest" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Zone" type="Area3D" parent="."]
+script = ExtResource("2")
+
+[node name="Platform" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -20)
+script = ExtResource("3")

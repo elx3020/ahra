@@ -368,6 +368,63 @@ size = Vector3(8, 3, 8)
 [sub_resource type="BoxShape3D" id="BoxShape3D_zone48"]
 size = Vector3(30, 2, 40)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat1"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat2"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat3"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat4"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat5"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat6"]
+size = Vector3(4, 0.5, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat7"]
+size = Vector3(4, 0.5, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat8"]
+size = Vector3(4, 0.5, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat9"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat10"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat11"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat12"]
+size = Vector3(4, 0.5, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat13"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat14"]
+size = Vector3(4, 0.5, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat15"]
+size = Vector3(3, 5.5, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat16"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat17"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat18"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat19"]
+size = Vector3(1, 1, 1)
+
 [node name="Puzzles" type="Node3D" unique_id=350659658]
 script = ExtResource("1_rmo01")
 bounds_center = Vector3(230, 25, 0)
@@ -437,6 +494,9 @@ script = ExtResource("6_8jvf1")
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P1_LiftOff/LiftPath1/Lift1"]
+shape = SubResource("BoxShape3D_plat1")
+
 [node name="Sequence1" type="Node" parent="Bays/P1_LiftOff/LiftPath1/Lift1" unique_id=984419898]
 script = ExtResource("7_6hgt6")
 laps = 2
@@ -452,6 +512,9 @@ color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
 offset = 2.8
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P1_LiftOff/FerryPath/Ferry"]
+shape = SubResource("BoxShape3D_plat2")
+
 [node name="Sequence1" type="Node" parent="Bays/P1_LiftOff/FerryPath/Ferry" unique_id=2052475750]
 script = ExtResource("7_6hgt6")
 laps = 2
@@ -466,6 +529,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 3.25, 0)
 script = ExtResource("6_8jvf1")
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P1_LiftOff/LiftPath2/Lift2"]
+shape = SubResource("BoxShape3D_plat3")
 
 [node name="Sequence1" type="Node" parent="Bays/P1_LiftOff/LiftPath2/Lift2" unique_id=1681245593]
 script = ExtResource("7_6hgt6")
@@ -521,6 +587,9 @@ repeat = 0
 channel = &"p2_b1"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P2_Drawbridges/Bridge1Path/Bridge1"]
+shape = SubResource("BoxShape3D_plat4")
+
 [node name="Sequence1" type="Node" parent="Bays/P2_Drawbridges/Bridge1Path/Bridge1" unique_id=307076287]
 script = ExtResource("7_6hgt6")
 speed = 3.0
@@ -553,6 +622,9 @@ color = Color(0.95, 0.65, 0.3, 1)
 repeat = 0
 channel = &"p2_b2"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P2_Drawbridges/Bridge2Path/Bridge2"]
+shape = SubResource("BoxShape3D_plat5")
 
 [node name="Sequence1" type="Node" parent="Bays/P2_Drawbridges/Bridge2Path/Bridge2" unique_id=832704869]
 script = ExtResource("7_6hgt6")
@@ -677,9 +749,11 @@ curve = SubResource("Curve3D_kxhdp")
 [node name="Lane1" type="AnimatableBody3D" parent="Bays/P3_DashLanes/Lane1Path" unique_id=692642984]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, -0.25, -9)
 script = ExtResource("6_8jvf1")
-size = Vector3(4, 0.5, 4)
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P3_DashLanes/Lane1Path/Lane1"]
+shape = SubResource("BoxShape3D_plat6")
 
 [node name="Sequence1" type="Node" parent="Bays/P3_DashLanes/Lane1Path/Lane1" unique_id=308478024]
 script = ExtResource("7_6hgt6")
@@ -693,10 +767,12 @@ curve = SubResource("Curve3D_or4pi")
 [node name="Lane2" type="AnimatableBody3D" parent="Bays/P3_DashLanes/Lane2Path" unique_id=491406237]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31, -0.25, 2.3999999)
 script = ExtResource("6_8jvf1")
-size = Vector3(4, 0.5, 4)
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
 offset = 1.5
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P3_DashLanes/Lane2Path/Lane2"]
+shape = SubResource("BoxShape3D_plat7")
 
 [node name="Sequence1" type="Node" parent="Bays/P3_DashLanes/Lane2Path/Lane2" unique_id=798441763]
 script = ExtResource("7_6hgt6")
@@ -710,10 +786,12 @@ curve = SubResource("Curve3D_qpvfv")
 [node name="Lane3" type="AnimatableBody3D" parent="Bays/P3_DashLanes/Lane3Path" unique_id=943695335]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, -0.25, -6.9)
 script = ExtResource("6_8jvf1")
-size = Vector3(4, 0.5, 4)
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
 offset = 0.7
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P3_DashLanes/Lane3Path/Lane3"]
+shape = SubResource("BoxShape3D_plat8")
 
 [node name="Sequence1" type="Node" parent="Bays/P3_DashLanes/Lane3Path/Lane3" unique_id=411902724]
 script = ExtResource("7_6hgt6")
@@ -770,6 +848,9 @@ color = Color(0.95, 0.65, 0.3, 1)
 repeat = 0
 channel = &"p4"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P4_Express/FerryPath/Ferry"]
+shape = SubResource("BoxShape3D_plat9")
 
 [node name="Sequence1" type="Node" parent="Bays/P4_Express/FerryPath/Ferry" unique_id=1344790425]
 script = ExtResource("7_6hgt6")
@@ -915,6 +996,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -0.25, 0)
 script = ExtResource("6_8jvf1")
 color = Color(0.45, 0.7, 0.95, 1)
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P5_GrandCircuit/Circuit"]
+shape = SubResource("BoxShape3D_plat10")
+
 [node name="Sequence1" type="Node" parent="Bays/P5_GrandCircuit/Circuit" unique_id=1869011895 node_paths=PackedStringArray("path")]
 script = ExtResource("7_6hgt6")
 path = NodePath("../../PathA")
@@ -1020,6 +1104,9 @@ lap_wait = 0.0
 sequence_wait = 2.5
 channel = &"p6"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P6_Layovers/Train"]
+shape = SubResource("BoxShape3D_plat11")
 
 [node name="Sequence1" type="Node" parent="Bays/P6_Layovers/Train" unique_id=1141147169 node_paths=PackedStringArray("path")]
 script = ExtResource("7_6hgt6")
@@ -1177,9 +1264,11 @@ curve = SubResource("Curve3D_gwrte")
 [node name="Ferry" type="AnimatableBody3D" parent="Bays/P7_SwingFerry/FerryPath" unique_id=1110685629]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, -0.25, -10)
 script = ExtResource("6_8jvf1")
-size = Vector3(4, 0.5, 4)
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P7_SwingFerry/FerryPath/Ferry"]
+shape = SubResource("BoxShape3D_plat12")
 
 [node name="Sequence1" type="Node" parent="Bays/P7_SwingFerry/FerryPath/Ferry" unique_id=398014147]
 script = ExtResource("7_6hgt6")
@@ -1302,6 +1391,9 @@ repeat = 0
 channel = &"p8"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P8_SwitchAbove/FerryPath/Ferry"]
+shape = SubResource("BoxShape3D_plat13")
+
 [node name="Sequence1" type="Node" parent="Bays/P8_SwitchAbove/FerryPath/Ferry" unique_id=1061994700]
 script = ExtResource("7_6hgt6")
 speed = 3.0
@@ -1374,9 +1466,11 @@ curve = SubResource("Curve3D_7ch0c")
 [node name="CeilingFerry" type="AnimatableBody3D" parent="Bays/P9_GravityRun/CeilingFerryPath" unique_id=1675900467]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 8.25, 0)
 script = ExtResource("6_8jvf1")
-size = Vector3(4, 0.5, 4)
 color = Color(0.45, 0.7, 0.95, 0.6)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P9_GravityRun/CeilingFerryPath/CeilingFerry"]
+shape = SubResource("BoxShape3D_plat14")
 
 [node name="Sequence1" type="Node" parent="Bays/P9_GravityRun/CeilingFerryPath/CeilingFerry" unique_id=485008418]
 script = ExtResource("7_6hgt6")
@@ -1411,9 +1505,11 @@ curve = SubResource("Curve3D_8usip")
 [node name="WallFerry" type="AnimatableBody3D" parent="Bays/P9_GravityRun/WallFerryPath" unique_id=349850439]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.5, 6, -8.25)
 script = ExtResource("6_8jvf1")
-size = Vector3(3, 5.5, 0.5)
 color = Color(0.45, 0.7, 0.95, 1)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P9_GravityRun/WallFerryPath/WallFerry"]
+shape = SubResource("BoxShape3D_plat15")
 
 [node name="Sequence1" type="Node" parent="Bays/P9_GravityRun/WallFerryPath/WallFerry" unique_id=1077860612]
 script = ExtResource("7_6hgt6")
@@ -1504,6 +1600,9 @@ repeat = 2
 channel = &"p10_lift"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P10_Clockwork/Lift1"]
+shape = SubResource("BoxShape3D_plat16")
+
 [node name="Sequence1" type="Node" parent="Bays/P10_Clockwork/Lift1" unique_id=1937960210 node_paths=PackedStringArray("path")]
 script = ExtResource("7_6hgt6")
 path = NodePath("../../LiftUp")
@@ -1526,6 +1625,9 @@ offset = 4.111111111111111
 channel = &"p10_lift"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/P10_Clockwork/Lift2"]
+shape = SubResource("BoxShape3D_plat17")
+
 [node name="Sequence1" type="Node" parent="Bays/P10_Clockwork/Lift2" unique_id=225527943 node_paths=PackedStringArray("path")]
 script = ExtResource("7_6hgt6")
 path = NodePath("../../LiftUp")
@@ -1547,6 +1649,9 @@ repeat = 2
 offset = 8.222222222222221
 channel = &"p10_lift"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P10_Clockwork/Lift3"]
+shape = SubResource("BoxShape3D_plat18")
 
 [node name="Sequence1" type="Node" parent="Bays/P10_Clockwork/Lift3" unique_id=1315094562 node_paths=PackedStringArray("path")]
 script = ExtResource("7_6hgt6")
@@ -1591,11 +1696,13 @@ curve = SubResource("Curve3D_xfk1g")
 [node name="BallCarrier" type="AnimatableBody3D" parent="Bays/P10_Clockwork/BallPath" unique_id=1037847648]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 17.599998, 0)
 script = ExtResource("6_8jvf1")
-size = Vector3(1, 1, 1)
 color = Color(0.95, 0.65, 0.3, 1)
 repeat = 0
 channel = &"p10_ball"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/P10_Clockwork/BallPath/BallCarrier"]
+shape = SubResource("BoxShape3D_plat19")
 
 [node name="Sequence1" type="Node" parent="Bays/P10_Clockwork/BallPath/BallCarrier" unique_id=1031705388]
 script = ExtResource("7_6hgt6")

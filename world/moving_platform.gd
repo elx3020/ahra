@@ -1,14 +1,17 @@
 @tool
 class_name MovingPlatform
 extends AnimatableBody3D
-## Box platform that plays a program: its PlatformSequence children, in order. Each sequence
+## Platform that plays a program: its PlatformSequence children, in order. Each sequence
 ## moves it along a Path3D (its own, or the platform's parent Path3D), so a program can chain
 ## paths into a circuit. Draw paths with the editor's Path3D tools.
 ## Position is a pure function of time and its channel, never simulated step by step:
 ## it can't drift, it is already in the right place when an area loads, and platforms
-## with the same timing stay in sync forever. For walls/ceilings make the box thin on that
-## axis (or rotate it) and pair it with a GravityZone. A `surface` profile turns it into an
-## ice / mud / wind... platform: an EnvZone wrapping the box rides along with it.
+## with the same timing stay in sync forever.
+## Its shape is its CollisionShape3D children, any type and any number (Shape Tools plugin:
+## inspector Shapes section + viewport handles), drawn as solid `color` meshes. For walls and
+## ceilings make the shape thin on that axis (or rotate it) and pair it with a GravityZone.
+## A `surface` profile turns it into an ice / mud / wind... platform: an EnvZone wrapping its
+## shapes rides along with it.
 
 enum Repeat {
 	NONE, ## play once and stay at the end (a REVERSE switch brings it back)
@@ -16,14 +19,10 @@ enum Repeat {
 	RESTART, ## then start over (the program must end where it starts)
 }
 
-@export var size := Vector3(3, 0.5, 3):
-	set(v):
-		size = v
-		_build()
 @export var color := Color(0.55, 0.6, 0.75):
 	set(v):
 		color = v
-		_build()
+		_paint()
 @export var surface: EnvProfile ## optional: environment applied while touching the platform
 @export_group("Program")
 @export var repeat := Repeat.REVERSE ## what happens after the last sequence
@@ -47,37 +46,35 @@ enum Repeat {
 @export var preview := false ## animate in the editor to check timing and sync
 @export var show_track := true ## draw the paths in game, so players can read where it goes
 
-var _shape := BoxShape3D.new()
-var _mesh := BoxMesh.new()
 var _mat := StandardMaterial3D.new()
+var _seen := [null, null] ## ShapeSet.refresh state
 var _sequences: Array[PlatformSequence] = [] ## children with a usable path
 var _plan: Array = [] ## compiled program, one entry per wait or lap: [seconds, sequence, from, to] (distances on its path)
 var _duration := 0.0
 var _rates := Vector3.ONE ## channel multipliers: speed, lap wait, sequence wait
 var _shift := 0.0 ## program clock shift that keeps motion continuous across rate changes
 var _rebased := -1 ## channel rate changes folded into _shift
-var _cs: CollisionShape3D
 var _warmup := 2 ## physics frames with collision off while the body travels from the scene origin to its place
+var _warm: Array[CollisionShape3D] = [] ## the shapes switched off for the warmup
 
 
 func _ready() -> void:
-	_cs = CollisionShape3D.new() # made here, not as a member default: a script reload would leak it
-	_cs.shape = _shape
-	# the body starts at the scene origin and its first placement is a physics move (Jolt
-	# moves kinematic bodies): keep collision off for it, or it carries whatever stands there
-	_cs.disabled = not Engine.is_editor_hint()
-	add_child(_cs)
-	var mi := MeshInstance3D.new()
-	mi.mesh = _mesh
-	add_child(mi)
-	_mesh.material = _mat
-	_build()
+	_mat.cull_mode = BaseMaterial3D.CULL_DISABLED # convex/concave meshes have no guaranteed winding
+	_paint()
+	_seen = ShapeSet.setup(self, _mat, true)
+	if not Engine.is_editor_hint():
+		# the body starts at the scene origin and its first placement is a physics move (Jolt
+		# moves kinematic bodies): keep collision off for it, or it carries whatever stands there
+		for cs in shapes():
+			if not cs.disabled:
+				cs.disabled = true
+				_warm.append(cs)
 	if surface:
 		var z := EnvZone.new()
 		z.profile = surface
-		var box := BoxShape3D.new()
-		box.size = size + Vector3.ONE * 0.6
-		z.add_shape(box)
+		for cs in shapes():
+			var g := _grown(cs, 0.3)
+			z.add_shape(g[0]).transform = g[1]
 		z.color = Color(color, 0.12)
 		add_child(z)
 	_compile()
@@ -93,10 +90,30 @@ func _physics_process(_delta: float) -> void:
 		_compile() # pick up inspector edits
 		if before != _duration:
 			update_configuration_warnings()
+		_seen = ShapeSet.refresh(self, _seen, _mat, true)
 	elif _warmup > 0:
 		_warmup -= 1
-		_cs.disabled = _warmup > 0
+		if _warmup == 0:
+			for cs in _warm:
+				cs.disabled = false
 	_follow()
+
+
+## The CollisionShape3D children that have a shape.
+func shapes() -> Array[CollisionShape3D]:
+	return ShapeSet.of(self)
+
+
+func _get_property_list() -> Array[Dictionary]:
+	return ShapeSet.property_list(self)
+
+
+func _get(property: StringName) -> Variant:
+	return ShapeSet.get_row(self, property)
+
+
+func _set(property: StringName, value: Variant) -> bool:
+	return ShapeSet.set_row(self, property, value)
 
 
 func _validate_property(p: Dictionary) -> void:
@@ -257,11 +274,30 @@ func _rebase() -> void:
 		World.bound(channel, str(get_path()), starts_on, _unschedule(-_shift) - offset, _unschedule(_duration - _shift) - offset)
 
 
-func _build() -> void:
-	_shape.size = size
-	_mesh.size = size
+func _paint() -> void:
 	_mat.albedo_color = color
 	_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if color.a < 1.0 else BaseMaterial3D.TRANSPARENCY_DISABLED
+
+
+## A zone shape covering `cs` plus `m` all round, as [shape, transform]. Primitives keep their
+## form; other shapes get their bounding box.
+func _grown(cs: CollisionShape3D, m: float) -> Array:
+	var s: Shape3D = cs.shape.duplicate()
+	if s is BoxShape3D:
+		var box := s as BoxShape3D
+		box.size += Vector3.ONE * 2.0 * m
+	elif s is SphereShape3D:
+		var ball := s as SphereShape3D
+		ball.radius += m
+	elif s is CapsuleShape3D or s is CylinderShape3D:
+		s.set(&"height", s.get(&"height") + 2.0 * m) # height first: a capsule keeps height >= 2 * radius
+		s.set(&"radius", s.get(&"radius") + m)
+	else:
+		var b := cs.shape.get_debug_mesh().get_aabb()
+		var box := BoxShape3D.new()
+		box.size = b.size + Vector3.ONE * 2.0 * m
+		return [box, cs.transform.translated_local(b.get_center())]
+	return [s, cs.transform]
 
 
 func _draw_tracks() -> void:

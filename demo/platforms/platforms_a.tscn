@@ -277,6 +277,66 @@ size = Vector3(2, 6, 1)
 [sub_resource type="BoxShape3D" id="BoxShape3D_zone23"]
 size = Vector3(12, 12, 2)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat1"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat2"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat3"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat4"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat5"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat6"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat7"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat8"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat9"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat10"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat11"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat12"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat13"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat14"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat15"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat16"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat17"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat18"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat19"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plat20"]
+size = Vector3(3, 5.5, 0.5)
+
 [node name="PlatformsA" type="Node3D" unique_id=1661674038]
 script = ExtResource("1_ns0vu")
 bounds_center = Vector3(120, 0, 0)
@@ -333,6 +393,9 @@ repeat = 2
 channel = &"pingpong"
 preview = true
 
+[node name="Box" type="CollisionShape3D" parent="Bays/PingPong/Path/Platform"]
+shape = SubResource("BoxShape3D_plat1")
+
 [node name="Sequence1" type="Node" parent="Bays/PingPong/Path/Platform" unique_id=1222770216]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -380,6 +443,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
 script = ExtResource("5_qwj2d")
 repeat = 2
 channel = &"elevator"
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Elevator/Path/Platform"]
+shape = SubResource("BoxShape3D_plat2")
 
 [node name="Sequence1" type="Node" parent="Bays/Elevator/Path/Platform" unique_id=755646466]
 script = ExtResource("6_ygd4d")
@@ -434,6 +500,9 @@ script = ExtResource("5_qwj2d")
 repeat = 2
 channel = &"loop"
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Loop/Path/Platform1"]
+shape = SubResource("BoxShape3D_plat3")
+
 [node name="Sequence1" type="Node" parent="Bays/Loop/Path/Platform1" unique_id=612626931]
 script = ExtResource("6_ygd4d")
 lap_wait = 0.0
@@ -445,6 +514,9 @@ repeat = 2
 offset = 4.333333333333333
 channel = &"loop"
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Loop/Path/Platform2"]
+shape = SubResource("BoxShape3D_plat4")
+
 [node name="Sequence1" type="Node" parent="Bays/Loop/Path/Platform2" unique_id=2114127362]
 script = ExtResource("6_ygd4d")
 lap_wait = 0.0
@@ -455,6 +527,9 @@ script = ExtResource("5_qwj2d")
 repeat = 2
 offset = 8.666666666666666
 channel = &"loop"
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Loop/Path/Platform3"]
+shape = SubResource("BoxShape3D_plat5")
 
 [node name="Sequence1" type="Node" parent="Bays/Loop/Path/Platform3" unique_id=117405619]
 script = ExtResource("6_ygd4d")
@@ -509,6 +584,9 @@ color = Color(0.7, 0.9, 1, 1)
 surface = SubResource("Resource_g86ah")
 repeat = 2
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Surfaces/IcePath/Platform"]
+shape = SubResource("BoxShape3D_plat6")
+
 [node name="Sequence1" type="Node" parent="Bays/Surfaces/IcePath/Platform" unique_id=1369084323]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -524,6 +602,9 @@ color = Color(0.45, 0.32, 0.2, 1)
 surface = SubResource("Resource_qkylp")
 repeat = 2
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Surfaces/MudPath/Platform"]
+shape = SubResource("BoxShape3D_plat7")
+
 [node name="Sequence1" type="Node" parent="Bays/Surfaces/MudPath/Platform" unique_id=349072315]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -538,6 +619,9 @@ script = ExtResource("5_qwj2d")
 color = Color(0.85, 0.85, 0.85, 1)
 surface = SubResource("Resource_j225p")
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Surfaces/WindPath/Platform"]
+shape = SubResource("BoxShape3D_plat8")
 
 [node name="Sequence1" type="Node" parent="Bays/Surfaces/WindPath/Platform" unique_id=1641087526]
 script = ExtResource("6_ygd4d")
@@ -571,6 +655,9 @@ repeat = 2
 off_time = 2.0
 channel = &"timed"
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Timed/BackPath/Platform"]
+shape = SubResource("BoxShape3D_plat9")
+
 [node name="Sequence1" type="Node" parent="Bays/Timed/BackPath/Platform" unique_id=1445267985]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -588,6 +675,9 @@ repeat = 2
 offset = 2.5
 off_time = 2.0
 channel = &"timed"
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Timed/FrontPath/Platform"]
+shape = SubResource("BoxShape3D_plat10")
 
 [node name="Sequence1" type="Node" parent="Bays/Timed/FrontPath/Platform" unique_id=1692487085]
 script = ExtResource("6_ygd4d")
@@ -655,6 +745,9 @@ repeat = 2
 channel = &"bridge"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Switch/Path1/Platform"]
+shape = SubResource("BoxShape3D_plat11")
+
 [node name="Sequence1" type="Node" parent="Bays/Switch/Path1/Platform" unique_id=28326114]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -672,6 +765,9 @@ offset = 0.5
 channel = &"bridge"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Switch/Path2/Platform"]
+shape = SubResource("BoxShape3D_plat12")
+
 [node name="Sequence1" type="Node" parent="Bays/Switch/Path2/Platform" unique_id=2037760630]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -688,6 +784,9 @@ repeat = 2
 offset = 1.0
 channel = &"bridge"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Switch/Path3/Platform"]
+shape = SubResource("BoxShape3D_plat13")
 
 [node name="Sequence1" type="Node" parent="Bays/Switch/Path3/Platform" unique_id=819113365]
 script = ExtResource("6_ygd4d")
@@ -740,6 +839,9 @@ repeat = 2
 channel = &"rush"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/TimedSwitch/Path/Platform"]
+shape = SubResource("BoxShape3D_plat14")
+
 [node name="Sequence1" type="Node" parent="Bays/TimedSwitch/Path/Platform" unique_id=1643219275]
 script = ExtResource("6_ygd4d")
 laps = 2
@@ -774,6 +876,9 @@ shared_waits = true
 lap_wait = 1.0
 sequence_wait = 3.0
 channel = &"program"
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Sequences/Path/Platform"]
+shape = SubResource("BoxShape3D_plat15")
 
 [node name="Sequence1" type="Node" parent="Bays/Sequences/Path/Platform" unique_id=1753379824]
 script = ExtResource("6_ygd4d")
@@ -960,6 +1065,9 @@ script = ExtResource("5_qwj2d")
 color = Color(0.95, 0.6, 0.85, 1)
 preview = true
 
+[node name="Box" type="CollisionShape3D" parent="Bays/Circuit/Platform"]
+shape = SubResource("BoxShape3D_plat16")
+
 [node name="Sequence1" type="Node" parent="Bays/Circuit/Platform" unique_id=1163943336 node_paths=PackedStringArray("path")]
 script = ExtResource("6_ygd4d")
 path = NodePath("../../PathA")
@@ -1049,6 +1157,9 @@ repeat = 0
 channel = &"drawbridge"
 starts_on = false
 
+[node name="Box" type="CollisionShape3D" parent="Bays/RunOnce/Path/Platform"]
+shape = SubResource("BoxShape3D_plat17")
+
 [node name="Sequence1" type="Node" parent="Bays/RunOnce/Path/Platform" unique_id=248510983]
 script = ExtResource("6_ygd4d")
 
@@ -1078,6 +1189,9 @@ color = Color(0.3, 0.8, 0.6, 1)
 repeat = 2
 channel = &"remote"
 starts_on = false
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Remote/Path/Platform"]
+shape = SubResource("BoxShape3D_plat18")
 
 [node name="Sequence1" type="Node" parent="Bays/Remote/Path/Platform" unique_id=280537989]
 script = ExtResource("6_ygd4d")
@@ -1133,6 +1247,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 6.25, 0)
 script = ExtResource("5_qwj2d")
 color = Color(0.55, 0.6, 0.75, 0.5)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Ceiling/Path/Platform"]
+shape = SubResource("BoxShape3D_plat19")
 
 [node name="Sequence1" type="Node" parent="Bays/Ceiling/Path/Platform" unique_id=1386407470]
 script = ExtResource("6_ygd4d")
@@ -1198,8 +1315,10 @@ curve = SubResource("Curve3D_uxm6p")
 [node name="Platform" type="AnimatableBody3D" parent="Bays/Wall/Path" unique_id=2069555297]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3, -8.25)
 script = ExtResource("5_qwj2d")
-size = Vector3(3, 5.5, 0.5)
 repeat = 2
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Wall/Path/Platform"]
+shape = SubResource("BoxShape3D_plat20")
 
 [node name="Sequence1" type="Node" parent="Bays/Wall/Path/Platform" unique_id=1278024717]
 script = ExtResource("6_ygd4d")

@@ -224,6 +224,36 @@ func _run() -> void:
 	seq = area.get_node("Bays/Sequences/Path/Platform")
 	_check(seq._rates.is_equal_approx(Vector3(1.5, 1.5, 0.5)), "speed/wait changes survive leaving and reloading the area")
 
+	# --- platform shapes: any shape type; a surface zone wraps each shape ---
+	var plat_script: GDScript = load("res://world/moving_platform.gd")
+	var slow_ice := EnvProfile.new()
+	slow_ice.mods.speed = -0.5
+	var disc: Node3D = plat_script.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 2.0
+	cyl.height = 0.5
+	var cs := CollisionShape3D.new()
+	cs.shape = cyl
+	disc.add_child(cs)
+	disc.surface = slow_ice
+	disc.position = Vector3(120, 60, 120) # open air, no program: it stays put
+	area.add_child(disc)
+	var lump: Node3D = plat_script.new()
+	var cs2 := CollisionShape3D.new()
+	cs2.shape = BoxMesh.new().create_convex_shape()
+	cs2.position = Vector3(0, 1, 0)
+	lump.add_child(cs2)
+	lump.surface = slow_ice
+	lump.position = Vector3(140, 60, 120)
+	area.add_child(lump)
+	await _place(p, disc.global_position + Vector3(1.2, 1.5, 0))
+	await _wait(40)
+	_check(p.is_on_floor() and p.global_position.y > 60.25 and is_equal_approx(p.mult(&"speed"), 0.5), "cylinder platform: player stands on its top (y 60.25), its surface applies")
+	var wrap: CollisionShape3D = disc.get_children().filter(func(c): return c is EnvZone)[0].shapes()[0]
+	_check(wrap.shape is CylinderShape3D and is_equal_approx(wrap.shape.radius, 2.3) and is_equal_approx(wrap.shape.height, 1.1), "surface zone: the cylinder grown 0.3 m all round")
+	wrap = lump.get_children().filter(func(c): return c is EnvZone)[0].shapes()[0]
+	_check(wrap.shape is BoxShape3D and wrap.shape.size.is_equal_approx(Vector3(1.6, 1.6, 1.6)) and wrap.position.is_equal_approx(Vector3(0, 1, 0)), "surface zone: a convex shape gets its bounding box grown 0.3 m")
+
 	print("PLATFORMS: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 
