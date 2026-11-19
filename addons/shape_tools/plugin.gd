@@ -1,6 +1,6 @@
 @tool
 extends EditorPlugin
-## Shape editing for nodes built on ShapeSet (Zone, MovingPlatform): the inspector's Shapes
+## Shape editing for nodes built on ShapeSet (Zone, MovingPlatform, ShapeReference): the inspector's Shapes
 ## section gets an Add Shape menu and Remove buttons (undoable), and a selected node shows
 ## resize handles for all its shapes at once.
 
@@ -30,7 +30,7 @@ class ShapeInspector extends EditorInspectorPlugin:
 	}
 
 	func _can_handle(o: Object) -> bool:
-		return o is Zone or o is MovingPlatform
+		return o is Zone or o is MovingPlatform or o is ShapeReference # the ShapeSet nodes
 
 	func _parse_property(o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
 		var node := o as Node3D
@@ -102,7 +102,8 @@ class ShapeGizmo extends EditorNode3DGizmoPlugin:
 		return "Shapes"
 
 	func _has_gizmo(node: Node3D) -> bool:
-		return node is Zone or node is MovingPlatform
+		# asked when the node enters the tree, before its _ready: check the class, not a group
+		return node is Zone or node is MovingPlatform or node is ShapeReference
 
 	func _redraw(g: EditorNode3DGizmo) -> void:
 		g.clear()

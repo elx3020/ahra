@@ -1,46 +1,13 @@
 @tool
-extends Node3D
+extends "res://tests/editor_test.gd"
 ## Editor-side test of ShapeSet nodes (Zone, MovingPlatform) + the Shape Tools plugin: Add Shape /
 ## Remove (with undo), inspector proxies, mesh redraw, resize handles, duplicate unsharing.
-## It needs the editor, so it opens this scene there instead of running with -s:
 ## Godot_console.exe --headless --path . -e res://tests/shape_editor_test.tscn -- --shape-editor-test
-## Opening the scene normally does nothing.
-
-var failed := 0
-var finished := false ## run() got to the end (a script error stops it silently)
 
 
-func _ready() -> void:
-	if not Engine.is_editor_hint() or not OS.get_cmdline_user_args().has("--shape-editor-test"):
-		return
-	await get_tree().create_timer(2.0).timeout
-	await run()
-	check(finished, "ran to the end")
-	print("SHAPE EDITOR: ", "OK" if failed == 0 else "%d FAILED" % failed)
-	# the editor saved this scene into its reopen list when it opened it: take it back out, so
-	# your next editor session doesn't reopen it; then close it, dropping the test's edits
-	var layout := EditorInterface.get_editor_paths().get_project_settings_dir().path_join("editor_layout.cfg")
-	var cfg := ConfigFile.new()
-	if cfg.load(layout) == OK:
-		var open: PackedStringArray = cfg.get_value("EditorNode", "open_scenes", PackedStringArray())
-		open.erase(scene_file_path)
-		cfg.set_value("EditorNode", "open_scenes", open)
-		if cfg.get_value("EditorNode", "current_scene", "") == scene_file_path:
-			cfg.set_value("EditorNode", "current_scene", open[-1] if open else "")
-		cfg.save(layout)
-	get_tree().quit(failed)
-	EditorInterface.close_scene()
-
-
-func check(ok: bool, what: String) -> void:
-	print(("  ok   " if ok else "  FAIL ") + what)
-	if not ok:
-		failed += 1
-
-
-func frames(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
+func _init() -> void:
+	flag = "--shape-editor-test"
+	label = "SHAPE EDITOR"
 
 
 func run() -> void:
@@ -165,7 +132,7 @@ func run() -> void:
 	cam.look_at(plat.global_position)
 	screen = cam.unproject_position(plat.global_transform * Vector3(2, 0, 0))
 	pgizmo.get_plugin()._set_handle(pgizmo, 0, false, cam, screen)
-	await frames(2)
+	await physics_frames(2) # platforms redraw in _physics_process
 	check(absf(pbox.shape.size.x - 4.0) < 0.05, "platform: drag box x handle to 2 m -> size.x 4 (got %s)" % pbox.shape.size)
 	pm = pbox.get_children(true).filter(func(m): return m.name == &"ShapeMesh")[0]
 	check(absf(pm.mesh.size.x - 4.0) < 0.05, "platform: mesh follows the resize")

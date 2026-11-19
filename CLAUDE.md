@@ -6,7 +6,7 @@ AHRA: a Godot 4.7 GDScript prototype of isometric 3D platformer mechanics (Jolt 
 
 ## Verifying changes (headless)
 
-Tests are `SceneTree` scripts in `tests/`. One script = one suite; there is no per-case filter. Exit code = number of failed checks; the last line prints `SMOKE|PLATFORMS|PUZZLES|SHAPE EDITOR: OK` or `N FAILED`.
+Tests are `SceneTree` scripts in `tests/`. One script = one suite; there is no per-case filter. Exit code = number of failed checks; the last line prints `SMOKE|PLATFORMS|PUZZLES|SHAPE EDITOR|PLATFORM TOOLS: OK` or `N FAILED`.
 
 ```sh
 GODOT="/c/Program Files/Godot/Godot_v4.7.2-stable_win64_console.exe"
@@ -15,7 +15,9 @@ NOISE="git_plugin|git-plugin|GDExtension|copying library|FileAccess::exists"   #
 timeout 150 "$GODOT" --headless --path . -s res://tests/smoke_test.gd    2>&1 | grep -viE "$NOISE"   # player controller, ~45 s
 timeout 150 "$GODOT" --headless --path . -s res://tests/platform_test.gd 2>&1 | grep -viE "$NOISE"   # moving platforms (demo/platforms)
 timeout 300 "$GODOT" --headless --path . -s res://tests/puzzle_test.gd   2>&1 | grep -viE "$NOISE"   # walkthrough of all 10 puzzles, ~3 min
-timeout 150 "$GODOT" --headless --path . -e res://tests/shape_editor_test.tscn -- --shape-editor-test 2>&1 | grep -viE "$NOISE"   # Shape Tools plugin (needs the editor, so it opens a scene instead of -s)
+timeout 150 "$GODOT" --headless --path . -e res://tests/shape_editor_test.tscn -- --shape-editor-test 2>&1 | grep -viE "$NOISE"       # Shape Tools plugin
+timeout 150 "$GODOT" --headless --path . -e res://tests/platform_tools_test.tscn -- --platform-tools-test 2>&1 | grep -viE "$NOISE"   # Platform Tools plugin
+# editor tests need the editor, so they open a scene instead of -s; they share tests/editor_test.gd
 
 timeout 150 "$GODOT" --headless --path . --quit-after 300 res://demo/demo.tscn   # load/run a scene, watch for errors
 timeout 150 "$GODOT" --headless --path . --editor --quit-after 400             # catch errors in @tool scripts
@@ -45,6 +47,8 @@ Gotchas:
 **Zones (`world/zone.gd`)**: `@tool` `Area3D` base, shaped through `ShapeSet` and drawn in its translucent `color`. Code that needs a size reads `bounds()` (AABB of all shapes); zones built in code get shapes via `add_shape()`. Every trigger (EnvZone, GravityZone, KillZone, Checkpoint, Teleporter, SceneDoor, CutsceneTrigger, Interactable → PlatformSwitch) extends it and overrides `_player_entered` / `_player_exited`. Because these are `@tool`, their code runs in the editor; guard runtime-only logic with `Engine.is_editor_hint()`.
 
 **Moving platforms (`world/moving_platform.gd`)**: an `AnimatableBody3D` whose position is a pure function of time, never stepped incrementally. Its program is its `PlatformSequence` children played in order, each following a `Path3D`. The program clock is `World.drive(channel, starts_on)`, so platforms are already in place when an area loads and stay in sync across areas. `PlatformSwitch` actions (POWER, RUN, REVERSE, SPEED, LAP_WAIT, SEQUENCE_WAIT) only mutate `World.channels` through `World.toggle/run/reverse/set_rates`; platforms re-derive their position from that. Rate changes are rebased (`_shift`) to keep motion continuous. Its shapes come through `ShapeSet` (a `surface` EnvZone wraps each one, grown 0.3 m); they stay disabled for the first physics frames while Jolt moves the body from the scene origin to its place.
+
+**Platform Tools (`addons/platform_tools`)**: a "Platform Edit" toggle in the 3D toolbar. Shape Ref adds a `ShapeReference` (`world/shape_reference.gd`, an editor-only guide that frees itself in game; `cast()` hits any shape via its debug mesh's `TriangleMesh`). New Track takes viewport clicks (`_forward_3d_gui_input`, forwarding always on) as anchors, snapped onto references or on a plane through the last anchor, and builds a `PlatformTrackInstance` (`world/platform_track_instance.gd`: Path3D children + one MovingPlatform with one PlatformSequence per path; draws a ghost of the platform at each path end; config warnings enforce the structure). Group moves selected tracks into a `PlatformTrackGroup` (`world/platform_track_group.gd`: preview / show_paths / show_destination, read by its instances each editor frame). All undoable.
 
 **Areas (`world/area.gd`, `GameArea`)**: root script of each playable scene. It expects children `Player`, `Camera`, `HUD/Label` and optionally `Bays` (debug warp targets, each with an optional `Start` marker). It runs the iso camera follow, the debug HUD (`Player.debug_text()` + `World.debug_text()`), debug keys and bay warps (`[ ]`, Backspace), and the out-of-bounds fall death. Each scene subclasses it (`demo/demo.gd`, `demo/puzzles/puzzles.gd`). `SceneDoor` sets `World.spawn` and changes scene; platforms_a and platforms_b link to each other this way.
 

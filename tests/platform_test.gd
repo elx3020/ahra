@@ -254,6 +254,37 @@ func _run() -> void:
 	wrap = lump.get_children().filter(func(c): return c is EnvZone)[0].shapes()[0]
 	_check(wrap.shape is BoxShape3D and wrap.shape.size.is_equal_approx(Vector3(1.6, 1.6, 1.6)) and wrap.position.is_equal_approx(Vector3(0, 1, 0)), "surface zone: a convex shape gets its bounding box grown 0.3 m")
 
+	# --- Platform Tools nodes at runtime: references vanish, tracks just run ---
+	var ref: Node3D = load("res://world/shape_reference.gd").new()
+	area.add_child(ref)
+	await _wait(2)
+	_check(not is_instance_valid(ref), "a ShapeReference removes itself in game")
+	var group: Node3D = load("res://world/platform_track_group.gd").new() # as the Platform Tools build them
+	var track: Node3D = load("res://world/platform_track_instance.gd").new()
+	var line := Path3D.new()
+	line.curve = Curve3D.new()
+	line.curve.add_point(Vector3.ZERO)
+	line.curve.add_point(Vector3(6, 0, 0))
+	track.add_child(line)
+	var rider: Node3D = plat_script.new()
+	var box_cs := CollisionShape3D.new()
+	box_cs.shape = BoxShape3D.new()
+	rider.add_child(box_cs)
+	var lap2: Node = load("res://world/platform_sequence.gd").new()
+	lap2.path = line
+	lap2.laps = 2
+	rider.add_child(lap2)
+	track.add_child(rider)
+	group.add_child(track)
+	group.position = Vector3(100, 70, 120)
+	group.rotation_degrees.y = 90.0 # the track runs along -z
+	area.add_child(group)
+	await _wait(2)
+	var p0 := rider.global_position
+	await _wait(60)
+	var on_line := func(v: Vector3) -> bool: return absf(v.x - 100) < 0.01 and absf(v.y - 70) < 0.01 and v.z > 113.99 and v.z < 120.01
+	_check(on_line.call(p0) and on_line.call(rider.global_position) and p0.distance_to(rider.global_position) > 0.5, "a track inside a rotated group rides its path, turned onto -z (%s -> %s)" % [p0, rider.global_position])
+
 	print("PLATFORMS: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 

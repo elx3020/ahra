@@ -31,15 +31,18 @@ static func bounds(node: Node) -> AABB:
 static func setup(node: Node3D, material: Material, solid: bool) -> Array:
 	if Engine.is_editor_hint():
 		node.add_to_group(GROUP)
-		(func() -> void: _unshare(node)).call_deferred() # the editor sets a duplicate's owner after adding it
-	return refresh(node, [null, null], material, solid)
+	var seen := refresh(node, [null, null], material, solid)
+	seen[1] = null # so the first editor refresh, a frame later, checks for shared shapes again:
+	return seen # the editor sets a duplicate's owner after adding it
 
 
 ## Redraws, and in the editor refreshes handles and inspector, if the shapes changed since `seen`
 ## (what this returned last time). A shape rebuilds its debug mesh whenever it changes, so
 ## comparing those catches shapes added, removed, swapped, resized or moved, from anywhere.
 static func refresh(node: Node3D, seen: Array, material: Material, solid: bool) -> Array:
-	var now := [_stamp(node), of(node)]
+	if seen[1] == null and Engine.is_editor_hint():
+		_unshare(node)
+	var now := [stamp(node), of(node)]
 	if now[0] != seen[0]:
 		_draw(node, material, solid)
 		node.update_gizmos()
@@ -98,7 +101,8 @@ static func solid_mesh(s: Shape3D) -> Mesh:
 	return st.commit()
 
 
-static func _stamp(node: Node) -> Array:
+## Changes whenever a shape is added, removed, swapped, resized or moved.
+static func stamp(node: Node) -> Array:
 	var out := []
 	for cs in of(node):
 		out.append_array([cs.shape.get_debug_mesh(), cs.transform])
