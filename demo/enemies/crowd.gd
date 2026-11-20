@@ -4,10 +4,10 @@ extends GameArea
 ## Set SHOW_DEBUG to true to restore the per-enemy state labels.
 
 const ENEMY: PackedScene = preload("res://enemy/runner/runner.tscn")
-const COUNT := 150
+const COUNT := 250
 const COLS := 16
-const ROWS := 11
-const SPACING := 3.5
+const ROWS := 16
+const SPACING := 5.5
 const SHOW_DEBUG := false
 
 @onready var enemies: Node3D = $Enemies

@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://qjwq3bxmsxlk"]
 
-[ext_resource type="Script" path="res://demo/enemies/crowd.gd" id="crowd"]
-[ext_resource type="PackedScene" path="res://player/player.tscn" id="player"]
+[ext_resource type="Script" uid="uid://cbqrdkc2ug783" path="res://demo/enemies/crowd.gd" id="crowd"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="player"]
 
 [sub_resource type="Environment" id="world_env"]
 background_mode = 1
@@ -10,63 +10,61 @@ ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.62, 0.7, 1)
 ambient_light_energy = 0.7
 
+[sub_resource type="WorldBoundaryShape3D" id="floor_collision"]
+
 [sub_resource type="StandardMaterial3D" id="m_floor"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
 [sub_resource type="PlaneMesh" id="ground_mesh"]
-size = Vector2(70, 50)
+size = Vector2(100, 100)
 
-[sub_resource type="WorldBoundaryShape3D" id="floor_collision"]
-plane = Plane(0, 1, 0, 0)
-
-[node name="CrowdDemo" type="Node3D"]
+[node name="CrowdDemo" type="Node3D" unique_id=425564396]
 script = ExtResource("crowd")
-bounds_center = Vector3(0, 0, 0)
 bounds_radius = 90.0
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=413692979]
 environment = SubResource("world_env")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1498585028]
 transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
 shadow_enabled = true
 
-[node name="Camera" type="Camera3D" parent="."]
+[node name="Camera" type="Camera3D" parent="." unique_id=641076678]
 projection = 1
 current = true
 size = 20.0
 far = 500.0
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1845597672]
 
-[node name="Label" type="Label" parent="HUD"]
+[node name="Label" type="Label" parent="HUD" unique_id=1339821492]
 offset_left = 12.0
 offset_top = 8.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 
-[node name="Player" parent="." instance=ExtResource("player")]
+[node name="Player" parent="." unique_id=678471525 instance=ExtResource("player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
-[node name="Floor" type="StaticBody3D" parent="."]
+[node name="Floor" type="StaticBody3D" parent="." unique_id=87286161]
 
-[node name="Collision" type="CollisionShape3D" parent="Floor"]
+[node name="Collision" type="CollisionShape3D" parent="Floor" unique_id=1125214506]
 shape = SubResource("floor_collision")
 
-[node name="Visual" type="MeshInstance3D" parent="Floor"]
+[node name="Visual" type="MeshInstance3D" parent="Floor" unique_id=883907405]
 material_override = SubResource("m_floor")
 mesh = SubResource("ground_mesh")
 
-[node name="Enemies" type="Node3D" parent="."]
+[node name="Enemies" type="Node3D" parent="." unique_id=5835184]
 
-[node name="Bays" type="Node3D" parent="."]
+[node name="Bays" type="Node3D" parent="." unique_id=1936865600]
 
-[node name="Arena" type="Node3D" parent="Bays"]
+[node name="Arena" type="Node3D" parent="Bays" unique_id=146326107]
 
-[node name="Start" type="Marker3D" parent="Bays/Arena"]
+[node name="Start" type="Marker3D" parent="Bays/Arena" unique_id=2002581032]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
-[node name="Label" type="Label3D" parent="Bays/Arena"]
+[node name="Label" type="Label3D" parent="Bays/Arena" unique_id=96236065]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -18)
 pixel_size = 0.01
 billboard = 1
