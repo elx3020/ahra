@@ -4,9 +4,11 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 8
+const SECTIONS := 9
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
+const RUNNER := preload("res://enemy/runner/runner.tscn")
+const BURROWER := preload("res://enemy/burrower/burrower.tscn")
 
 var fails := 0
 var sections := 0
@@ -22,7 +24,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -410,6 +412,47 @@ func _test_player_attacks() -> void:
 	player.damage(1.0, player.global_position + Vector3.RIGHT)
 	await _press(&"shoot")
 	_check(_projectiles().is_empty(), "no shooting while hurt")
+	sections += 1
+
+
+func _test_types() -> void:
+	_course(Vector3(-30, 1, 0))
+	var r := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0}, RUNNER)
+	await _wait(10)
+	_check(r.abilities == (Enemy.Ability.RUN | Enemy.Ability.JUMP) and r.weight == 3.0, "runner: RUN + JUMP, weight 3")
+	r.hit(1.0, player.melee_push, r.global_position - Vector3(1, 0, 0))
+	_check(absf(r.planar().length() - player.melee_push / 3.0) < 0.1, "runner flies back from a melee push")
+
+	_course(Vector3(12, 1, 0), false)
+	_pool()
+	var dunk := _enemy(Vector3(-0.8, 1, 0), {sight_radius = 0.0}, RUNNER)
+	var causes := _deaths(dunk)
+	await _wait(10)
+	dunk.hit(1.0, player.melee_push, dunk.global_position - Vector3(1, 0, 0))
+	_check(await _gone(dunk, 420) and causes == [&"drown"], "runner shoved into deep water drowns")
+
+	_course(Vector3(6, 1, 0))
+	_box(Vector3(0, 1.5, 0), Vector3(1, 3, 30)) # wall across the floor
+	var b: Burrower = _enemy(Vector3(-6, 1, 0), {sight_radius = 20.0, lose_radius = 30.0}, BURROWER)
+	var cues := []
+	b.cue.connect(func(n: StringName) -> void: cues.append(n))
+	_check(await _wait_until(func() -> bool: return b.burrowed, 120) and b.collision_layer == 0, "burrower digs in: no collision underground")
+	var hp := player.health
+	_check(await _wait_until(func() -> bool: return not b.burrowed, 300), "...and surfaces")
+	_check(b.global_position.x > 0.5 and (b.global_position - player.global_position).slide(Vector3.UP).length() < b.surface_radius + 0.5, "it passed under the wall and came up next to the player")
+	_check(await _wait_until(func() -> bool: return player.health < hp, 30) and &"surface" in cues, "the surfacing burst hurts the player")
+	_check(await _wait_until(func() -> bool: return b.state_name == &"stun", 60), "then it rests (stun)")
+	b.hit(10.0, player.melee_push, b.global_position - Vector3(1, 0, 0))
+	_check(b.planar().length() < 0.1 and b.health < b.max_health and b.state_name == &"stun", "resting burrower takes damage, stays down, can't be pushed")
+
+	for kind in ["water", "gap"]:
+		_course(Vector3(10, 1, 0), false)
+		_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+		_far_side(kind)
+		var b2: Burrower = _enemy(Vector3(-5, 1, 0), {sight_radius = 30.0, lose_radius = 40.0}, BURROWER)
+		await _wait_until(func() -> bool: return b2.burrowed, 120)
+		var seen := await _watch([b2], 240)
+		_check(&"idle" in seen and b2.global_position.x < 1.2 and b2.global_position.y > 0.5, "burrower can't cross %s: surfaces on its side and gives up" % kind) # it retries after give_up_time, so it may be dug in again
 	sections += 1
 
 

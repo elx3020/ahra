@@ -446,9 +446,7 @@ func probe(dir: Vector3) -> Probe:
 	p.point = edge
 	var ground := cast(edge + up * 0.5, edge - up * (safe_drop + 0.05))
 	if ground:
-		var w := water_at(ground.position + up * 0.1)
-		var deep := w and w.surface_height(up) - (ground.position as Vector3).dot(up) > HALF_HEIGHT + HEAD
-		p.kind = &"water" if deep else &"open"
+		p.kind = &"water" if deep_water_at(ground.position) else &"open"
 		return p
 	if water_at(edge - up * 0.5):
 		p.kind = &"water"
@@ -467,12 +465,16 @@ func find_landing(dir: Vector3, near: float, far: float) -> Variant:
 	while d <= far:
 		var at := feet + dir * d
 		var hit := cast(at + up * (jump_height + 0.3), at - up * safe_drop)
-		if hit:
-			var w := water_at(hit.position + up * 0.1)
-			if not (w and w.surface_height(up) - (hit.position as Vector3).dot(up) > HALF_HEIGHT + HEAD):
-				return hit.position
+		if hit and not deep_water_at(hit.position):
+			return hit.position
 		d += 0.5
 	return null
+
+
+## Deep water over this ground point: an enemy standing there would have its head under.
+func deep_water_at(ground: Vector3) -> bool:
+	var w := water_at(ground + up_direction * 0.1)
+	return w != null and w.surface_height(up_direction) - ground.dot(up_direction) > HALF_HEIGHT + HEAD
 
 
 ## The water EnvZone containing `point`, or null.

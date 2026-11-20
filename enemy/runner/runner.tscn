@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="1_base"]
+
+[node name="Runner" instance=ExtResource("1_base")]
+abilities = 9
+weight = 3.0
+max_health = 40.0
+walk_speed = 3.5
+run_speed = 6.5
+jump_height = 2.3
+jump_reach = 6.5
+run_cost = 20.0
+stun_time = 2.0
+max_oxygen = 3.0
+sight_radius = 10.0
+lose_radius = 16.0
+color = Color(0.85, 0.25, 0.2, 1)
