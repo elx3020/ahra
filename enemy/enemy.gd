@@ -200,7 +200,7 @@ func change_state(next: StringName) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if asleep and state_name != &"death":
+	if asleep and state_name not in [&"death", &"puppet", &"jump", &"dash", &"climb", &"swing"]: # moves and cutscenes finish
 		_doze(delta)
 		return
 	invuln -= delta
@@ -250,12 +250,14 @@ func set_asleep(on: bool) -> void:
 
 ## The asleep tick: no rays. Flyers and swimmers hold still; everything else brakes and falls.
 func _doze(delta: float) -> void:
-	if can(Ability.FLY) or swimming():
+	if (can(Ability.FLY) and state_name != &"stun") or swimming():
 		velocity = velocity.move_toward(Vector3.ZERO, 20.0 * delta)
 	else:
 		move_planar(Vector3.ZERO, 0.0, delta)
 		apply_gravity(delta)
 	move_and_slide()
+	if (home - global_position).dot(up_direction) > KILL_DEPTH:
+		die(&"fall")
 
 
 func can(a: int) -> bool:
@@ -406,7 +408,7 @@ func step_toward(point: Vector3, delta: float, leash: EnemyArea = null, hurry :=
 	var feet := global_position - up * HALF_HEIGHT
 	if to.length() < 1.2: # closer than the probe looks: don't judge the ground beyond the point
 		var under := cast(point + up * 0.5, point - up * (safe_drop + 1.0))
-		if under and not leashed(leash, under.position) and (can(Ability.SWIM) or not deep_water_at(under.position)):
+		if under and absf((under.position - feet).dot(up)) <= 0.3 and not leashed(leash, under.position) 				and (can(Ability.SWIM) or not deep_water_at(under.position)): # only on the same level
 			_walk(dir, delta, hurry)
 			return &""
 	var p := probe(dir)

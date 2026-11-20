@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 17
+const SECTIONS := 18
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_sleep, _test_demo, _test_crowd]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_sleep, _test_area_fixes, _test_demo, _test_crowd]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -817,6 +817,7 @@ func _test_crowd() -> void:
 	await _wait(5)
 	var enemies := get_nodes_in_group(&"enemy")
 	var start := enemies.map(func(n: Enemy) -> Vector3: return n.global_position)
+	_check(enemies.all(func(n: Enemy) -> bool: return n.chase_area.contains(n.global_position)), "crowd: every runner starts inside the chase area")
 	_check(not enemies.is_empty() and enemies.all(func(n: Enemy) -> bool: return n.patrol_area != null and n.chase_area != null), "crowd: every runner has a patrol and a chase area")
 	await _wait(240)
 	var moved := 0
@@ -825,6 +826,80 @@ func _test_crowd() -> void:
 			moved += 1
 	_check(moved >= 25, "crowd: runners patrol (%d moved)" % moved)
 	crowd.queue_free()
+	sections += 1
+
+
+## Regression tests for the final review of the areas branch.
+func _test_area_fixes() -> void:
+	_course(Vector3(14, 1, 0), false)
+	_pool()
+	var pond := _area(Vector3(3, -2, 0), _boxed(Vector3(6, 4, 10)))
+	var fish := _enemy(Vector3(3, -1, 0), {abilities = Enemy.Ability.SWIM, sight_radius = 0.0, max_oxygen = 30.0, patrol_area = pond, patrol_pause = Vector2(0.2, 0.4)})
+	fish.rng.seed = 6
+	var idles := 0
+	var last := fish.state_name
+	for i in 900:
+		await _wait(1)
+		if fish.state_name == &"idle" and last != &"idle":
+			idles += 1
+		last = fish.state_name
+	_check(idles >= 3, "a swimmer patrols spot after spot (%d rests)" % idles)
+
+	_course(Vector3(-30, 1, 0))
+	_box(Vector3(2, 0.8, 0), Vector3(2, 1.6, 4)) # a 1.6 m crate, x 1..3
+	var hopper := _enemy(Vector3(0.5, 1, 0), {abilities = Enemy.Ability.JUMP, jump_height = 2.3, sight_radius = 10.0, attack_damage = 0.0})
+	await _wait(10)
+	player.teleport(Vector3(1.6, 2.6, 0)) # on the crate, about 1.1 m away
+	_check(await _wait_until(func() -> bool: return hopper.global_position.y > 2.0, 300), "a jumper right beside a crate jumps up to the player on it")
+
+	_course(Vector3(0.4, 1, 0)) # 1 m from the enemy, planar: inside the close-target range
+	_box(Vector3(-4, 1, 0), Vector3(8, 2, 10)) # a 2 m ledge, x -8..0
+	var edge := _enemy(Vector3(-0.6, 2.9, 0), {sight_radius = 10.0, attack_damage = 0.0})
+	await _wait(120)
+	_check(edge.global_position.y > 2.5, "it doesn't walk off a 2 m drop toward a player just below")
+
+	_course(Vector3(10, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+	_box(Vector3(9.5, -0.5, 0), Vector3(13, 1, 10)) # 3 m gap
+	var leaper := _enemy(Vector3(-4, 1, 0), {abilities = Enemy.Ability.JUMP, jump_height = 2.3, jump_reach = 6.5, sight_radius = 30.0, lose_radius = 40.0, attack_damage = 0.0})
+	await _wait_until(func() -> bool: return leaper.state_name == &"jump" and not leaper.is_on_floor() and leaper.global_position.x > -1.0, 300)
+	leaper.set_asleep(true)
+	await _wait(120)
+	_check(is_instance_valid(leaper) and leaper.global_position.x > 3.3 and leaper.global_position.y > 0.5, "put to sleep mid-jump, it still lands across the gap")
+
+	_course(Vector3(-30, 1, 0))
+	var actor := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0})
+	await _wait(10)
+	var arrived := []
+	actor.puppet_arrived.connect(func() -> void: arrived.append(true))
+	actor.set_asleep(true)
+	actor.start_puppet(Vector3(4, 0, 0))
+	_check(await _wait_until(func() -> bool: return arrived.size() == 1, 200), "an asleep puppet still walks to its mark")
+	var gull := _enemy(Vector3(8, 1, 0), {abilities = Enemy.Ability.FLY, sight_radius = 0.0})
+	await _wait(90)
+	gull.stun(3.0)
+	gull.set_asleep(true)
+	_check(await _wait_until(func() -> bool: return gull.is_on_floor(), 90), "a stunned flyer that falls asleep still drops")
+	var sinker := _enemy(Vector3(150, 1, 0), {sight_radius = 0.0}) # beyond the void zone: a bottomless fall
+	var causes := _deaths(sinker)
+	sinker.set_asleep(true)
+	_check(await _wait_until(func() -> bool: return causes == [&"fall"], 300), "asleep: 60 m below its spawn is still death by fall")
+
+	_course(Vector3(-30, 1, 0))
+	var target := _enemy(Vector3(0, 1, 0), {sight_radius = 10.0, lose_radius = 30.0, attack_damage = 0.0})
+	player.teleport(Vector3(14, 1, 0)) # in plain view, beyond sight_radius
+	await _wait(10)
+	target.hit(1.0, 0.0, target.global_position + Vector3.RIGHT) # a shot from the player
+	await _wait(90)
+	_check(target.state_name != &"idle" and target.dist_to_target() < 12.0, "shot from beyond sight_radius, it comes for the shooter")
+
+	_course(Vector3(-30, 1, 0))
+	var chaser := _enemy(Vector3(0, 1, 0), {sight_radius = 10.0, lose_radius = 16.0, attack_damage = 0.0})
+	player.teleport(Vector3(5, 1, 0))
+	await _wait_until(func() -> bool: return chaser.state_name == &"pursuit", 60)
+	player.teleport(Vector3(13, 1, 0)) # past sight_radius, inside lose_radius, in plain view
+	await _wait(60)
+	_check(chaser.state_name == &"pursuit" and chaser.global_position.x > 3.0, "in plain view the chase goes on out to lose_radius")
 	sections += 1
 
 

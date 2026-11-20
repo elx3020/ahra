@@ -30,14 +30,14 @@ func physics(delta: float) -> StringName:
 		return &""
 	if e.give_up <= 0.0 and e.sees_target():
 		return &"pursuit"
+	if (_spot - e.global_position).slide(e.up_direction).length() < 0.5: # before the hand-offs: swim returns here on arrival
+		return &"idle"
 	if e.swimming():
 		e.goal = &"patrol"
 		return &"swim"
 	if not e.is_on_floor() and not e.can(Enemy.Ability.FLY):
 		e.goal = &"patrol"
 		return &"jump"
-	if (_spot - e.global_position).slide(e.up_direction).length() < 0.5:
-		return &"idle"
 	var next := e.step_toward(_spot, delta, e.patrol_area, false)
 	if next == &"blocked" or (next == &"" and not e.moving_on(delta)):
 		return &"idle"
