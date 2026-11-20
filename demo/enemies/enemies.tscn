@@ -1,0 +1,273 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/area.gd" id="area"]
+[ext_resource type="Script" path="res://world/env_profile.gd" id="env"]
+[ext_resource type="Script" path="res://world/env_zone.gd" id="env_zone"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="kill"]
+[ext_resource type="Script" path="res://player/stat_mods.gd" id="mods"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="player"]
+[ext_resource type="PackedScene" path="res://enemy/runner/runner.tscn" id="runner"]
+[ext_resource type="PackedScene" path="res://enemy/burrower/burrower.tscn" id="burrower"]
+
+[sub_resource type="Environment" id="world_env"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="StandardMaterial3D" id="m_floor"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[sub_resource type="StandardMaterial3D" id="m_block"]
+albedo_color = Color(0.28, 0.28, 0.32, 1)
+
+[sub_resource type="Resource" id="water_mods"]
+script = ExtResource("mods")
+speed = -0.4
+jump = 0.6
+dash = -0.4
+
+[sub_resource type="Resource" id="water"]
+resource_name = "Water"
+script = ExtResource("env")
+mods = SubResource("water_mods")
+water = true
+gravity_mult = 0.3
+drag = 1.2
+
+[sub_resource type="BoxShape3D" id="void_box"]
+size = Vector3(240, 2, 120)
+
+[sub_resource type="BoxShape3D" id="pond_box"]
+size = Vector3(10, 2.7, 6)
+
+[sub_resource type="BoxShape3D" id="channel_box"]
+size = Vector3(12, 3, 4)
+
+[node name="Enemies" type="Node3D"]
+script = ExtResource("area")
+bounds_center = Vector3(50, 0, 0)
+bounds_radius = 160.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("world_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="."]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="HUD"]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." instance=ExtResource("player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Void" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, -14, 0)
+script = ExtResource("kill")
+color = Color(1, 0, 0, 0.06)
+
+[node name="Box" type="CollisionShape3D" parent="Void"]
+shape = SubResource("void_box")
+
+[node name="Bays" type="Node3D" parent="."]
+
+[node name="Runner" type="Node3D" parent="Bays"]
+
+[node name="Label" type="Label3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -8)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "RUNNER (run + jump)
+chases you, jumps the 3 m gap (east)
+stops at the 7 m gap (north) and the pond (south)
+J melee: shove it off the west ledge or into the pond
+K shoot | out of stamina it rests: your opening"
+font_size = 56
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Plateau" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.5, 0)
+use_collision = true
+size = Vector3(20, 5, 20)
+material = SubResource("m_floor")
+
+[node name="East3m" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, -2.5, 0)
+use_collision = true
+size = Vector3(12, 5, 10)
+material = SubResource("m_floor")
+
+[node name="North7m" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.5, -22)
+use_collision = true
+size = Vector3(12, 5, 10)
+material = SubResource("m_floor")
+
+[node name="PondFloor" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -3.5, 13)
+use_collision = true
+size = Vector3(10, 1, 6)
+material = SubResource("m_block")
+
+[node name="PondWest" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, -2, 13)
+use_collision = true
+size = Vector3(1, 4, 6)
+material = SubResource("m_block")
+
+[node name="PondEast" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, -2, 13)
+use_collision = true
+size = Vector3(1, 4, 6)
+material = SubResource("m_block")
+
+[node name="PondSouth" type="CSGBox3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 16.5)
+use_collision = true
+size = Vector3(12, 4, 1)
+material = SubResource("m_block")
+
+[node name="Pond" type="Area3D" parent="Bays/Runner"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.65, 13)
+script = ExtResource("env_zone")
+profile = SubResource("water")
+color = Color(0.2, 0.45, 0.9, 0.2)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Runner/Pond"]
+shape = SubResource("pond_box")
+
+[node name="RunnerA" parent="Bays/Runner" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, -5)
+
+[node name="RunnerB" parent="Bays/Runner" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1, -5)
+
+[node name="Burrower" type="Node3D" parent="Bays"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -8)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "BURROWER
+walk toward the wall: it digs under it,
+comes up next to you and rests (your opening)
+it can't cross the water (north) or the pit (south)
+too heavy to push: hit it while it rests"
+font_size = 56
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, 0)
+
+[node name="West" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, -2.5, 0)
+use_collision = true
+size = Vector3(12, 5, 8)
+material = SubResource("m_floor")
+
+[node name="Wall" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+use_collision = true
+size = Vector3(1, 3, 8)
+material = SubResource("m_block")
+
+[node name="East" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -2.5, 0)
+use_collision = true
+size = Vector3(12, 5, 8)
+material = SubResource("m_floor")
+
+[node name="ChannelFloor" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -2.5, -6)
+use_collision = true
+size = Vector3(12, 5, 4)
+material = SubResource("m_block")
+
+[node name="Channel" type="Area3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, -6)
+script = ExtResource("env_zone")
+profile = SubResource("water")
+color = Color(0.2, 0.45, 0.9, 0.2)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/Burrower/Channel"]
+shape = SubResource("channel_box")
+
+[node name="NorthBank" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -2.5, -10)
+use_collision = true
+size = Vector3(12, 5, 4)
+material = SubResource("m_floor")
+
+[node name="SouthBank" type="CSGBox3D" parent="Bays/Burrower"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, -2.5, 9)
+use_collision = true
+size = Vector3(12, 5, 4)
+material = SubResource("m_floor")
+
+[node name="Digger" parent="Bays/Burrower" instance=ExtResource("burrower")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1, 0)
+
+[node name="Both" type="Node3D" parent="Bays"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -10)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "BOTH
+one runner, one burrower, a pit in the middle"
+font_size = 56
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9)
+
+[node name="North" type="CSGBox3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.5, -7.5)
+use_collision = true
+size = Vector3(24, 5, 9)
+material = SubResource("m_floor")
+
+[node name="South" type="CSGBox3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.5, 7.5)
+use_collision = true
+size = Vector3(24, 5, 9)
+material = SubResource("m_floor")
+
+[node name="West" type="CSGBox3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -2.5, 0)
+use_collision = true
+size = Vector3(9, 5, 6)
+material = SubResource("m_floor")
+
+[node name="East" type="CSGBox3D" parent="Bays/Both"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, -2.5, 0)
+use_collision = true
+size = Vector3(9, 5, 6)
+material = SubResource("m_floor")
+
+[node name="Runner" parent="Bays/Both" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, -9)
+
+[node name="Digger" parent="Bays/Both" instance=ExtResource("burrower")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, -9)

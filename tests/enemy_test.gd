@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 9
+const SECTIONS := 10
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -24,7 +24,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -453,6 +453,22 @@ func _test_types() -> void:
 		await _wait_until(func() -> bool: return b2.burrowed, 120)
 		var seen := await _watch([b2], 240)
 		_check(&"idle" in seen and b2.global_position.x < 1.2 and b2.global_position.y > 0.5, "burrower can't cross %s: surfaces on its side and gives up" % kind) # it retries after give_up_time, so it may be dug in again
+	sections += 1
+
+
+func _test_demo() -> void:
+	if course:
+		root.remove_child(course)
+		course.queue_free()
+		course = null
+	var demo: Node = load("res://demo/enemies/enemies.tscn").instantiate()
+	root.add_child(demo)
+	await _wait(60)
+	var enemies := get_nodes_in_group(&"enemy")
+	var burrowers := enemies.filter(func(n: Node) -> bool: return n is Burrower)
+	_check(enemies.size() == 5 and burrowers.size() == 2, "demo: 3 runners and 2 burrowers")
+	_check(enemies.all(func(n: Enemy) -> bool: return n.state_name == &"idle" and n.health == n.max_health), "all idle at full health at the start")
+	demo.queue_free()
 	sections += 1
 
 
