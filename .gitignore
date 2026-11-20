@@ -4,3 +4,4 @@
 
 # Godot GDExtension hot-reload copies (Windows) and their ReplaceFile leftovers
 addons/godot-git-plugin/lib/~*
+.claude/worktrees/
