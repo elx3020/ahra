@@ -23,7 +23,11 @@ func physics(delta: float) -> StringName:
 	var up := e.up_direction
 	var top := e.water_zone.surface_height(up) - 0.3 # body centre here: head above water
 	var here := e.global_position
-	var aim: Vector3 = e.aim_override if patrolling else e.target_pos()
+	var chasing := e.goal == &"pursuit" or e.goal == &"flee"
+	var sees := e.sees_target()
+	if chasing and not sees and e.seen_ago > e.memory_time:
+		return _give_up()
+	var aim: Vector3 = e.aim_override if patrolling else (e.target_pos() if sees or not chasing else e.last_seen)
 	if patrolling and (aim - here).slide(up).length() < 0.5:
 		return e.goal
 	if e.goal == &"flee":
@@ -39,8 +43,10 @@ func physics(delta: float) -> StringName:
 	e.velocity = e.velocity.move_toward((want - here).limit_length(1.0) * e.swim_speed * e.mult(&"swim"), 20.0 * delta)
 	e.move_and_slide()
 	e.anim = &"swim"
+	if chasing and e.leashed(e.chase_area, here + (want - here).slide(up).limit_length(1.0) * 0.6 - up * Enemy.HALF_HEIGHT):
+		return _give_up() # the chase area's border
 
-	if e.goal == &"pursuit" and not _breathe and e.in_attack_range() and e.attack_cd <= 0.0 \
+	if e.goal == &"pursuit" and sees and not _breathe and e.in_attack_range() and e.attack_cd <= 0.0 \
 			and e.oxygen > breath_time + e.attack_windup + e.attack_recover:
 		return &"attack"
 	var land := aim + up * 0.1 if patrolling else e.target_pos()
@@ -63,3 +69,9 @@ func physics(delta: float) -> StringName:
 				e.cue.emit(&"blocked")
 				return &"idle"
 	return &""
+
+
+func _give_up() -> StringName:
+	e.give_up = e.give_up_time
+	e.cue.emit(&"blocked")
+	return &"idle"

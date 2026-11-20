@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 14
+const SECTIONS := 15
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -298,7 +298,11 @@ func _test_climb_swim() -> void:
 	for climbable in [true, false]:
 		_course(Vector3(8, 5, 0))
 		_box(Vector3(8, 2, 0), Vector3(8, 4, 10), climbable) # 4 m block, face at x = 4
-		var c := _enemy(Vector3(0, 1, 0), base.merged({abilities = Enemy.Ability.CLIMB}, true))
+		var c := _enemy(Vector3(0, 1, 0), base.merged({abilities = Enemy.Ability.CLIMB, memory_time = 10.0}, true))
+		await _wait(5)
+		c.last_seen = player.global_position # the player on top of the block is out of sight from below:
+		c.seen_ago = 0.0 # it was seen a moment ago
+		c.change_state(&"pursuit")
 		var up := await _wait_until(func() -> bool: return c.global_position.y > 4.5 and c.is_on_floor(), 400)
 		_check(up == climbable, "CLIMB scales a climbable 4 m wall" if climbable else "CLIMB can't scale a plain wall")
 
@@ -719,6 +723,50 @@ func _test_patrol() -> void:
 	var still := stray.global_position
 	await _wait(60)
 	_check(stray.state_name == &"idle" and stray.global_position.distance_to(still) < 0.2, "its patrol area freed: no errors, it stops roaming")
+	sections += 1
+
+
+func _test_sight_leash() -> void:
+	_course(Vector3(6, 1, 0))
+	var wall := _box(Vector3(3, 1.5, 0), Vector3(0.5, 3, 30))
+	var e := _enemy(Vector3(0, 1, 0), {sight_radius = 10.0, attack_damage = 0.0})
+	await _wait(60)
+	_check(e.state_name == &"idle", "a wall blocks sight: no chase inside sight_radius")
+	wall.queue_free()
+	_check(await _wait_until(func() -> bool: return e.state_name == &"pursuit", 40), "in plain view: the chase starts")
+
+	_course(Vector3(4, 1, 0))
+	var yard := _area(Vector3(-4, 1, 0), _boxed(Vector3(6, 2, 6)))
+	var hunter := _enemy(Vector3(-4, 1, 0), {sight_radius = 12.0, lose_radius = 30.0, patrol_area = yard, attack_damage = 0.0})
+	await _wait_until(func() -> bool: return hunter.state_name == &"pursuit", 60)
+	_box(Vector3(8, 1.5, 0), Vector3(0.5, 3, 30))
+	player.teleport(Vector3(12, 1, 0)) # behind the wall
+	_check(await _wait_until(func() -> bool: return hunter.state_name == &"idle", 300) and hunter.global_position.x > 2.0, "out of sight: it goes to where it last saw the player, then gives up")
+	_check(await _wait_until(func() -> bool: return yard.contains(hunter.global_position), 400), "then it walks back into its patrol area")
+
+	_course(Vector3(10, 1, 0))
+	var leash := _area(Vector3(0, 1, 0), _boxed(Vector3(8, 2, 8))) # x -4..4
+	var kennel := _area(Vector3(-2, 1, 0), _boxed(Vector3(3, 2, 3)))
+	var dog := _enemy(Vector3(-2, 1, 0), {sight_radius = 15.0, lose_radius = 30.0, chase_area = leash, patrol_area = kennel, attack_damage = 0.0})
+	var loose := _enemy(Vector3(7, 1, 3), {sight_radius = 15.0, chase_area = leash, attack_damage = 0.0})
+	var max_x := -INF
+	var seen: Array[StringName] = []
+	for i in 240:
+		await _wait(1)
+		max_x = maxf(max_x, dog.global_position.x)
+		if dog.state_name not in seen:
+			seen.append(dog.state_name)
+	_check(&"pursuit" in seen and &"idle" in seen and max_x < 4.5, "chase area: up to the border, never across, then gives up (max x %.2f)" % max_x)
+	_check(loose.has_target() and loose.dist_to_target() < loose.attack_range + 0.5, "an enemy outside its chase area isn't held by it")
+	player.teleport(Vector3(30, 1, 0)) # out of sight range
+	_check(await _wait_until(func() -> bool: return kennel.contains(dog.global_position), 400), "after giving up it goes back to its patrol area")
+
+	_course(Vector3(6, 1, 0))
+	var pit := _area(Vector3(-4, 1, 0), _boxed(Vector3(8, 2, 8))) # x -8..0
+	var b: Burrower = _enemy(Vector3(-6, 1, 0), {sight_radius = 20.0, lose_radius = 30.0, chase_area = pit}, BURROWER)
+	await _wait_until(func() -> bool: return b.burrowed, 120)
+	await _wait_until(func() -> bool: return not b.burrowed, 300)
+	_check(b.global_position.x < 0.5, "a burrower stays inside its chase area too")
 	sections += 1
 
 

@@ -1,7 +1,8 @@
 extends EnemyState
 ## Base melee attack: windup (stops and faces the target), one strike check, recovery, then the
 ## cooldown starts. Types replace this state with their own attack (the burrower's burst).
-## Aborts to idle the moment the target is gone.
+## Aborts to idle the moment the target is gone, and back to pursuit once it has been out of sight
+## for 0.5 s (pursuit heads for where it was last seen).
 
 const STRIKE_TIME := 0.15 ## how long the `attack` anim shows before `attack_recover`
 
@@ -19,6 +20,8 @@ func enter(_prev: StringName) -> void:
 func physics(delta: float) -> StringName:
 	if not e.has_target():
 		return &"idle"
+	if not e.sees_target() and e.seen_ago > 0.5:
+		return &"pursuit"
 	_t += delta
 	e.hold(delta)
 	if not _struck:

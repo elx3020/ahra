@@ -25,7 +25,7 @@ func physics(delta: float) -> StringName:
 	var away := (e.global_position - e.target_pos()).slide(e.up_direction)
 	if away.length() < 0.05:
 		away = -e.facing
-	var next := e.step_toward(e.global_position + away.normalized() * 4.0, delta)
+	var next := e.step_toward(e.global_position + away.normalized() * 4.0, delta, e.chase_area)
 	if next == &"blocked": # cornered
 		e.face(e.target_pos())
 		e.anim = &"cower"

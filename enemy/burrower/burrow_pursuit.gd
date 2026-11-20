@@ -56,8 +56,8 @@ func physics(delta: float) -> StringName:
 		return _give_up()
 	var next := feet + to.normalized() * minf(b.burrow_speed * delta, to.length())
 	var hit := e.cast(next + up * 0.5, next - up * e.safe_drop)
-	if not hit or e.deep_water_at(hit.position):
-		return _give_up()
+	if not hit or e.deep_water_at(hit.position) or e.leashed(e.chase_area, hit.position):
+		return _give_up() # a gap, water, or the chase area's border
 	e.face(e.target_pos())
 	e.global_position = hit.position + up * Enemy.HALF_HEIGHT
 	if _open_at(hit.position):
@@ -84,7 +84,7 @@ func _surface_spot() -> Variant:
 		var g: Vector3 = hit.position
 		var c := g + up * (Enemy.HALF_HEIGHT + 0.1)
 		var d := c.distance_to(e.global_position)
-		if d < best_d and not e.deep_water_at(g) and e.fits_at(c) and e.cast(c, t).is_empty():
+		if d < best_d and not e.deep_water_at(g) and not e.leashed(e.chase_area, g) and e.fits_at(c) and e.cast(c, t).is_empty():
 			best = g
 			best_d = d
 	return best

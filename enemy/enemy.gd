@@ -46,6 +46,7 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export var attack_range := 1.6
 @export var give_up_time := 1.5 ## after giving up a chase, wait this long before chasing again
 @export var memory_time := 3.0 ## seconds a player out of sight is still chased (toward where it was last seen)
+@export var sees_through_walls := false ## senses the player through terrain (the burrower feels footsteps)
 @export_group("Ground")
 @export var walk_speed := 3.0
 @export var run_speed := 6.0
@@ -106,6 +107,10 @@ var env: EnvProfile ## every EnvZone the enemy is in, blended (EnvProfile.combin
 var water_zone: EnvZone
 var puppet_target: Variant = null
 var aim_override: Variant = null ## a patrol spot the swim state heads for instead of the player
+var last_seen := Vector3.ZERO ## where the player was the last time the enemy saw it
+var seen_ago := INF ## seconds since then
+var _sees := false ## sees_target's cached answer
+var _sight_t := 0.0 ## seconds until sees_target checks again
 var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
 var _fall_speed := 0.0 ## fastest downward speed since leaving the floor
@@ -189,6 +194,8 @@ func _physics_process(delta: float) -> void:
 	invuln -= delta
 	attack_cd -= delta
 	give_up -= delta
+	_sight_t -= delta
+	seen_ago += delta
 	_tick_stats(delta)
 	if max_stamina > 0.0 and stamina <= 0.0 and state_name not in [&"stun", &"death", &"puppet"]:
 		stun(stun_time) # exhausted: the timed opening
@@ -636,6 +643,20 @@ func has_target() -> bool:
 	if not is_instance_valid(target) or not target.is_inside_tree():
 		target = get_tree().get_first_node_in_group(&"player") as Player
 	return target != null and target.state_name not in [&"death", &"puppet"]
+
+
+## The player is inside sight_radius and in plain view: no terrain on the line from the eyes to its
+## chest (bodies don't block it). Checked at most every 0.2 s; each check that sees it updates
+## last_seen and resets seen_ago.
+func sees_target() -> bool:
+	if _sight_t <= 0.0:
+		_sight_t = 0.2
+		_sees = has_target() and dist_to_target() <= sight_radius and (sees_through_walls \
+			or cast(global_position + up_direction * HEAD, target_pos() + up_direction * 0.3).is_empty())
+		if _sees:
+			last_seen = target_pos()
+			seen_ago = 0.0
+	return _sees and has_target()
 
 
 func target_pos() -> Vector3:

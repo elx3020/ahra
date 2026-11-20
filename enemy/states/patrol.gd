@@ -28,7 +28,7 @@ func physics(delta: float) -> StringName:
 		return &"idle"
 	if e.flail(delta):
 		return &""
-	if e.give_up <= 0.0 and e.has_target() and e.dist_to_target() <= e.sight_radius:
+	if e.give_up <= 0.0 and e.sees_target():
 		return &"pursuit"
 	if e.swimming():
 		e.goal = &"patrol"
