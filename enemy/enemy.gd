@@ -97,11 +97,14 @@ var water_zone: EnvZone
 var puppet_target: Variant = null
 var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
+var _fall_speed := 0.0 ## fastest downward speed since leaving the floor
 var _label: Label3D
 
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
 	&"pursuit": preload("states/pursuit.gd").new(),
+	&"hurt": preload("states/hurt.gd").new(),
+	&"stun": preload("states/stun.gd").new(),
 	&"jump": preload("states/jump.gd").new(),
 	&"death": preload("states/death.gd").new(),
 }
@@ -161,9 +164,12 @@ func _physics_process(delta: float) -> void:
 	attack_cd -= delta
 	give_up -= delta
 	_tick_stats(delta)
+	if stamina <= 0.0 and state_name not in [&"stun", &"death", &"puppet"]:
+		stun(stun_time) # exhausted: the timed opening
 	var next := state.physics(delta)
 	if next:
 		change_state(next)
+	_fall_damage()
 	_orient(delta)
 	_animate(delta)
 	if _label:
@@ -414,7 +420,42 @@ func dist_to_target() -> float:
 	return global_position.distance_to(target.global_position)
 
 
-# --- damage, death -------------------------------------------------------------------
+# --- damage, stun, death -------------------------------------------------------------
+
+## The way anything hurts an enemy. Damage is reduced by armor; knockback is push / weight away
+## from `from` (under MIN_KNOCK it doesn't move). Ignored while dead, in puppet, or for
+## invuln_time after a hit. A running stun keeps going: it's the player's opening.
+## stun_on_hit > 0 stuns instead of hurting (shoot a flyer down, then melee it).
+func hit(damage: float, push: float, from: Vector3) -> void:
+	if state_name in [&"death", &"puppet"] or invuln > 0.0:
+		return
+	invuln = invuln_time
+	health -= damage * (1.0 - armor)
+	mood = maxf(mood - 0.15, 0.0)
+	cue.emit(&"hurt")
+	if health <= 0.0:
+		die(&"hit")
+		return
+	var knock := push / weight
+	if knock >= MIN_KNOCK:
+		var away := (global_position - from).slide(up_direction)
+		away = away.normalized() if away.length() > 0.01 else -facing
+		velocity = away * knock + up_direction * knock * 0.4
+	if state_name == &"stun":
+		return
+	if stun_on_hit > 0.0:
+		stun(stun_on_hit)
+	else:
+		change_state(&"hurt")
+
+
+## For callers outside a state's physics (hits, level scripts). Inside a state, set stun_for and
+## return &"stun" instead.
+func stun(seconds: float) -> void:
+	stun_for = seconds
+	change_state(&"stun")
+
+
 
 ## cause: &"fall" (pits, the void), &"drown" (out of oxygen), &"hit" (health 0).
 ## The body drops out of collision (layer 0, mask kept so it still lands) and frees itself
@@ -428,6 +469,18 @@ func die(cause: StringName) -> void:
 	cue.emit(&"death")
 	died.emit(cause)
 	change_state(&"death")
+
+
+## Landing faster than fall_damage_speed costs health.
+func _fall_damage() -> void:
+	if not is_on_floor():
+		_fall_speed = maxf(_fall_speed, -vspeed())
+		return
+	if _fall_speed > fall_damage_speed and state_name != &"death":
+		health -= (_fall_speed - fall_damage_speed) * fall_damage
+		if health <= 0.0:
+			die(&"fall")
+	_fall_speed = 0.0
 
 
 func debug_text() -> String:

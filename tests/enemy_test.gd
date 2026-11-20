@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 2
+const SECTIONS := 3
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -21,6 +21,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await _test_core()
 	await _test_pursuit()
+	await _test_combat()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -133,6 +134,64 @@ func _test_pursuit() -> void:
 	player.queue_free()
 	await _wait(5)
 	_check(under.state_name == &"idle" and not under.has_target(), "target freed: idle, no errors")
+	sections += 1
+
+
+func _test_combat() -> void:
+	_course(Vector3(-30, 1, 0))
+	var a := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0, max_health = 100.0, armor = 0.5, weight = 2.0})
+	await _wait(10)
+	a.hit(20.0, 20.0, a.global_position - Vector3(1, 0, 0))
+	_check(is_equal_approx(a.health, 90.0), "armor 0.5 halves damage")
+	_check(a.state_name == &"hurt" and absf(a.planar().length() - 10.0) < 0.5 and a.planar().x > 0.0, "knockback = push / weight, away from the hit")
+	_check(a.mood < a.base_mood, "getting hurt lowers mood")
+	a.hit(20.0, 20.0, a.global_position)
+	_check(is_equal_approx(a.health, 90.0), "hits inside invuln_time are ignored")
+	var heavy := _enemy(Vector3(0, 1, 5), {sight_radius = 0.0, weight = 40.0})
+	await _wait(10)
+	heavy.hit(5.0, 20.0, heavy.global_position - Vector3(1, 0, 0))
+	await _wait(1)
+	_check(heavy.planar().length() < 0.1 and heavy.health < heavy.max_health, "push / weight under 1 m/s: hurt but not moved")
+	var causes := _deaths(heavy)
+	await _wait(30)
+	heavy.hit(999.0, 0.0, heavy.global_position)
+	_check(causes == [&"hit"] and heavy.collision_layer == 0, "health 0: death by hit, body drops out of collision")
+	heavy.hit(999.0, 0.0, heavy.global_position)
+	_check(causes == [&"hit"], "hits on a dead enemy are ignored")
+
+	_course(Vector3(-20, 1, 0), false)
+	_box(Vector3(0, -0.5, 0), Vector3(6, 1, 6))
+	var shoved := _enemy(Vector3(2, 1, 0), {sight_radius = 0.0, weight = 2.0})
+	causes = _deaths(shoved)
+	await _wait(10)
+	shoved.hit(1.0, 24.0, shoved.global_position - Vector3(1, 0, 0))
+	_check(await _gone(shoved, 240) and causes == [&"fall"], "a push carries it off the ledge into the pit")
+
+	_course(Vector3(-30, 1, 0))
+	var high := _enemy(Vector3(0, 14, 0), {sight_radius = 0.0})
+	var low := _enemy(Vector3(4, 2.5, 0), {sight_radius = 0.0})
+	await _wait(120)
+	_check(high.health < high.max_health and low.health == low.max_health, "hard landings cost health, short drops don't")
+
+	_course(Vector3(30, 1, 0))
+	var tired := _enemy(Vector3(0, 1, 0), {abilities = Enemy.Ability.RUN, max_stamina = 20.0, run_cost = 20.0, stun_time = 1.0, sight_radius = 60.0, lose_radius = 80.0})
+	_check(await _wait_until(func() -> bool: return tired.state_name == &"stun", 120), "running out of stamina stuns")
+	await _wait(15) # slows from run_speed at accel first
+	_check(tired.planar().length() < 0.2 and tired.anim == &"stun", "a stunned ground enemy rests in place")
+	_check(await _wait_until(func() -> bool: return tired.state_name != &"stun", 70) and tired.stamina == tired.max_stamina, "stun ends after stun_time with full stamina")
+
+	_course(Vector3(-30, 1, 0))
+	var s := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0})
+	await _wait(10)
+	s.stun(1.0)
+	await _wait(30)
+	s.hit(1.0, 0.0, s.global_position)
+	_check(s.state_name == &"stun", "a hit during a stun doesn't end it")
+	_check(await _wait_until(func() -> bool: return s.state_name != &"stun", 40), "...or restart it")
+	var dizzy := _enemy(Vector3(0, 1, 4), {sight_radius = 0.0, stun_on_hit = 1.0})
+	await _wait(10)
+	dizzy.hit(1.0, 0.0, dizzy.global_position)
+	_check(dizzy.state_name == &"stun", "stun_on_hit: a hit stuns instead of hurting")
 	sections += 1
 
 
