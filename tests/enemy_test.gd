@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 12
+const SECTIONS := 13
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -627,6 +627,38 @@ func _test_polish() -> void:
 	sections += 1
 
 
+func _test_areas() -> void:
+	_course()
+	var box := _area(Vector3(0, 1, 0), _boxed(Vector3(8, 2, 4)), PI / 4)
+	var ball := SphereShape3D.new()
+	ball.radius = 3.0
+	var sphere := _area(Vector3(20, 1, 0), ball)
+	await _wait(2)
+	_check(box.contains(Vector3(0, 1, 0)) and box.contains(Vector3(2.5, 1, -2.5)) and not box.contains(Vector3(2.5, 1, 2.5)), "contains: a box rotated 45 degrees")
+	_check(sphere.contains(Vector3(22, 1, 0)) and not sphere.contains(Vector3(22.5, 1, 2.5)), "contains: a sphere")
+
+	var pond := _area(Vector3(-20, 1, 8), _boxed(Vector3(10, 4, 6))) # x -25..-15, half over the water
+	_water(Vector3(-17.5, 1.5, 8), Vector3(5, 3, 6)) # 3 m deep over the floor, x -20..-15
+	var walker := _enemy(Vector3(-30, 1, -8), {sight_radius = 0.0})
+	var fish := _enemy(Vector3(-17, 1, 8), {abilities = Enemy.Ability.SWIM, sight_radius = 0.0})
+	await _wait(2)
+	walker.rng.seed = 7
+	fish.rng.seed = 7
+	var dry := true
+	var wet := true
+	for i in 40:
+		var g: Variant = pond.random_ground(walker)
+		dry = dry and g != null and pond.contains(g + Vector3.UP * 0.5) and not walker.deep_water_at(g)
+		var w: Variant = pond.random_ground(fish)
+		wet = wet and w != null and fish.deep_water_at(w)
+	_check(dry, "random_ground: inside the area, never under deep water for a walker")
+	_check(wet, "random_ground: only under water for a SWIM-only enemy")
+	var lake := _area(Vector3(-17.5, 1, 8), _boxed(Vector3(4, 2, 4))) # entirely over the water
+	await _wait(2)
+	_check(lake.random_ground(walker) == null, "random_ground: null when there's nowhere to stand")
+	sections += 1
+
+
 # --- course building ---------------------------------------------------------------
 
 ## Replaces the course: a void kill zone, an optional 80x30 floor (top y = 0), a pad under
@@ -655,6 +687,22 @@ func _box(at: Vector3, size: Vector3, climbable := false) -> CSGBox3D:
 		b.add_to_group(&"climbable")
 	course.add_child(b)
 	return b
+
+
+func _boxed(size: Vector3) -> BoxShape3D:
+	var b := BoxShape3D.new()
+	b.size = size
+	return b
+
+
+## An EnemyArea in the course: added to the tree first, then shaped (Zone.add_shape).
+func _area(at: Vector3, shape: Shape3D, rot_y := 0.0) -> EnemyArea:
+	var a := EnemyArea.new()
+	a.position = at
+	a.rotation.y = rot_y
+	course.add_child(a)
+	a.add_shape(shape)
+	return a
 
 
 func _water(at: Vector3, size: Vector3) -> EnvZone:

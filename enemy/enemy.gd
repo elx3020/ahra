@@ -45,6 +45,7 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export var lose_radius := 16.0 ## the chase ends outside it
 @export var attack_range := 1.6
 @export var give_up_time := 1.5 ## after giving up a chase, wait this long before chasing again
+@export var memory_time := 3.0 ## seconds a player out of sight is still chased (toward where it was last seen)
 @export_group("Ground")
 @export var walk_speed := 3.0
 @export var run_speed := 6.0
@@ -74,6 +75,12 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export var attack_windup := 0.35
 @export var attack_recover := 0.4
 @export var attack_reach := 1.8
+@export_group("Areas")
+@export var patrol_area: EnemyArea ## roams it while it hasn't spotted the player; may be shared
+@export var chase_area: EnemyArea ## a leash: chases only inside it (its border is a ledge); may be shared
+@export var patrol_pause := Vector2(1.0, 3.0) ## seconds of rest at each patrol spot (min, max)
+@export var sleep_off_screen := true ## off screen: no thinking, physics only
+@export var screen_margin := 4.0 ## metres around the body that still count as on screen
 @export_group("Look")
 @export var color := Color(0.85, 0.25, 0.2)
 @export var show_debug := true ## state and stats on a label above the enemy
@@ -107,6 +114,7 @@ var _still := 0.0 ## moving_on: seconds since then
 var _excl: Array[RID] = [] ## cast's exclude list, rebuilt once per physics frame
 var _excl_frame := -1
 var _label: Label3D
+var rng := RandomNumberGenerator.new() ## patrol picks; tests seed it
 
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
@@ -146,6 +154,7 @@ func _ready() -> void:
 	oxygen = max_oxygen
 	mood = base_mood
 	home = global_position
+	rng.randomize()
 	add_to_group(&"enemy")
 	env = EnvProfile.combine(EnvProfile.new(), _envs)
 	var body := get_node_or_null(^"Visual/Body") as MeshInstance3D
