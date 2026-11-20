@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 15
+const SECTIONS := 16
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_sleep, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -767,6 +767,43 @@ func _test_sight_leash() -> void:
 	await _wait_until(func() -> bool: return b.burrowed, 120)
 	await _wait_until(func() -> bool: return not b.burrowed, 300)
 	_check(b.global_position.x < 0.5, "a burrower stays inside its chase area too")
+	sections += 1
+
+
+func _test_sleep() -> void:
+	_course(Vector3(3, 1, 0))
+	var e := _enemy(Vector3(0, 1, 0), {sight_radius = 10.0, attack_damage = 0.0})
+	_check(not e.asleep, "headless: enemies never sleep by default")
+	e.set_asleep(true)
+	await _wait(60)
+	_check(e.state_name == &"idle" and e.asleep, "asleep: no chase with the player in plain view")
+	e.set_asleep(false)
+	_check(await _wait_until(func() -> bool: return e.state_name == &"pursuit", 30), "awake again: the AI resumes")
+
+	_course(Vector3(-30, 1, 0))
+	var deck := AnimatableBody3D.new()
+	var cs := CollisionShape3D.new()
+	cs.shape = _boxed(Vector3(4, 0.5, 4))
+	deck.add_child(cs)
+	deck.position = Vector3(0, 3, 0)
+	course.add_child(deck)
+	var rider := _enemy(Vector3(0, 4.2, 0), {sight_radius = 0.0})
+	var bird := _enemy(Vector3(8, 1, 0), {abilities = Enemy.Ability.FLY, sight_radius = 0.0})
+	await _wait(90)
+	rider.set_asleep(true)
+	bird.set_asleep(true)
+	var bird_y := bird.global_position.y
+	for i in 120:
+		deck.position.x += 2.0 / 60.0
+		await _wait(1)
+	_check(absf(rider.global_position.x - deck.position.x) < 0.5 and rider.global_position.y > 3.0, "asleep on a moving platform: carried along")
+	_check(absf(bird.global_position.y - bird_y) < 0.2, "an asleep flyer stays where it is")
+
+	_kill(Vector3(20, 0.5, 0), Vector3(3, 1, 3))
+	var dozer := _enemy(Vector3(20, 5, 0), {sight_radius = 0.0})
+	dozer.set_asleep(true)
+	var causes := _deaths(dozer)
+	_check(await _gone(dozer, 240) and causes == [&"fall"], "asleep: still falls, dies in a kill zone and frees itself")
 	sections += 1
 
 

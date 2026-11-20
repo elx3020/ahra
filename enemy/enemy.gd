@@ -110,6 +110,7 @@ var aim_override: Variant = null ## a patrol spot the swim state heads for inste
 var last_seen := Vector3.ZERO ## where the player was the last time the enemy saw it
 var seen_ago := INF ## seconds since then
 var _sees := false ## sees_target's cached answer
+var asleep := false ## off screen: no thinking, physics only (see set_asleep)
 var _sight_t := 0.0 ## seconds until sees_target checks again
 var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
@@ -176,6 +177,14 @@ func _ready() -> void:
 		_label.font_size = 36
 		_label.outline_size = 10
 		add_child(_label)
+	if sleep_off_screen and DisplayServer.get_name() != "headless": # headless renders nothing: never sleep
+		var screen := VisibleOnScreenNotifier3D.new()
+		var m := Vector3.ONE * screen_margin
+		screen.aabb = AABB(Vector3(-0.4, -HALF_HEIGHT, -0.4) - m, Vector3(0.8, 2.0 * HALF_HEIGHT, 0.8) + 2.0 * m)
+		add_child(screen)
+		screen.screen_entered.connect(set_asleep.bind(false))
+		screen.screen_exited.connect(set_asleep.bind(true))
+		asleep = true # wakes on its first frame on screen
 	for s: EnemyState in states.values():
 		s.e = self
 	change_state(&"idle")
@@ -191,6 +200,9 @@ func change_state(next: StringName) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if asleep and state_name != &"death":
+		_doze(delta)
+		return
 	invuln -= delta
 	attack_cd -= delta
 	give_up -= delta
@@ -227,6 +239,23 @@ func _tick_stats(delta: float) -> void:
 		mood = move_toward(mood, base_mood, 0.05 * delta)
 	if (home - global_position).dot(up_direction) > KILL_DEPTH:
 		die(&"fall")
+
+
+## Asleep (off screen, or set by a script): no states, stats, timers or ground checks. Physics still
+## runs (_doze), so it rides moving platforms, falls, drifts in wind and triggers zones; a dying
+## enemy still finishes dying. It wakes where it is and carries on from its state.
+func set_asleep(on: bool) -> void:
+	asleep = on
+
+
+## The asleep tick: no rays. Flyers and swimmers hold still; everything else brakes and falls.
+func _doze(delta: float) -> void:
+	if can(Ability.FLY) or swimming():
+		velocity = velocity.move_toward(Vector3.ZERO, 20.0 * delta)
+	else:
+		move_planar(Vector3.ZERO, 0.0, delta)
+		apply_gravity(delta)
+	move_and_slide()
 
 
 func can(a: int) -> bool:
@@ -778,7 +807,7 @@ func _fall_damage() -> void:
 
 
 func debug_text() -> String:
-	return "%s\nhp %d  st %d\nmood %.2f  o2 %.1f" % [state_name, health, stamina, mood, oxygen]
+	return "%s\nhp %d  st %d\nmood %.2f  o2 %.1f%s" % [state_name, health, stamina, mood, oxygen, "\nasleep" if asleep else ""]
 
 
 # --- presentation --------------------------------------------------------------------
