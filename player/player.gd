@@ -11,6 +11,8 @@ extends CharacterBody3D
 signal puppet_arrived
 
 const HEAD := 0.8 ## head height above the body center, for breathing checks
+const PROJECTILE := preload("res://world/projectile.tscn")
+const SHOOT_STATES: Array[StringName] = [&"idle", &"walk", &"run", &"jump", &"swim"]
 
 @export_group("Ground")
 @export var walk_speed := 4.5
@@ -61,6 +63,19 @@ const HEAD := 0.8 ## head height above the body center, for breathing checks
 @export var knockback := 6.0
 @export var knockback_up := 4.0
 @export var respawn_invuln := 1.5
+## ponytail: placeholder combat (one melee swing, one straight shot); the combat system comes later.
+@export_group("Attack")
+@export var melee_damage := 10.0
+@export var melee_push := 24.0 ## knockback impulse: an enemy flies back at push / weight
+@export var melee_time := 0.3
+@export var melee_cooldown := 0.4
+@export var melee_reach := 1.0 ## centre of the hit sphere, in front of the player
+@export var melee_radius := 0.9
+@export var shoot_damage := 5.0
+@export var shoot_push := 6.0
+@export var shoot_speed := 30.0
+@export var shoot_cooldown := 0.35
+@export var shoot_range := 20.0 ## aim assist reach
 @export_group("")
 @export var ambient: EnvProfile ## environment used outside of any EnvZone
 @export var progression := StatMods.new() ## permanent % bonuses earned in play; this is what gets saved
@@ -92,6 +107,8 @@ var launched := false ## slingshot release: ignores drag (water) until the apex
 var floor_velocity := Vector3.ZERO ## velocity of the moving platform under the player (last frame)
 var carry := Vector3.ZERO ## platform velocity kept after jumping/walking off it (air drift, like wind)
 var dash_cd := 0.0
+var melee_cd := 0.0
+var shoot_cd := 0.0
 var _attacks: Array[bool] = []
 
 var states: Dictionary[StringName, PlayerState] = {
@@ -104,6 +121,7 @@ var states: Dictionary[StringName, PlayerState] = {
 	&"swing": preload("states/swing.gd").new(),
 	&"swim": preload("states/swim.gd").new(),
 	&"interact": preload("states/interact.gd").new(),
+	&"melee": preload("states/melee.gd").new(),
 	&"puppet": preload("states/puppet.gd").new(),
 	&"hurt": preload("states/hurt.gd").new(),
 	&"death": preload("states/death.gd").new(),
@@ -148,8 +166,12 @@ func _physics_process(delta: float) -> void:
 		coyote -= delta
 	jump_buffer = jump_buffer_time if Input.is_action_just_pressed(&"jump") else jump_buffer - delta
 	dash_cd -= delta
+	melee_cd -= delta
+	shoot_cd -= delta
 	invuln -= delta
 	_tick_stats(delta)
+	if Input.is_action_just_pressed(&"shoot") and shoot_cd <= 0.0 and state_name in SHOOT_STATES:
+		shoot()
 
 	var next := state.physics(delta)
 	if next:
@@ -295,6 +317,8 @@ func ground_step(dir: Vector3, speed: float, delta: float) -> StringName:
 		return &"jump"
 	if Input.is_action_just_pressed(&"dash") and dash_cd <= 0.0:
 		return &"dash"
+	if Input.is_action_just_pressed(&"attack") and melee_cd <= 0.0:
+		return &"melee"
 	if interactable and Input.is_action_just_pressed(&"interact"):
 		return &"interact"
 	if can_climb():
@@ -333,6 +357,50 @@ func find_swing_point() -> SwingPoint:
 		if d < s.grab_radius and d < best_d:
 			best = s
 			best_d = d
+	return best
+
+
+# --- attacks -------------------------------------------------------------------
+
+## The melee swing's hit check: every enemy in a sphere in front. Returns how many it hit.
+func melee_hit() -> int:
+	var sphere := SphereShape3D.new()
+	sphere.radius = melee_radius
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = sphere
+	q.transform = Transform3D(Basis.IDENTITY, global_position + facing * melee_reach)
+	q.exclude = [get_rid()]
+	var hit: Array[Enemy] = []
+	for r: Dictionary in get_world_3d().direct_space_state.intersect_shape(q, 16):
+		var e := r.collider as Enemy
+		if e and e not in hit:
+			hit.append(e)
+			e.hit(melee_damage, melee_push, global_position)
+	return hit.size()
+
+
+## Fires a Projectile from the chest along aim_dir().
+func shoot() -> Projectile:
+	shoot_cd = shoot_cooldown
+	var b: Projectile = PROJECTILE.instantiate()
+	b.speed = shoot_speed
+	get_parent().add_child(b)
+	b.setup(global_position + up_direction * 0.3 + facing * 0.6, aim_dir(), shoot_damage, shoot_push, self)
+	return b
+
+
+## The facing, or toward the nearest live enemy within shoot_range and 25 degrees of it (aim
+## assist, so shots don't sail over or under enemies on iso terrain).
+func aim_dir() -> Vector3:
+	var from := global_position + up_direction * 0.3
+	var best := facing
+	var best_d := shoot_range
+	for n: Node in get_tree().get_nodes_in_group(&"enemy"):
+		var e := n as Enemy
+		var to := e.global_position - from
+		if e.state_name != &"death" and to.length() < best_d and facing.angle_to(to.slide(up_direction)) <= deg_to_rad(25.0):
+			best = to.normalized()
+			best_d = to.length()
 	return best
 
 
@@ -518,6 +586,7 @@ func _animate(delta: float) -> void:
 		&"swing": tilt = 0.4
 		&"swim": tilt = -0.9; off.y = sin(t * 4.0) * 0.06
 		&"interact": sc.y = 1.0 + sin(t * 20.0) * 0.1; tilt = -0.4
+		&"melee": sc = Vector3(1.15, 0.9, 1.15); tilt = -0.5
 		&"puppet": sc.y = 1.0 + sin(t * 2.0) * 0.02
 		&"hurt": sc = Vector3(1.2, 0.75, 1.2); tilt = 0.5
 		&"death_fall": sc = Vector3(0.6, 1.5, 0.6); off.x = sin(t * 30.0) * 0.1 # flailing

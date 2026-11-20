@@ -31,6 +31,8 @@ func physics(delta: float) -> StringName:
 		_cut = false
 	if Input.is_action_just_pressed(&"dash") and p.dash_cd <= 0.0 and p.air_dashes_left > 0:
 		return &"dash"
+	if Input.is_action_just_pressed(&"attack") and p.melee_cd <= 0.0:
+		return &"melee"
 	if Input.is_action_just_pressed(&"grab"):
 		p.swing_point = p.find_swing_point()
 		if p.swing_point:

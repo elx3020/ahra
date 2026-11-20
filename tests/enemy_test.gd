@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 7
+const SECTIONS := 8
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -19,14 +19,16 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	await _test_core()
-	await _test_pursuit()
-	await _test_combat()
-	await _test_attack_flee()
-	await _test_jump_dash()
-	await _test_climb_swim()
-	await _test_swing_fly()
-	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
+	# optional filter: `-- pursuit swing_fly` runs only those sections
+	var only := OS.get_cmdline_user_args()
+	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
+		_test_climb_swim, _test_swing_fly, _test_player_attacks]
+	var ran := 0
+	for t in all:
+		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
+			ran += 1
+			await t.call()
+	_check(sections == ran and (not only.is_empty() or ran == SECTIONS), "all %d sections ran (%d)" % [ran, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
 
@@ -357,6 +359,57 @@ func _test_swing_fly() -> void:
 	var walled := _enemy(Vector3(-2, 1, 0), base.merged({abilities = Enemy.Ability.FLY}, true))
 	var seen := await _watch([walled], 300)
 	_check(&"idle" in seen and walled.global_position.x < 3.5, "FLY gives up at a wall too high to rise over")
+	sections += 1
+
+
+func _projectiles() -> Array:
+	return course.get_children().filter(func(n: Node) -> bool: return n is Projectile)
+
+
+func _press(action: StringName) -> void:
+	Input.action_press(action)
+	await _wait(2)
+	Input.action_release(action)
+
+
+func _test_player_attacks() -> void:
+	_check(InputMap.has_action(&"attack") and InputMap.has_action(&"shoot"), "attack and shoot input actions")
+	_course(Vector3(0, 1, 0))
+	player.facing = Vector3.RIGHT
+	await _wait(20)
+	var front := _enemy(Vector3(1.4, 1, 0), {sight_radius = 0.0, weight = 2.0})
+	var back := _enemy(Vector3(-1.4, 1, 0), {sight_radius = 0.0})
+	await _wait(10)
+	await _press(&"attack")
+	_check(player.state_name == &"melee", "attack starts the melee state")
+	await _wait(30)
+	_check(front.health == front.max_health - player.melee_damage and front.global_position.x > 1.6, "melee hits the enemy in front and pushes it")
+	_check(back.health == back.max_health, "melee misses the enemy behind")
+	_check(player.mood == 1.0, "a melee hit counts as a hit (mood)")
+	player.melee_cd = 1.0
+	await _press(&"attack")
+	_check(player.state_name != &"melee", "no melee while on cooldown")
+	front.queue_free()
+	back.queue_free()
+
+	var target := _enemy(Vector3(8, 1, 1.5), {sight_radius = 0.0}) # 11 degrees off the facing
+	await _wait(10)
+	await _press(&"shoot")
+	_check(_projectiles().size() == 1, "shoot spawns one projectile")
+	_check(await _wait_until(func() -> bool: return target.health < target.max_health, 30), "aim assist: the shot hits an enemy 11 degrees off the facing")
+	await _wait(2)
+	_check(_projectiles().is_empty(), "the projectile is freed on hit")
+	target.queue_free()
+
+	_box(Vector3(-6, 1, 0), Vector3(1, 2, 4))
+	player.facing = Vector3.LEFT
+	await _wait(20)
+	await _press(&"shoot")
+	_check(await _wait_until(func() -> bool: return _projectiles().is_empty(), 30), "a shot into a wall is freed")
+	_check(is_equal_approx(player.mood, 2.0 / 3.0), "the miss counts (mood = hits / attacks)")
+	player.damage(1.0, player.global_position + Vector3.RIGHT)
+	await _press(&"shoot")
+	_check(_projectiles().is_empty(), "no shooting while hurt")
 	sections += 1
 
 
