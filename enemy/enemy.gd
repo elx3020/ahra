@@ -103,10 +103,13 @@ var _label: Label3D
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
 	&"pursuit": preload("states/pursuit.gd").new(),
+	&"attack": preload("states/attack.gd").new(),
+	&"flee": preload("states/flee.gd").new(),
 	&"hurt": preload("states/hurt.gd").new(),
 	&"stun": preload("states/stun.gd").new(),
 	&"jump": preload("states/jump.gd").new(),
 	&"death": preload("states/death.gd").new(),
+	&"puppet": preload("states/puppet.gd").new(),
 }
 
 
@@ -455,6 +458,18 @@ func stun(seconds: float) -> void:
 	stun_for = seconds
 	change_state(&"stun")
 
+
+
+## Cinematic control: ignores the AI, the player, damage and ledges. With `at`, walks there and
+## emits puppet_arrived.
+func start_puppet(at: Variant = null) -> void:
+	puppet_target = at
+	change_state(&"puppet")
+
+
+func end_puppet() -> void:
+	if state_name == &"puppet":
+		change_state(&"idle")
 
 
 ## cause: &"fall" (pits, the void), &"drown" (out of oxygen), &"hit" (health 0).

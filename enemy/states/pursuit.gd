@@ -8,10 +8,14 @@ func physics(delta: float) -> StringName:
 		return &""
 	if not e.has_target() or e.dist_to_target() > e.lose_radius:
 		return &"idle"
+	if e.mood < e.flee_mood:
+		return &"flee"
 	if not e.is_on_floor():
 		e.goal = &"pursuit"
 		return &"jump"
 	if e.dist_to_target() <= e.attack_range:
+		if e.attack_cd <= 0.0:
+			return &"attack"
 		e.face(e.target_pos())
 		e.anim = &"idle"
 		e.hold(delta)

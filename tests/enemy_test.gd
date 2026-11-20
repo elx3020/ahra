@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 3
+const SECTIONS := 4
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -22,6 +22,7 @@ func _run() -> void:
 	await _test_core()
 	await _test_pursuit()
 	await _test_combat()
+	await _test_attack_flee()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -192,6 +193,64 @@ func _test_combat() -> void:
 	await _wait(10)
 	dizzy.hit(1.0, 0.0, dizzy.global_position)
 	_check(dizzy.state_name == &"stun", "stun_on_hit: a hit stuns instead of hurting")
+	sections += 1
+
+
+func _test_attack_flee() -> void:
+	_course(Vector3(0, 1, 0))
+	var e := _enemy(Vector3(3, 1, 0), {sight_radius = 10.0, attack_damage = 10.0, attack_cooldown = 1.5})
+	var cues := []
+	e.cue.connect(func(n: StringName) -> void: cues.append(n))
+	var hp := player.health
+	_check(await _wait_until(func() -> bool: return player.health < hp, 120), "attacks once in range")
+	_check(player.health == hp - 10.0 and &"attack_windup" in cues and &"attack" in cues, "windup, strike for attack_damage, cues")
+	_check(e.mood > e.base_mood and e.stamina < e.max_stamina, "a landed hit raises mood; attacking costs stamina")
+	hp = player.health
+	var frames := 0
+	while player.health == hp and frames < 300:
+		await _wait(1)
+		frames += 1
+	_check(frames >= int(e.attack_cooldown * 60.0), "the next strike waits out attack_cooldown (%d frames)" % frames)
+
+	_course(Vector3(-30, 1, 0))
+	var calm := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0, base_mood = 0.6})
+	await _wait(5)
+	calm.mood = 0.3
+	await _wait(120)
+	_check(calm.mood > 0.3 and calm.mood <= 0.6, "mood drifts back toward base_mood while idle")
+
+	_course(Vector3(-5, 1, 0))
+	var coward := _enemy(Vector3(0, 1, 0), {sight_radius = 20.0, lose_radius = 30.0, base_mood = 0.3, flee_mood = 0.2, attack_damage = 0.0})
+	await _wait(10)
+	coward.hit(1.0, 0.0, player.global_position)
+	_check(await _wait_until(func() -> bool: return coward.state_name == &"flee", 30), "mood under flee_mood: flees")
+	var d0 := coward.dist_to_target()
+	await _wait(60)
+	_check(coward.dist_to_target() > d0 + 2.0, "fleeing opens distance")
+
+	_course(Vector3(-4, 1, 0), false)
+	_box(Vector3(0, -0.5, 0), Vector3(10, 1, 6))
+	var cornered := _enemy(Vector3(3, 1, 0), {sight_radius = 20.0, base_mood = 0.1, flee_mood = 0.2, attack_damage = 5.0})
+	await _wait(120)
+	_check(is_instance_valid(cornered) and cornered.global_position.y > 0.5 and cornered.state_name == &"flee", "cornered at the edge: holds its ground")
+	player.teleport(cornered.global_position - Vector3(1.2, 0, 0))
+	hp = player.health
+	_check(await _wait_until(func() -> bool: return player.health < hp, 120), "cornered: attacks when the player comes close")
+
+	_course(Vector3(-3, 1, 0))
+	var actor := _enemy(Vector3(0, 1, 0), {sight_radius = 20.0})
+	await _wait(5)
+	var arrived := []
+	actor.puppet_arrived.connect(func() -> void: arrived.append(true))
+	actor.start_puppet(Vector3(6, 0, 0))
+	var hp2 := actor.health
+	actor.hit(10.0, 10.0, actor.global_position)
+	_check(actor.health == hp2, "puppet ignores hits")
+	var seen := await _watch([actor], 150)
+	_check(arrived.size() == 1 and seen == [&"puppet"] and actor.global_position.x > 5.5, "puppet walks to its mark, ignores the player, emits puppet_arrived")
+	actor.end_puppet()
+	await _wait(2)
+	_check(actor.state_name != &"puppet", "end_puppet hands back to the AI")
 	sections += 1
 
 
