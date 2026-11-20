@@ -1,7 +1,7 @@
 @tool
 class_name EnvZone
 extends Zone
-## Applies an EnvProfile (mud, ice, wind, water, hot, cold...) while the player is inside.
+## Applies an EnvProfile (mud, ice, wind, water, hot, cold...) while the player or an enemy is inside.
 
 @export var profile: EnvProfile
 
@@ -16,6 +16,18 @@ func _player_exited(p: Player) -> void:
 	p.remove_env(profile)
 	if p.water_zone == self:
 		p.water_zone = null
+
+
+func _enemy_entered(e: Enemy) -> void:
+	e.add_env(profile)
+	if profile.water:
+		e.water_zone = self
+
+
+func _enemy_exited(e: Enemy) -> void:
+	e.remove_env(profile)
+	if e.water_zone == self:
+		e.water_zone = null
 
 
 ## Height of the zone's top measured along `up` (works for any gravity direction).

@@ -124,6 +124,7 @@ func _ready() -> void:
 	stamina = max_sp()
 	oxygen = max_o2()
 	checkpoint = global_position
+	add_to_group(&"player") # enemies find their target through this group
 	platform_on_leave = PLATFORM_ON_LEAVE_DO_NOTHING # the jump state carries it instead (see carry)
 	for s in states.values():
 		s.p = self

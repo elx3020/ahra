@@ -8,3 +8,7 @@ extends Zone
 
 func _player_entered(p: Player) -> void:
 	p.die(cause)
+
+
+func _enemy_entered(e: Enemy) -> void:
+	e.die(cause)
