@@ -362,7 +362,7 @@ func find_swing_point() -> SwingPoint:
 
 # --- attacks -------------------------------------------------------------------
 
-## The melee swing's hit check: every enemy in a sphere in front. Returns how many it hit.
+## The melee swing's hit check: every enemy in a sphere in front. Returns how many hits landed.
 func melee_hit() -> int:
 	var sphere := SphereShape3D.new()
 	sphere.radius = melee_radius
@@ -370,13 +370,15 @@ func melee_hit() -> int:
 	q.shape = sphere
 	q.transform = Transform3D(Basis.IDENTITY, global_position + facing * melee_reach)
 	q.exclude = [get_rid()]
-	var hit: Array[Enemy] = []
+	var seen: Array[Enemy] = []
+	var landed := 0
 	for r: Dictionary in get_world_3d().direct_space_state.intersect_shape(q, 16):
 		var e := r.collider as Enemy
-		if e and e not in hit:
-			hit.append(e)
-			e.hit(melee_damage, melee_push, global_position)
-	return hit.size()
+		if e and e not in seen:
+			seen.append(e)
+			if e.hit(melee_damage, melee_push, global_position):
+				landed += 1
+	return landed
 
 
 ## Fires a Projectile from the chest along aim_dir().
@@ -389,8 +391,9 @@ func shoot() -> Projectile:
 	return b
 
 
-## The facing, or toward the nearest live enemy within shoot_range and 25 degrees of it (aim
-## assist, so shots don't sail over or under enemies on iso terrain).
+## The facing, or toward the nearest enemy within shoot_range and 25 degrees of it that a shot
+## can hit: in sight, not underground (no collision layer), dead or in a cutscene (aim assist, so
+## shots don't sail over or under enemies on iso terrain).
 func aim_dir() -> Vector3:
 	var from := global_position + up_direction * 0.3
 	var best := facing
@@ -398,7 +401,10 @@ func aim_dir() -> Vector3:
 	for n: Node in get_tree().get_nodes_in_group(&"enemy"):
 		var e := n as Enemy
 		var to := e.global_position - from
-		if e.state_name != &"death" and to.length() < best_d and facing.angle_to(to.slide(up_direction)) <= deg_to_rad(25.0):
+		if e.collision_layer == 0 or e.state_name in [&"death", &"puppet"]:
+			continue
+		if to.length() < best_d and facing.angle_to(to.slide(up_direction)) <= deg_to_rad(25.0) \
+				and e.cast(from, e.global_position).is_empty(): # cast skips bodies: terrain in the way
 			best = to.normalized()
 			best_d = to.length()
 	return best

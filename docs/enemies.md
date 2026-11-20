@@ -49,6 +49,9 @@ and other enemies.
 | `water` | deep water over the ground, or below the edge | SWIM walks in; else blocked |
 
 When blocked, the enemy gives up the chase and stays idle for `give_up_time` before trying again.
+A watchdog (`moving_on`) does the same for what the probe can't see, like a curb under the knee
+ray, a beam over the chest ray or a bank too high to leap: trying to move for 1.5 s without getting
+0.3 m anywhere counts as blocked.
 It never walks off a ledge or into water on its own. Only a push (hurt has no ledge check), a
 stun in the air, or a fall can put it there. Flyers (`fly_toward`) climb walls up to
 `hover_height + 6` and give up above that.
@@ -72,11 +75,17 @@ includes the run-up from where the probe saw the gap, so the widest gap an enemy
 | Look | `color` (tints the placeholder body), `show_debug` (state and stats on a label) |
 
 Walking is the baseline and isn't an ability. A FLY enemy doesn't walk: it hovers (over water,
-above the surface) and only touches the ground when stunned. An enemy whose only ability is SWIM
-never leaves water: dry ground is a ledge to it, and it gives up at the bank. A swimmer that stops
-(idle, attacking, waiting) floats up until its head is out, so it doesn't drown. On slippery
-ground the probe looks further ahead, by the extra braking distance. Mood is 0–1 aggression. It goes up 0.1 when the enemy lands a
-hit, down 0.15 when it gets hurt, and drifts back to `base_mood` while idle, fleeing or stunned.
+above the surface) and only touches the ground when stunned. Flyers measure `attack_range` and
+`attack_reach` from their hover point and strike down from there (`attack_point()`); a type can
+replace `attack` with a real swoop. An enemy whose only ability is SWIM never leaves water: dry
+ground is a ledge to it, and it gives up at the bank. A swimmer that stops (idle, attacking,
+waiting) floats up until its head is out, so it doesn't drown.
+
+On slippery ground the probe looks further ahead, by the extra braking distance. Sideways wind
+pushes enemies as it does the player (`wind_response`).
+
+Mood is 0–1 aggression. It goes up 0.1 when the enemy lands a hit, down 0.15 when it gets hurt, and
+drifts back to `base_mood` while idle, fleeing or stunned.
 
 ## Making an enemy type
 
@@ -208,11 +217,11 @@ func _physics_process(_delta: float) -> void:
 		(anim_tree.get("parameters/playback") as AnimationNodeStateMachinePlayback).travel(_anim)
 
 
-func _on_cue(name: StringName) -> void:
-	if name in sounds:
-		sounds[name].play()
-	if name in effects:
-		effects[name].restart()
+func _on_cue(cue_name: StringName) -> void:
+	if cue_name in sounds:
+		sounds[cue_name].play()
+	if cue_name in effects:
+		effects[cue_name].restart()
 
 
 func _on_died(_cause: StringName) -> void:

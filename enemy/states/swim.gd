@@ -9,13 +9,14 @@ var _breathe := false
 
 func enter(_prev: StringName) -> void:
 	_breathe = false
+	e.reset_watchdog()
 	e.anim = &"swim"
 
 
 func physics(delta: float) -> StringName:
 	if not e.swimming():
 		return e.goal
-	if not e.has_target():
+	if not e.has_target() or e.dist_to_target() > e.lose_radius:
 		e.goal = &"idle"
 		return &"idle"
 	var up := e.up_direction
@@ -36,7 +37,7 @@ func physics(delta: float) -> StringName:
 	e.move_and_slide()
 	e.anim = &"swim"
 
-	if e.goal == &"pursuit" and not _breathe and e.dist_to_target() <= e.attack_range and e.attack_cd <= 0.0 \
+	if e.goal == &"pursuit" and not _breathe and e.in_attack_range() and e.attack_cd <= 0.0 \
 			and e.oxygen > breath_time + e.attack_windup + e.attack_recover:
 		return &"attack"
 	if e.water_at(e.target_pos()) == null: # target on land: leap onto the bank ahead
@@ -53,4 +54,8 @@ func physics(delta: float) -> StringName:
 				if v != null:
 					e.launch = v
 					return &"jump"
+			if not e.moving_on(delta): # pressed against a bank too high to leap
+				e.give_up = e.give_up_time
+				e.cue.emit(&"blocked")
+				return &"idle"
 	return &""

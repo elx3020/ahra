@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 11
+const SECTIONS := 12
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -544,6 +544,86 @@ func _test_edges() -> void:
 	await _wait(10)
 	await _press(&"shoot")
 	_check(await _wait_until(func() -> bool: return close.health < close.max_health, 10), "a point-blank shot hits an enemy pressed against the player")
+	sections += 1
+
+
+## Regression tests for the minor review items.
+func _test_polish() -> void:
+	_course(Vector3(6, 1, 0))
+	var b: Burrower = _enemy(Vector3(-6, 1, 0), {sight_radius = 20.0, lose_radius = 30.0}, BURROWER)
+	await _wait_until(func() -> bool: return b.burrowed, 120)
+	var causes := _deaths(b)
+	b.died.connect(func(_c: StringName) -> void: b.die(&"hit")) # a listener that re-enters die()
+	b.die(&"hit")
+	_check(causes.size() == 1 and b.collision_layer == 0 and b.state_name == &"death", "die() is final: died once, no collision, even killed underground")
+	b.stun(1.0)
+	b.start_puppet(Vector3.ZERO)
+	_check(b.state_name == &"death", "stun() and start_puppet() don't revive a dead enemy")
+
+	_course(Vector3(-30, 1, 0))
+	_box(Vector3(6, 1, 0), Vector3(1, 2, 4))
+	var shooter := CharacterBody3D.new()
+	course.add_child(shooter)
+	var shot: Projectile = Player.PROJECTILE.instantiate()
+	course.add_child(shot)
+	shot.setup(Vector3(0, 1, 0), Vector3.RIGHT, 1.0, 0.0, shooter)
+	shooter.free()
+	_check(await _gone(shot, 30), "a projectile whose shooter is gone still flies and hits")
+
+	_course(Vector3(0, 1, 0))
+	player.facing = Vector3.RIGHT
+	await _wait(10)
+	_box(Vector3(3, 1, 0.9), Vector3(0.5, 2, 1.2)) # hides the enemy 13 degrees to one side
+	var hidden := _enemy(Vector3(8, 1, 1.7), {sight_radius = 0.0})
+	var actor := _enemy(Vector3(8, 1, -1.7), {sight_radius = 0.0})
+	var mole: Burrower = _enemy(Vector3(10, 1, 0.5), {sight_radius = 0.0}, BURROWER)
+	var mime := _enemy(Vector3(3, 1, 0), {sight_radius = 0.0}) # straight ahead
+	await _wait(5)
+	actor.start_puppet()
+	mime.start_puppet()
+	mole.set_burrowed(true)
+	_check(player.aim_dir().is_equal_approx(player.facing), "aim assist skips enemies behind walls, in cutscenes and underground")
+	await _press(&"shoot")
+	await _wait_until(func() -> bool: return _projectiles().is_empty(), 30)
+	_check(player.mood == 0.0 and hidden.health == hidden.max_health, "a hit the enemy ignores (puppet) counts as a miss")
+
+	_course(Vector3(0, 1, 0))
+	var hawk := _enemy(Vector3(6, 1, 0), {abilities = Enemy.Ability.FLY, sight_radius = 20.0, lose_radius = 30.0})
+	var hp := player.health
+	_check(await _wait_until(func() -> bool: return player.health < hp, 300), "a flyer with default numbers attacks from its hover point")
+
+	_course(Vector3(8, 1, 0))
+	_box(Vector3(3, 1.35, 0), Vector3(0.5, 0.5, 30)) # a beam above the chest ray, below the head
+	var ducker := _enemy(Vector3(-2, 1, 0), {sight_radius = 30.0, lose_radius = 40.0})
+	await _wait_until(func() -> bool: return ducker.state_name == &"pursuit", 60)
+	_check(&"idle" in await _watch([ducker], 240), "pressing against something the probe can't see gives up the chase")
+
+	_course(Vector3(12, 1, 0), false)
+	_pool()
+	_box(Vector3(40, -0.5, 0), Vector3(4, 1, 4))
+	var eel := _enemy(Vector3(3, -1, 0), {abilities = Enemy.Ability.SWIM, sight_radius = 30.0, lose_radius = 20.0, attack_damage = 0.0, max_oxygen = 30.0})
+	await _wait_until(func() -> bool: return eel.state_name == &"swim", 120)
+	player.teleport(Vector3(40, 1, 0))
+	_check(await _wait_until(func() -> bool: return eel.state_name == &"idle", 10), "a swimmer gives up once the player is past lose_radius")
+
+	_course(Vector3(-30, 1, 0))
+	var gale := EnvProfile.new()
+	gale.wind = Vector3(10, 0, 0)
+	_zone(Vector3(0, 1, 0), Vector3(10, 2, 10), gale)
+	var leaf := _enemy(Vector3(0, 1, 0), {sight_radius = 0.0})
+	var feather := _enemy(Vector3(0, 1, 8), {sight_radius = 0.0, weight = 0.0})
+	var lazy := _enemy(Vector3(4, 1, 8), {sight_radius = 0.0, max_stamina = 0.0})
+	await _wait(10)
+	feather.hit(1.0, 10.0, feather.global_position - Vector3(1, 0, 0))
+	await _wait(30)
+	_check(leaf.planar().x > 1.0, "sideways wind pushes an idle enemy, as it does the player")
+	_check(feather.velocity.is_finite() and lazy.state_name != &"stun", "weight 0 and max_stamina 0 don't break the enemy")
+
+	_course(Vector3(30, 1, 0))
+	var chase := {sight_radius = 60.0, lose_radius = 80.0, attack_damage = 0.0}
+	var leader := _enemy(Vector3(22, 1, 0), chase)
+	var tail := _enemy(Vector3(18, 1, 0.3), chase.merged({walk_speed = 5.0}, true)) # catches up with the leader's back
+	_check(await _wait_until(func() -> bool: return tail.has_target() and tail.dist_to_target() < tail.attack_range + 1.0, 400) and is_instance_valid(leader), "a chaser stuck behind another works its way around")
 	sections += 1
 
 

@@ -17,6 +17,8 @@ signal puppet_arrived
 
 enum Ability { JUMP = 1, DASH = 2, FLY = 4, RUN = 8, CLIMB = 16, SWIM = 32, SWING = 64 }
 
+## ponytail: HALF_HEIGHT and HEAD are sized for the 1.6 m capsule (probe, water depth, jump solve);
+## make them exports when an enemy of another size appears.
 const HALF_HEIGHT := 0.8 ## body centre above the feet
 const HEAD := 0.6 ## head above the body centre, for breathing
 const KILL_DEPTH := 60.0 ## this far below its spawn point = death by fall (scenes without a Void)
@@ -26,8 +28,8 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export_group("Stats")
 @export var max_health := 50.0
 @export_range(0.0, 1.0) var armor := 0.0 ## fraction of incoming damage blocked
-@export var weight := 5.0 ## knockback speed = push / weight
-@export var max_stamina := 100.0
+@export_range(0.1, 1000.0, 0.1, "or_greater") var weight := 5.0 ## knockback speed = push / weight
+@export_range(1.0, 1000.0, 1.0, "or_greater") var max_stamina := 100.0
 @export var stamina_regen := 25.0
 @export var max_oxygen := 4.0 ## seconds of breath with the head under water
 @export var oxygen_regen := 4.0
@@ -47,6 +49,7 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export var walk_speed := 3.0
 @export var run_speed := 6.0
 @export var accel := 40.0
+@export var wind_response := 0.2 ## sideways wind becomes this fraction of drift speed, as Player's wind_response_ground
 @export var safe_drop := 1.2 ## deepest drop it walks off
 @export var gravity := 32.0
 @export var max_fall_speed := 30.0
@@ -99,6 +102,10 @@ var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
 var _fall_speed := 0.0 ## fastest downward speed since leaving the floor
 var _stuck := 0.0 ## fly_toward: seconds pressed against a wall at the height cap
+var _anchor := Vector3.ZERO ## moving_on: where the enemy last got somewhere
+var _still := 0.0 ## moving_on: seconds since then
+var _excl: Array[RID] = [] ## cast's exclude list, rebuilt once per physics frame
+var _excl_frame := -1
 var _label: Label3D
 
 var states: Dictionary[StringName, EnemyState] = {
@@ -172,7 +179,7 @@ func _physics_process(delta: float) -> void:
 	attack_cd -= delta
 	give_up -= delta
 	_tick_stats(delta)
-	if stamina <= 0.0 and state_name not in [&"stun", &"death", &"puppet"]:
+	if max_stamina > 0.0 and stamina <= 0.0 and state_name not in [&"stun", &"death", &"puppet"]:
 		stun(stun_time) # exhausted: the timed opening
 	var next := state.physics(delta)
 	if next:
@@ -222,12 +229,14 @@ func set_vspeed(v: float) -> void:
 	velocity = planar() + up_direction * v
 
 
-## Accelerates the planar velocity toward dir * speed (scaled by the env speed stat).
+## Accelerates the planar velocity toward dir * speed (scaled by the env speed stat), plus the
+## sideways wind's drift, as on the player.
 func move_planar(dir: Vector3, speed: float, delta: float) -> void:
 	if dir.length() > 0.1:
 		facing = dir.normalized()
 	var rate := accel * mult(&"traction")
-	velocity = planar().move_toward(dir * speed * mult(&"speed"), rate * delta) + up_direction * vspeed()
+	var drift := env.wind.slide(up_direction) * wind_response
+	velocity = planar().move_toward(dir * speed * mult(&"speed") + drift, rate * delta) + up_direction * vspeed()
 
 
 ## Gravity (no fall multiplier, so solved jumps stay exact), wind lift and drag.
@@ -440,6 +449,8 @@ func solve_jump(to: Vector3) -> Variant:
 	return null if v.slide(up_direction).length() > max_flat else v
 
 
+## ponytail: a few rays and a test per enemy per physics frame (the exclude list is cached per
+## frame); throttle probing if a scene holds many more than tens of enemies.
 ## Looks just past the body's edge along `dir` (planar, normalized). Rays skip the player and
 ## every enemy: they're bodies to bump into or attack, not terrain.
 ## CSG collision is a hollow trimesh, so rays ignore back faces (a ray starting inside a block
@@ -539,12 +550,14 @@ func cast(from: Vector3, to: Vector3) -> Dictionary:
 
 
 func _exclude() -> Array[RID]:
-	var out: Array[RID] = [get_rid()]
-	for group: StringName in [&"enemy", &"player"]:
-		for n: Node in get_tree().get_nodes_in_group(group):
-			if n is CollisionObject3D:
-				out.append((n as CollisionObject3D).get_rid())
-	return out
+	if _excl_frame != Engine.get_physics_frames():
+		_excl_frame = Engine.get_physics_frames()
+		_excl = [get_rid()]
+		for group: StringName in [&"enemy", &"player"]:
+			for n: Node in get_tree().get_nodes_in_group(group):
+				if n is CollisionObject3D:
+					_excl.append((n as CollisionObject3D).get_rid())
+	return _excl
 
 
 # --- environment ---------------------------------------------------------------------
@@ -594,6 +607,34 @@ func dist_to_target() -> float:
 	return global_position.distance_to(target.global_position)
 
 
+## Where the enemy attacks from: the target itself, or for a flyer the point hover_height above
+## it (flyers strike down from their hover point; a type can replace `attack` with a swoop).
+func attack_point() -> Vector3:
+	return target_pos() + up_direction * hover_height if can(Ability.FLY) else target_pos()
+
+
+func in_attack_range() -> bool:
+	return global_position.distance_to(attack_point()) <= attack_range
+
+
+## Chase watchdog for what the probe can't see (a curb under the knee ray, a beam over the chest
+## ray, a bank too high to leap): false once the enemy has been trying to move for 1.5 s without
+## getting 0.3 m anywhere. Measures the enemy's own motion, so a target running away at the same
+## speed doesn't trip it. Chasing states call reset_watchdog() on enter.
+func moving_on(delta: float) -> bool:
+	if global_position.distance_to(_anchor) > 0.3:
+		_anchor = global_position
+		_still = 0.0
+	else:
+		_still += delta
+	return _still < 1.5
+
+
+func reset_watchdog() -> void:
+	_anchor = global_position
+	_still = 0.0
+
+
 # --- damage, stun, death -------------------------------------------------------------
 
 ## The way anything hurts an enemy. Damage is reduced by armor; knockback is push / weight away
@@ -601,32 +642,36 @@ func dist_to_target() -> float:
 ## heavy enemies can't be stun-locked. Ignored while dead, in puppet, or for invuln_time after a
 ## hit. A running stun keeps going: it's the player's opening. stun_on_hit > 0 stuns instead of
 ## hurting (shoot a flyer down, then melee it).
-func hit(damage: float, push: float, from: Vector3) -> void:
+## Returns whether the hit landed.
+func hit(damage: float, push: float, from: Vector3) -> bool:
 	if state_name in [&"death", &"puppet"] or invuln > 0.0:
-		return
+		return false
 	invuln = invuln_time
 	health -= damage * (1.0 - armor)
 	mood = maxf(mood - 0.15, 0.0)
 	cue.emit(&"hurt")
 	if health <= 0.0:
 		die(&"hit")
-		return
-	var knock := push / weight
+		return true
+	var knock := push / maxf(weight, 0.1)
 	if knock >= MIN_KNOCK:
 		var away := (global_position - from).slide(up_direction)
 		away = away.normalized() if away.length() > 0.01 else -facing
 		velocity = away * knock + up_direction * knock * 0.4
 	if state_name == &"stun":
-		return
+		return true
 	if stun_on_hit > 0.0:
 		stun(stun_on_hit)
 	elif knock >= MIN_KNOCK:
 		change_state(&"hurt")
+	return true
 
 
 ## For callers outside a state's physics (hits, level scripts). Inside a state, set stun_for and
 ## return &"stun" instead.
 func stun(seconds: float) -> void:
+	if state_name in [&"death", &"puppet"]:
+		return
 	stun_for = seconds
 	change_state(&"stun")
 
@@ -635,6 +680,8 @@ func stun(seconds: float) -> void:
 ## Cinematic control: ignores the AI, the player, damage and ledges. With `at`, walks there and
 ## emits puppet_arrived.
 func start_puppet(at: Variant = null) -> void:
+	if state_name == &"death":
+		return
 	puppet_target = at
 	change_state(&"puppet")
 
@@ -652,10 +699,10 @@ func die(cause: StringName) -> void:
 		return
 	death_cause = cause
 	health = 0.0
+	change_state(&"death") # first: a state's exit() (a burrower surfacing) can't undo what follows, and a listener re-entering die() finds it dead
 	collision_layer = 0
 	cue.emit(&"death")
 	died.emit(cause)
-	change_state(&"death")
 
 
 ## Landing faster than fall_damage_speed costs health.

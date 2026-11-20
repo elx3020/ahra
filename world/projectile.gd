@@ -28,7 +28,7 @@ func _physics_process(delta: float) -> void:
 	var to := global_position + velocity * delta
 	var q := PhysicsRayQueryParameters3D.create(global_position, to)
 	q.hit_from_inside = true # fired point-blank into an enemy pressed against the shooter
-	if source is CollisionObject3D and is_instance_valid(source):
+	if is_instance_valid(source) and source is CollisionObject3D: # validity first: `is` errors on a freed shooter
 		q.exclude = [(source as CollisionObject3D).get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit:
@@ -42,10 +42,11 @@ func _physics_process(delta: float) -> void:
 
 func _finish(target: Object) -> void:
 	set_physics_process(false)
+	var landed := false
 	if target is Enemy:
-		(target as Enemy).hit(damage, push, global_position)
+		landed = (target as Enemy).hit(damage, push, global_position)
 	elif target is Player:
 		(target as Player).damage(damage, global_position)
-	if source is Player and is_instance_valid(source):
-		(source as Player).register_attack(target is Enemy)
+	if is_instance_valid(source) and source is Player:
+		(source as Player).register_attack(landed) # a hit the enemy ignored (puppet, i-frames) is a miss
 	queue_free()

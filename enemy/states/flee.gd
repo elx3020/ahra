@@ -29,7 +29,7 @@ func physics(delta: float) -> StringName:
 	if next == &"blocked": # cornered
 		e.face(e.target_pos())
 		e.anim = &"cower"
-		return &"attack" if d <= e.attack_range and e.attack_cd <= 0.0 else &""
+		return &"attack" if e.in_attack_range() and e.attack_cd <= 0.0 else &""
 	if next == &"":
 		e.anim = &"flee"
 	return next

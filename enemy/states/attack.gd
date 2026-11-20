@@ -34,16 +34,19 @@ func physics(delta: float) -> StringName:
 	return &""
 
 
-## One check: the target within attack_reach and roughly in front.
+## One check: the attack point (Enemy.attack_point) within attack_reach and, for ground enemies,
+## the target roughly in front. Flyers strike down from their hover point.
 func _strike() -> void:
 	_struck = true
 	e.anim = &"attack"
 	e.cue.emit(&"attack")
 	e.spend(e.attack_cost)
-	var to := e.target_pos() - e.global_position
-	var flat := to.slide(e.up_direction)
-	if to.length() > e.attack_reach or flat.length() < 0.01 or e.facing.dot(flat.normalized()) < 0.5:
+	if e.global_position.distance_to(e.attack_point()) > e.attack_reach:
 		return
+	if not e.can(Enemy.Ability.FLY):
+		var flat := (e.target_pos() - e.global_position).slide(e.up_direction)
+		if flat.length() < 0.01 or e.facing.dot(flat.normalized()) < 0.5:
+			return
 	var hp := e.target.health
 	e.target.damage(e.attack_damage, e.global_position)
 	if e.target.health < hp:
