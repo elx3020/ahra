@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 1
+const SECTIONS := 2
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -20,6 +20,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _test_core()
+	await _test_pursuit()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -58,6 +59,80 @@ func _test_core() -> void:
 	lost.global_position = lost.home - Vector3(0, Enemy.KILL_DEPTH + 1.0, 0)
 	await _wait(3)
 	_check(causes == [&"fall"], "60 m below its spawn = death by fall")
+	sections += 1
+
+
+func _far_side(kind: String) -> void: # home plateau ends at x = 0; the player waits at x = 10
+	match kind:
+		"gap": _box(Vector3(10, -0.5, 0), Vector3(12, 1, 10)) # 4 m gap
+		"wall":
+			_box(Vector3(8, -0.5, 0), Vector3(16, 1, 10))
+			_box(Vector3(2, 1.5, 0), Vector3(1, 3, 10)) # 3 m wall
+		"water":
+			_box(Vector3(8, -0.5, 0), Vector3(16, 1, 10))
+			_water(Vector3(3, 1.5, 0), Vector3(4, 3, 10)) # 3 m deep over the floor
+		"cliff": _box(Vector3(8, -2.5, 0), Vector3(16, 1, 10)) # 2 m drop, beyond safe_drop
+		"step": _box(Vector3(8, -1.5, 0), Vector3(16, 1, 10)) # 1 m drop, within safe_drop
+
+
+func _test_pursuit() -> void:
+	_course(Vector3(-30, 1, 0))
+	var e := _enemy(Vector3(-20, 1, 0), {sight_radius = 8.0, lose_radius = 14.0, attack_damage = 0.0})
+	await _wait(20)
+	_check(e.state_name == &"idle", "idle while the player is outside sight_radius")
+	player.teleport(Vector3(-26, 1, 0))
+	_check(await _wait_until(func() -> bool: return e.state_name == &"pursuit", 10), "pursuit once the player is inside sight_radius")
+	await _wait(20)
+	_check(absf(e.planar().length() - e.walk_speed) < 0.2, "chases at walk_speed without RUN")
+	_check(await _wait_until(func() -> bool: return e.dist_to_target() < e.attack_range, 180) and e.state_name != &"idle", "closes in without reading the player as a wall") # pursuit, or attack from Task 4 on
+	player.teleport(Vector3(0, 1, 0))
+	_check(await _wait_until(func() -> bool: return e.state_name == &"idle", 60), "idle once the player is past lose_radius") # an attack under way finishes first
+
+	_course(Vector3(30, 1, 0))
+	var chase := {sight_radius = 60.0, lose_radius = 80.0, attack_damage = 0.0, max_stamina = 1000.0}
+	var runner := _enemy(Vector3(20, 1, 2), chase.merged({abilities = Enemy.Ability.RUN}, true))
+	var other := _enemy(Vector3(20, 1, -2), chase)
+	await _wait(20)
+	_check(absf(runner.planar().length() - runner.run_speed) < 0.2 and runner.stamina < runner.max_stamina, "RUN chases at run_speed and spends stamina")
+	var mud := EnvProfile.new()
+	mud.mods.speed = -0.5
+	other.add_env(mud)
+	await _wait(15)
+	_check(absf(other.planar().length() - other.walk_speed * 0.5) < 0.2, "mud halves the chase speed")
+	other.remove_env(mud)
+	_check(&"idle" not in await _watch([runner, other], 300), "two chasers bump into each other without giving up")
+
+	for kind in ["gap", "wall", "water", "cliff"]:
+		_course(Vector3(10, 1, 0), false)
+		_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+		_far_side(kind)
+		var b := _enemy(Vector3(-4, 1, 0), {sight_radius = 30.0, lose_radius = 40.0})
+		await _wait_until(func() -> bool: return b.state_name == &"pursuit", 60) # it spawns idle
+		var stopped := await _wait_until(func() -> bool: return b.state_name == &"idle", 150)
+		await _wait(int(b.give_up_time * 60.0) - 15)
+		_check(stopped and b.state_name == &"idle", "%s: gives up the chase and waits out give_up_time" % kind)
+		await _wait(120)
+		_check(is_instance_valid(b) and b.global_position.x < 1.2 and b.global_position.y > 0.5 and b.oxygen == b.max_oxygen, "%s: never crosses or falls in" % kind)
+	_course(Vector3(10, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+	_far_side("step")
+	var s := _enemy(Vector3(-4, 1, 0), {sight_radius = 30.0, lose_radius = 40.0, attack_damage = 0.0})
+	_check(await _wait_until(func() -> bool: return s.global_position.x > 2.0, 240), "walks down a drop within safe_drop")
+
+	_course(Vector3(-30, 1, 0))
+	var under := _enemy(Vector3(0, 1, 0), {sight_radius = 10.0, attack_damage = 0.0})
+	await _wait(10)
+	player.teleport(Vector3(0, 3.2, 0)) # lands on the enemy's head
+	await _wait(60)
+	_check(under.global_position.is_finite() and under.velocity.is_finite(), "target straight above: no NaN")
+	player.teleport(Vector3(3, 1, 0))
+	await _wait(20)
+	player.die(&"hit")
+	_check(await _wait_until(func() -> bool: return under.state_name == &"idle", 5), "player dead: the chase stops")
+	player.get_parent().remove_child(player)
+	player.queue_free()
+	await _wait(5)
+	_check(under.state_name == &"idle" and not under.has_target(), "target freed: idle, no errors")
 	sections += 1
 
 

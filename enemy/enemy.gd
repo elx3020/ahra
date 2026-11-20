@@ -101,9 +101,20 @@ var _label: Label3D
 
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
+	&"pursuit": preload("states/pursuit.gd").new(),
 	&"jump": preload("states/jump.gd").new(),
 	&"death": preload("states/death.gd").new(),
 }
+
+
+## What the ground ahead looks like (see probe).
+class Probe:
+	var kind: StringName ## &"open", &"wall", &"gap", &"water"
+	var height := 0.0 ## wall: its top above the feet; INF = taller than a jump could clear
+	var climbable := false
+	var point := Vector3.ZERO ## wall: the hit point; otherwise the probed edge point at feet height
+	var normal := Vector3.ZERO ## wall normal
+	var landing: Variant = null ## gap: a feet point on the far side, or null
 var state: EnemyState
 var state_name: StringName
 
@@ -232,6 +243,128 @@ func flail(delta: float) -> bool:
 func spend(amount: float) -> void:
 	stamina = maxf(stamina - amount, 0.0)
 	_drained = true
+
+
+func face(point: Vector3) -> void:
+	var f := (point - global_position).slide(up_direction)
+	if f.length() > 0.01:
+		facing = f.normalized()
+
+
+# --- reading the ground (reactive traversal) ------------------------------------------
+
+## One step toward `point`: moves when the ground ahead is open, hands off to a move state
+## (returns its name, with `goal` set to the current state), or returns &"blocked".
+func step_toward(point: Vector3, delta: float) -> StringName:
+	var to := (point - global_position).slide(up_direction)
+	if to.length() < 0.05: # straight above or below: nothing to steer toward
+		hold(delta)
+		return &""
+	var dir := to.normalized()
+	var p := probe(dir)
+	if p.kind == &"open":
+		var running := can(Ability.RUN)
+		move_planar(dir, run_speed if running else walk_speed, delta)
+		if running:
+			spend(run_cost * delta)
+		apply_gravity(delta)
+		move_and_slide()
+		anim = &"run" if running else &"walk"
+		return &""
+	facing = dir
+	hold(delta)
+	anim = &"blocked"
+	return &"blocked"
+
+
+## Looks just past the body's edge along `dir` (planar, normalized). Rays skip the player and
+## every enemy: they're bodies to bump into or attack, not terrain.
+## CSG collision is a hollow trimesh, so rays ignore back faces (a ray starting inside a block
+## passes out of it) and a wall's height is bounded by a ray at jump height, not a point query.
+func probe(dir: Vector3) -> Probe:
+	var p := Probe.new()
+	var up := up_direction
+	var feet := global_position - up * HALF_HEIGHT
+	var look := 0.6 + planar().length() * 0.1
+	var reach := 0.4 + look
+	for h: float in [0.3, HALF_HEIGHT]: # knees, chest
+		var hit := _ray(feet + up * h, feet + up * h + dir * reach)
+		if hit and (hit.normal as Vector3).dot(up) < 0.7:
+			p.kind = &"wall"
+			p.point = hit.position
+			p.normal = hit.normal
+			p.climbable = (hit.collider as Node).is_in_group(&"climbable")
+			p.height = _wall_height(feet, dir, reach)
+			return p
+	var edge := feet + dir * reach
+	p.point = edge
+	var ground := _ray(edge + up * 0.5, edge - up * (safe_drop + 0.05))
+	if ground:
+		var w := water_at(ground.position + up * 0.1)
+		var deep := w and w.surface_height(up) - (ground.position as Vector3).dot(up) > HALF_HEIGHT + HEAD
+		p.kind = &"water" if deep else &"open"
+		return p
+	if water_at(edge - up * 0.5):
+		p.kind = &"water"
+		return p
+	p.kind = &"gap"
+	p.landing = find_landing(dir, reach + 0.5, maxf(jump_reach, dash_distance))
+	return p
+
+
+## First ground point, sampled every 0.5 m from `near` to `far` along `dir`, that isn't under
+## deep water; null if none.
+func find_landing(dir: Vector3, near: float, far: float) -> Variant:
+	var up := up_direction
+	var feet := global_position - up * HALF_HEIGHT
+	var d := near
+	while d <= far:
+		var at := feet + dir * d
+		var hit := _ray(at + up * (jump_height + 0.3), at - up * safe_drop)
+		if hit:
+			var w := water_at(hit.position + up * 0.1)
+			if not (w and w.surface_height(up) - (hit.position as Vector3).dot(up) > HALF_HEIGHT + HEAD):
+				return hit.position
+		d += 0.5
+	return null
+
+
+## The water EnvZone containing `point`, or null.
+func water_at(point: Vector3) -> EnvZone:
+	var q := PhysicsPointQueryParameters3D.new()
+	q.position = point
+	q.collide_with_areas = true
+	q.collide_with_bodies = false
+	for r: Dictionary in get_world_3d().direct_space_state.intersect_point(q, 8):
+		var z := r.collider as EnvZone
+		if z and z.profile and z.profile.water:
+			return z
+	return null
+
+
+## Top of the wall ahead above the feet; INF when a ray at jump height still hits it.
+func _wall_height(feet: Vector3, dir: Vector3, reach: float) -> float:
+	var up := up_direction
+	var high := feet + up * (jump_height + 0.5)
+	if _ray(high, high + dir * (reach + 0.15)):
+		return INF
+	var top := _ray(high + dir * (reach + 0.15), feet - up * 0.1 + dir * (reach + 0.15))
+	return (top.position - feet).dot(up) if top else INF
+
+
+func _ray(from: Vector3, to: Vector3) -> Dictionary:
+	var q := PhysicsRayQueryParameters3D.create(from, to, collision_mask, _exclude())
+	q.hit_back_faces = false
+	return get_world_3d().direct_space_state.intersect_ray(q)
+
+
+func _exclude() -> Array[RID]:
+	var out: Array[RID] = [get_rid()]
+	for group: StringName in [&"enemy", &"player"]:
+		for n: Node in get_tree().get_nodes_in_group(group):
+			if n is CollisionObject3D:
+				out.append((n as CollisionObject3D).get_rid())
+	return out
 
 
 # --- environment ---------------------------------------------------------------------
