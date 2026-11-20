@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 16
+const SECTIONS := 17
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_sleep, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_sight_leash, _test_sleep, _test_demo, _test_crowd]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -804,6 +804,27 @@ func _test_sleep() -> void:
 	dozer.set_asleep(true)
 	var causes := _deaths(dozer)
 	_check(await _gone(dozer, 240) and causes == [&"fall"], "asleep: still falls, dies in a kill zone and frees itself")
+	sections += 1
+
+
+func _test_crowd() -> void:
+	if course:
+		root.remove_child(course)
+		course.queue_free()
+		course = null
+	var crowd: Node = load("res://demo/enemies/crowd.tscn").instantiate()
+	root.add_child(crowd)
+	await _wait(5)
+	var enemies := get_nodes_in_group(&"enemy")
+	var start := enemies.map(func(n: Enemy) -> Vector3: return n.global_position)
+	_check(not enemies.is_empty() and enemies.all(func(n: Enemy) -> bool: return n.patrol_area != null and n.chase_area != null), "crowd: every runner has a patrol and a chase area")
+	await _wait(240)
+	var moved := 0
+	for i in enemies.size():
+		if is_instance_valid(enemies[i]) and (enemies[i] as Enemy).global_position.distance_to(start[i]) > 1.0:
+			moved += 1
+	_check(moved >= 25, "crowd: runners patrol (%d moved)" % moved)
+	crowd.queue_free()
 	sections += 1
 
 

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cbqrdkc2ug783" path="res://demo/enemies/crowd.gd" id="crowd"]
 [ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="player"]
+[ext_resource type="Script" path="res://world/enemy_area.gd" id="area"]
 
 [sub_resource type="Environment" id="world_env"]
 background_mode = 1
@@ -17,6 +18,26 @@ albedo_color = Color(0.42, 0.42, 0.45, 1)
 
 [sub_resource type="PlaneMesh" id="ground_mesh"]
 size = Vector2(100, 100)
+
+[sub_resource type="BoxShape3D" id="ne_box"]
+size = Vector3(42, 4, 42)
+
+[sub_resource type="CylinderShape3D" id="nw_cylinder"]
+height = 4.0
+radius = 21.0
+
+[sub_resource type="SphereShape3D" id="se_ball"]
+radius = 22.0
+
+[sub_resource type="BoxShape3D" id="sw_box"]
+size = Vector3(24, 4, 24)
+
+[sub_resource type="CylinderShape3D" id="sw_cylinder"]
+height = 4.0
+radius = 9.0
+
+[sub_resource type="BoxShape3D" id="chase_box"]
+size = Vector3(70, 6, 70)
 
 [node name="CrowdDemo" type="Node3D" unique_id=425564396]
 script = ExtResource("crowd")
@@ -69,8 +90,57 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -18)
 pixel_size = 0.01
 billboard = 1
 no_depth_test = true
-text = "150 RUNNERS ON A PLANE
-outer ring starts empty around you
-same controls as the other demos"
+text = "250 RUNNERS ON A PLANE
+each roams the patrol area of its quadrant
+(box, cylinder, sphere, box + cylinder; shared)
+they chase you only inside the red chase area,
+lose you when you're out of sight
+off-screen runners sleep: see 'awake' on the HUD"
 font_size = 56
 outline_size = 14
+
+[node name="Areas" type="Node3D" parent="."]
+
+[node name="PatrolNE" type="Area3D" parent="Areas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 1, -22)
+script = ExtResource("area")
+color = Color(1, 0.6, 0.2, 0.08)
+
+[node name="Box" type="CollisionShape3D" parent="Areas/PatrolNE"]
+shape = SubResource("ne_box")
+
+[node name="PatrolNW" type="Area3D" parent="Areas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1, -22)
+script = ExtResource("area")
+color = Color(0.95, 0.85, 0.2, 0.08)
+
+[node name="Cylinder" type="CollisionShape3D" parent="Areas/PatrolNW"]
+shape = SubResource("nw_cylinder")
+
+[node name="PatrolSE" type="Area3D" parent="Areas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 22)
+script = ExtResource("area")
+color = Color(0.3, 0.9, 0.4, 0.08)
+
+[node name="Sphere" type="CollisionShape3D" parent="Areas/PatrolSE"]
+shape = SubResource("se_ball")
+
+[node name="PatrolSW" type="Area3D" parent="Areas"]
+script = ExtResource("area")
+color = Color(0.3, 0.6, 1, 0.08)
+
+[node name="Box" type="CollisionShape3D" parent="Areas/PatrolSW"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 30)
+shape = SubResource("sw_box")
+
+[node name="Cylinder" type="CollisionShape3D" parent="Areas/PatrolSW"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 1, 14)
+shape = SubResource("sw_cylinder")
+
+[node name="Chase" type="Area3D" parent="Areas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("area")
+color = Color(1, 0.2, 0.2, 0.03)
+
+[node name="Box" type="CollisionShape3D" parent="Areas/Chase"]
+shape = SubResource("chase_box")

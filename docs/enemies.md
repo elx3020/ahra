@@ -24,12 +24,15 @@ meshes, sound and VFX hook into it later. The code lives in `enemy/`. The demo i
 ## How an enemy decides
 
 ```
-idle --(player inside sight_radius, no give-up timer)--> pursuit
-pursuit --(inside attack_range, attack_cd over)--> attack --> pursuit
+idle --(sees the player: in sight_radius and in plain view, no give-up timer)--> pursuit
+idle --(rested patrol_pause, has a patrol_area)--> patrol --(arrived / blocked / stuck)--> idle
+patrol --(sees the player)--> pursuit
+pursuit --(sees the player inside attack_range, attack_cd over)--> attack --> pursuit
 pursuit --(mood < flee_mood)--> flee
 pursuit --(player past lose_radius / gone)--> idle
-pursuit --(step_toward says blocked)--> idle, with give_up = give_up_time
-pursuit / flee --(gap, wall, water ahead)--> jump | dash | climb | swim | swing --> back to `goal`
+pursuit --(out of sight: reached last_seen, or memory_time passed)--> idle, with give_up = give_up_time
+pursuit --(step_toward says blocked, the chase area's border included)--> idle, with give_up = give_up_time
+patrol / pursuit / flee --(gap, wall, water ahead)--> jump | dash | climb | swim | swing --> back to `goal`
 any --hit(), knockback >= 1 m/s--> hurt (no ledge check) --> pursuit
        (a lighter hit is a flinch: the hurt cue only, so heavy enemies can't be stun-locked)
 any --stamina 0 / stun_on_hit / stun()--> stun --> idle
@@ -67,11 +70,12 @@ includes the run-up from where the probe saw the gap, so the widest gap an enemy
 |-------|---------|
 | (top) | `abilities` (flags: Jump, Dash, Fly, Run, Climb, Swim, Swing; give a type one or two) |
 | Stats | `max_health`, `armor` (0–1, fraction blocked), `weight` (knockback = push / weight; under 1 m/s it doesn't move), `max_stamina`, `stamina_regen`, `max_oxygen`, `oxygen_regen`, `attack_cooldown`, `base_mood`, `flee_mood` (0 = never flees), `invuln_time`, `hurt_time`, `stun_time`, `stun_on_hit` |
-| Senses | `sight_radius`, `lose_radius`, `attack_range`, `give_up_time` |
+| Senses | `sight_radius`, `lose_radius`, `attack_range`, `give_up_time`, `memory_time`, `sees_through_walls` |
 | Ground | `walk_speed`, `run_speed`, `accel`, `safe_drop`, `gravity`, `max_fall_speed`, `fall_damage_speed`, `fall_damage` |
 | Moves | `jump_height`, `jump_reach`, `dash_speed`, `dash_distance`, `climb_speed`, `swim_speed`, `fly_speed`, `hover_height` |
 | Costs | `run_cost`, `fly_cost` (per second), `dash_cost`, `attack_cost` |
 | Attack | `attack_damage`, `attack_windup`, `attack_recover`, `attack_reach` |
+| Areas | `patrol_area`, `chase_area` (EnemyArea nodes, shareable), `patrol_pause` (rest at each spot, min/max s), `sleep_off_screen`, `screen_margin` |
 | Look | `color` (tints the placeholder body), `show_debug` (state and stats on a label) |
 
 Walking is the baseline and isn't an ability. A FLY enemy doesn't walk: it hovers (over water,
@@ -86,6 +90,41 @@ pushes enemies as it does the player (`wind_response`).
 
 Mood is 0–1 aggression. It goes up 0.1 when the enemy lands a hit, down 0.15 when it gets hurt, and
 drifts back to `base_mood` while idle, fleeing or stunned.
+
+## Patrol areas, sight, chase areas and sleeping off screen
+
+**Areas.** An `EnemyArea` (`world/enemy_area.gd`) is a zone: add one to the scene and give it
+shapes from the Shapes section of the inspector (the Shape Tools plugin, with resize handles).
+Point it at enemies through their `patrol_area` and `chase_area` exports. Any number of enemies
+can share one area, and one area can be both an enemy's patrol and chase area. Use boxes, spheres,
+capsules, cylinders or convex shapes. Concave and height-map shapes can't tell whether a point is
+inside them, so they get a configuration warning. An area only needs to cover the ground: enemies
+are tested 0.5 m above it, flyers at the ground under them.
+
+**Patrol.** While it hasn't spotted the player, an enemy with a patrol area rests for a random
+`patrol_pause`, then goes to a random spot in the area (`EnemyArea.random_ground`): dry ground,
+under water for a swim-only enemy, and flyers hover over it. It gets there with its usual moves,
+at walk speed, without spending stamina. The area's border counts as a ledge. An enemy outside its
+patrol area (knocked out of it, or back from a chase) walks back in. With no patrol area it stands
+still, as before.
+
+**Sight.** `sees_target()` is true when the player is inside `sight_radius` and nothing solid is on
+the line from the enemy's eyes to the player's chest. Bodies don't block it. It's checked a few
+times a second. `sees_through_walls` (on for the burrower, which feels footsteps) skips the line
+test.
+
+**Chase.** The enemy chases while it sees the player. Out of sight, it heads for `last_seen` and
+gives up when it gets there, or once it hasn't seen the player for `memory_time`. A `chase_area`
+is a leash: the enemy chases anywhere inside it, and its border counts as a ledge, so it stops
+there, gives up for `give_up_time` and goes back to patrolling. The leash only holds an enemy that
+is inside the area, so one placed outside chases freely.
+
+**Sleeping off screen.** Each enemy has a `VisibleOnScreenNotifier3D` (the body plus
+`screen_margin`). Off screen it's `asleep`: no states, stats, timers or ground checks. Gravity,
+drag, wind and `move_and_slide` still run, so it rides moving platforms, falls and triggers zones
+(a kill zone still kills it), and a dying enemy still finishes dying. It wakes where it is and
+carries on from its state. `sleep_off_screen = false` keeps an enemy always awake.
+`set_asleep(on)` lets a level script do it by hand. Headless runs never sleep.
 
 ## Making an enemy type
 
@@ -140,7 +179,7 @@ things:
 | `anim` | Set by |
 |--------|--------|
 | `idle`, `fly` (a flyer idling) | idle |
-| `walk`, `run` | pursuit / flee moving on open ground |
+| `walk`, `run` | pursuit / flee moving on open ground; patrol walks (`walk`) |
 | `blocked` | the frame a chase gives up |
 | `attack_windup`, `attack`, `attack_recover` | attack (base melee) |
 | `hurt` | hurt (knockback) |
