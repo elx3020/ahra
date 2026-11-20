@@ -22,7 +22,7 @@ func enter(_prev: StringName) -> void:
 
 func physics(delta: float) -> StringName:
 	_t += delta
-	if e.swimming() and e.goal != &"idle":
+	if e.swimming() and e.goal != &"idle" and not (_launched and e.vspeed() > 0.0): # not while leaping out
 		return &"swim"
 	if e.flail(delta): # fell into deep water it can't swim in
 		return &""

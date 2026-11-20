@@ -13,7 +13,7 @@ func enter(_prev: StringName) -> void:
 	e.anim = &"surface"
 	e.cue.emit(&"surface")
 	e.attack_cd = e.attack_cooldown
-	if e.has_target() and e.dist_to_target() <= b.burst_radius:
+	if e.has_target() and e.dist_to_target() <= b.burst_radius and e.cast(e.global_position, e.target_pos()).is_empty():
 		var hp := e.target.health
 		e.target.damage(b.burst_damage, e.global_position)
 		if e.target.health < hp:

@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 10
+const SECTIONS := 11
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -21,10 +21,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await process_frame # the tree isn't running yet during _initialize
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -304,9 +305,9 @@ func _test_climb_swim() -> void:
 	for swims in [true, false]:
 		_course(Vector3(12, 1, 0), false)
 		_pool()
-		var w := _enemy(Vector3(-4, 1, 0), base.merged({abilities = Enemy.Ability.SWIM if swims else 0, max_oxygen = 30.0}, true))
+		var w := _enemy(Vector3(-4, 1, 0), base.merged({abilities = (Enemy.Ability.SWIM | Enemy.Ability.JUMP) if swims else 0, max_oxygen = 30.0}, true))
 		var crossed := await _wait_until(func() -> bool: return is_instance_valid(w) and w.global_position.x > 6.5 and w.is_on_floor(), 600)
-		_check(crossed == swims, "SWIM crosses the pool and climbs out" if swims else "no SWIM: stops at the pool")
+		_check(crossed == swims, "SWIM + JUMP crosses the pool and climbs out" if swims else "no SWIM: stops at the pool")
 
 	_course(Vector3(14, 1, 0), false)
 	_pool()
@@ -472,6 +473,80 @@ func _test_demo() -> void:
 	sections += 1
 
 
+## Regression tests for the final review's findings.
+func _test_edges() -> void:
+	_course(Vector3(1.2, 1, 0)) # the player 0.7 m from the wall's face: no room between them
+	_box(Vector3(0, 1.5, 0), Vector3(1, 3, 30))
+	var bw: Burrower = _enemy(Vector3(-8, 1, 0), {sight_radius = 20.0, lose_radius = 30.0}, BURROWER)
+	await _wait_until(func() -> bool: return bw.burrowed, 120)
+	await _wait_until(func() -> bool: return not bw.burrowed, 300)
+	var clear := bw.global_position.x > 0.85 and bw.cast(bw.global_position, player.global_position).is_empty()
+	_check(clear, "a burrower by a wall surfaces clear of it, in sight of the player (x %.2f)" % bw.global_position.x)
+
+	_course(Vector3(12, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+	_box(Vector3(13.5, -0.5, 0), Vector3(12, 1, 10)) # 7.5 m gap
+	var ice := EnvProfile.new()
+	ice.mods.traction = -0.94
+	_zone(Vector3(-8, 0.5, 0), Vector3(16, 1, 10), ice)
+	var skater := _enemy(Vector3(-12, 1, 0), {abilities = Enemy.Ability.RUN, sight_radius = 40.0, lose_radius = 50.0, max_stamina = 1000.0})
+	await _wait(300)
+	_check(is_instance_valid(skater) and skater.global_position.x < 0.6 and skater.global_position.y > 0.5, "on ice it brakes before the gap")
+
+	_course(Vector3(14, 1, 0), false)
+	_pool()
+	var floater := _enemy(Vector3(3, -3, 0), {abilities = Enemy.Ability.SWIM, sight_radius = 0.0, max_oxygen = 2.0})
+	var causes := _deaths(floater)
+	await _wait(300)
+	_check(causes.is_empty() and is_instance_valid(floater) and floater.oxygen > 1.0, "an idle swimmer floats up to breathe")
+
+	_course(Vector3(20, 1, 0), false)
+	_box(Vector3(-8, -4.5, 0), Vector3(16, 9, 10))
+	_box(Vector3(14, -4.5, 0), Vector3(16, 9, 10))
+	_box(Vector3(3, -9.5, 0), Vector3(6, 1, 10)) # lake bed y = -9
+	_water(Vector3(3, -4.65, 0), Vector3(6, 8.7, 10)) # surface y = -0.3
+	var gull := _enemy(Vector3(3, 2, 0), {abilities = Enemy.Ability.FLY, sight_radius = 0.0, max_oxygen = 2.0})
+	causes = _deaths(gull)
+	await _wait(240)
+	_check(causes.is_empty() and is_instance_valid(gull) and gull.global_position.y - Enemy.HALF_HEIGHT > 1.5, "a flyer over deep water hovers above the surface, not the bed")
+
+	_course(Vector3(12, 1, 0), false)
+	_pool()
+	var fish := _enemy(Vector3(3, -1, 0), {abilities = Enemy.Ability.SWIM, sight_radius = 40.0, lose_radius = 50.0, attack_damage = 0.0, max_oxygen = 30.0})
+	await _wait_until(func() -> bool: return fish.state_name == &"swim", 120)
+	var max_x := -INF
+	var gave_up := false
+	for i in 700:
+		await _wait(1)
+		if not is_instance_valid(fish):
+			break
+		max_x = maxf(max_x, fish.global_position.x)
+		gave_up = gave_up or fish.state_name == &"idle"
+	_check(is_instance_valid(fish) and max_x < 6.0 and gave_up, "SWIM-only never leaves the water: gives up at the bank (max x %.2f)" % max_x)
+
+	_course(Vector3(0, 1, 0))
+	var tank := _enemy(Vector3(1.4, 1, 0), {weight = 40.0, sight_radius = 10.0, attack_damage = 10.0, attack_cooldown = 0.5})
+	var hp := player.health
+	var landed := false
+	for i in 150:
+		if i % 21 == 0 and is_instance_valid(tank):
+			tank.hit(1.0, player.shoot_push, player.global_position)
+		await _wait(1)
+		if player.health < hp:
+			landed = true
+			break
+	_check(landed, "a heavy enemy keeps attacking through a stream of light hits")
+
+	_course(Vector3(0, 1, 0))
+	player.facing = Vector3.RIGHT
+	await _wait(10)
+	var close := _enemy(Vector3(0.85, 1, 0), {sight_radius = 0.0})
+	await _wait(10)
+	await _press(&"shoot")
+	_check(await _wait_until(func() -> bool: return close.health < close.max_health, 10), "a point-blank shot hits an enemy pressed against the player")
+	sections += 1
+
+
 # --- course building ---------------------------------------------------------------
 
 ## Replaces the course: a void kill zone, an optional 80x30 floor (top y = 0), a pad under
@@ -503,12 +578,17 @@ func _box(at: Vector3, size: Vector3, climbable := false) -> CSGBox3D:
 
 
 func _water(at: Vector3, size: Vector3) -> EnvZone:
+	var water := EnvProfile.new()
+	water.resource_name = "Water"
+	water.water = true
+	water.gravity_mult = 0.3
+	water.drag = 1.2
+	return _zone(at, size, water)
+
+
+func _zone(at: Vector3, size: Vector3, profile: EnvProfile) -> EnvZone:
 	var z := EnvZone.new()
-	z.profile = EnvProfile.new()
-	z.profile.resource_name = "Water"
-	z.profile.water = true
-	z.profile.gravity_mult = 0.3
-	z.profile.drag = 1.2
+	z.profile = profile
 	z.position = at
 	course.add_child(z)
 	var box := BoxShape3D.new()

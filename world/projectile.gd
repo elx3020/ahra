@@ -27,6 +27,7 @@ func setup(from: Vector3, dir: Vector3, amount: float, knock: float, shooter: No
 func _physics_process(delta: float) -> void:
 	var to := global_position + velocity * delta
 	var q := PhysicsRayQueryParameters3D.create(global_position, to)
+	q.hit_from_inside = true # fired point-blank into an enemy pressed against the shooter
 	if source is CollisionObject3D and is_instance_valid(source):
 		q.exclude = [(source as CollisionObject3D).get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)

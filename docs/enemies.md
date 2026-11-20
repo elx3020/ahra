@@ -30,7 +30,8 @@ pursuit --(mood < flee_mood)--> flee
 pursuit --(player past lose_radius / gone)--> idle
 pursuit --(step_toward says blocked)--> idle, with give_up = give_up_time
 pursuit / flee --(gap, wall, water ahead)--> jump | dash | climb | swim | swing --> back to `goal`
-any --hit()--> hurt (knockback, no ledge check) --> pursuit
+any --hit(), knockback >= 1 m/s--> hurt (no ledge check) --> pursuit
+       (a lighter hit is a flinch: the hurt cue only, so heavy enemies can't be stun-locked)
 any --stamina 0 / stun_on_hit / stun()--> stun --> idle
 any --health 0, KillZone, drowning, 60 m below spawn--> death (frees itself)
 level script --start_puppet()--> puppet --end_puppet()--> idle
@@ -70,8 +71,11 @@ includes the run-up from where the probe saw the gap, so the widest gap an enemy
 | Attack | `attack_damage`, `attack_windup`, `attack_recover`, `attack_reach` |
 | Look | `color` (tints the placeholder body), `show_debug` (state and stats on a label) |
 
-Walking is the baseline and isn't an ability. A FLY enemy doesn't walk: it hovers and only
-touches the ground when stunned. Mood is 0–1 aggression. It goes up 0.1 when the enemy lands a
+Walking is the baseline and isn't an ability. A FLY enemy doesn't walk: it hovers (over water,
+above the surface) and only touches the ground when stunned. An enemy whose only ability is SWIM
+never leaves water: dry ground is a ledge to it, and it gives up at the bank. A swimmer that stops
+(idle, attacking, waiting) floats up until its head is out, so it doesn't drown. On slippery
+ground the probe looks further ahead, by the extra braking distance. Mood is 0–1 aggression. It goes up 0.1 when the enemy lands a
 hit, down 0.15 when it gets hurt, and drifts back to `base_mood` while idle, fleeing or stunned.
 
 ## Making an enemy type
@@ -92,11 +96,15 @@ hit, down 0.15 when it gets hurt, and drifts back to `base_mood` while idle, fle
    	states[&"attack"] = preload("burrow_attack.gd").new()   # the surfacing burst, then stun
    ```
 
+   The burrower only surfaces in the open: a spot on a ring around the player with open sky
+   above it, room for the body and a clear line to the player. Giving up, it comes up at the last
+   open spot it passed.
+
    A state script `extends EnemyState`, uses `e` for the enemy, and returns the next state's name.
    Useful helpers: `e.step_toward(point, delta)` (traversal with the ledge rules),
    `e.hold(delta)` (stop in place; flyers hover), `e.has_target()`, `e.dist_to_target()`,
    `e.face(point)`, `e.spend(stamina)`, `e.cast(from, to)` (a terrain ray),
-   `e.deep_water_at(ground)`. To stun from inside a state, set `e.stun_for` and return `&"stun"`.
+   `e.deep_water_at(ground)`, `e.fits_at(center)` (room for the body). To stun from inside a state, set `e.stun_for` and return `&"stun"`.
    Call `e.stun(seconds)` from outside.
 4. **Emit cues** for anything sound or VFX should react to: `e.cue.emit(&"my_event")`.
 5. **Test it**: add a section to `tests/enemy_test.gd`. `_enemy(at, {prop = value}, MY_SCENE)`

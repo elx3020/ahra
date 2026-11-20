@@ -237,25 +237,35 @@ func apply_gravity(delta: float) -> void:
 	velocity -= velocity * minf(env.drag * delta, 1.0)
 
 
-## Stops in place. A flyer hovers at hover_height above the ground, a swimmer in deep water stays
-## put; both without gravity. With `fall`, gravity always applies (stunned flyers drop).
+## Stops in place. A flyer hovers at hover_height above the ground (or water), a swimmer floats up
+## until its head is out; both without gravity. With `fall`, gravity always applies (stunned
+## flyers drop).
 func hold(delta: float, fall := false) -> void:
 	if not fall and can(Ability.FLY):
 		var alt := altitude()
 		var vy := 0.0 if alt == INF else clampf((hover_height - alt) * 4.0, -fly_speed, fly_speed)
 		velocity = planar().move_toward(Vector3.ZERO, accel * delta) + up_direction * move_toward(vspeed(), vy, 20.0 * delta)
 	elif not fall and swimming():
-		velocity = velocity.move_toward(Vector3.ZERO, 20.0 * delta)
+		var rise := water_zone.surface_height(up_direction) - 0.3 - global_position.dot(up_direction) # head out: breathing
+		var vy := clampf(rise * 2.0, -swim_speed, swim_speed * 0.5)
+		velocity = planar().move_toward(Vector3.ZERO, 20.0 * delta) + up_direction * move_toward(vspeed(), vy, 20.0 * delta)
 	else:
 		move_planar(Vector3.ZERO, 0.0, delta)
 		apply_gravity(delta)
 	move_and_slide()
 
 
-## Feet height above the ground below (INF over a void).
+## Feet height above the ground below, or above the water over it (INF over a void).
 func altitude() -> float:
-	var hit := cast(global_position, global_position - up_direction * (hover_height + 10.0))
-	return (global_position - up_direction * HALF_HEIGHT - hit.position).dot(up_direction) if hit else INF
+	var up := up_direction
+	var hit := cast(global_position, global_position - up * (hover_height + 10.0))
+	if not hit:
+		return INF
+	var ground: float = (hit.position as Vector3).dot(up)
+	var w := water_at(hit.position + up * 0.1)
+	if w:
+		ground = maxf(ground, w.surface_height(up))
+	return global_position.dot(up) - HALF_HEIGHT - ground
 
 
 ## FLY: heads for `point` in 3D without gravity, at least hover_height above the ground below.
@@ -284,9 +294,15 @@ func fly_toward(point: Vector3, delta: float) -> StringName:
 	return &""
 
 
-## A SWIM enemy in deep water: swims instead of falling.
+## A SWIM enemy with its body centre more than 0.2 m under the surface (floating with the head out
+## counts): it swims instead of falling.
 func swimming() -> bool:
-	return can(Ability.SWIM) and deep_water()
+	return can(Ability.SWIM) and water_depth() > 0.2
+
+
+## A SWIM-only enemy lives in water and never leaves it: dry ground is a ledge to it.
+func water_bound() -> bool:
+	return abilities == Ability.SWIM
 
 
 ## A non-swimmer in deep water can't act: it flails and sinks (and drowns when its oxygen runs
@@ -328,8 +344,9 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 	var feet := global_position - up * HALF_HEIGHT
 	match p.kind:
 		&"open":
-			_walk(dir, delta)
-			return &""
+			if not water_bound() or water_at(p.point + up * 0.1):
+				_walk(dir, delta)
+				return &""
 		&"water":
 			if can(Ability.SWIM): # walk in; the states hand off to swim once it's deep
 				_walk(dir, delta)
@@ -431,7 +448,10 @@ func probe(dir: Vector3) -> Probe:
 	var p := Probe.new()
 	var up := up_direction
 	var feet := global_position - up * HALF_HEIGHT
-	var look := 0.6 + planar().length() * 0.1
+	var v := planar().length()
+	var grip := maxf(accel * mult(&"traction"), 1.0)
+	# on slippery ground stopping takes longer: look ahead by the extra braking distance
+	var look := 0.6 + v * 0.1 + maxf(0.0, v * v * (0.5 / grip - 0.5 / accel))
 	var reach := 0.4 + look
 	for h: float in [0.3, HALF_HEIGHT]: # knees, chest
 		var hit := cast(feet + up * h, feet + up * h + dir * reach)
@@ -500,6 +520,17 @@ func _wall_height(feet: Vector3, dir: Vector3, reach: float) -> float:
 	return (top.position - feet).dot(up) if top else INF
 
 
+## Room for the body with its centre at `center`: nothing solid overlaps it, the player and other
+## enemies included. CSG blocks are hollow, so a body fully inside one isn't caught here.
+func fits_at(center: Vector3) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = (get_node(^"Collision") as CollisionShape3D).shape
+	q.transform = Transform3D(global_basis.orthonormalized(), center)
+	q.collision_mask = collision_mask
+	q.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
 ## A ray that skips the player and every enemy and ignores back faces (see probe).
 func cast(from: Vector3, to: Vector3) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, to, collision_mask, _exclude())
@@ -566,9 +597,10 @@ func dist_to_target() -> float:
 # --- damage, stun, death -------------------------------------------------------------
 
 ## The way anything hurts an enemy. Damage is reduced by armor; knockback is push / weight away
-## from `from` (under MIN_KNOCK it doesn't move). Ignored while dead, in puppet, or for
-## invuln_time after a hit. A running stun keeps going: it's the player's opening.
-## stun_on_hit > 0 stuns instead of hurting (shoot a flyer down, then melee it).
+## from `from`. Under MIN_KNOCK the hit is only a flinch (the hurt cue): the enemy carries on, so
+## heavy enemies can't be stun-locked. Ignored while dead, in puppet, or for invuln_time after a
+## hit. A running stun keeps going: it's the player's opening. stun_on_hit > 0 stuns instead of
+## hurting (shoot a flyer down, then melee it).
 func hit(damage: float, push: float, from: Vector3) -> void:
 	if state_name in [&"death", &"puppet"] or invuln > 0.0:
 		return
@@ -588,7 +620,7 @@ func hit(damage: float, push: float, from: Vector3) -> void:
 		return
 	if stun_on_hit > 0.0:
 		stun(stun_on_hit)
-	else:
+	elif knock >= MIN_KNOCK:
 		change_state(&"hurt")
 
 

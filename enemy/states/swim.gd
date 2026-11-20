@@ -1,7 +1,8 @@
 extends EnemyState
 ## SWIM in deep water: moves in 3D toward the target (away from it when fleeing), the body kept
 ## just under the surface at most, so the head stays out when the target is on land. Low on
-## oxygen it goes up to breathe. Leaps onto a bank (Enemy.solve_jump) when the target is on land.
+## oxygen it goes up to breathe. Leaps onto a bank (Enemy.solve_jump) when the target is on land;
+## a SWIM-only enemy (Enemy.water_bound) gives up at the bank instead.
 
 var _breathe := false
 
@@ -12,7 +13,7 @@ func enter(_prev: StringName) -> void:
 
 
 func physics(delta: float) -> StringName:
-	if e.water_zone == null or (e.is_on_floor() and not e.deep_water()):
+	if not e.swimming():
 		return e.goal
 	if not e.has_target():
 		e.goal = &"idle"
@@ -41,6 +42,10 @@ func physics(delta: float) -> StringName:
 	if e.water_at(e.target_pos()) == null: # target on land: leap onto the bank ahead
 		var dir := (aim - here).slide(up).normalized()
 		if dir != Vector3.ZERO and e.test_move(e.global_transform, dir * 0.6):
+			if e.water_bound(): # the bank is as far as it goes
+				e.give_up = e.give_up_time
+				e.cue.emit(&"blocked")
+				return &"idle"
 			var probe := here + dir * 1.0
 			var hit := e.cast(probe + up * (e.jump_height + 0.5), probe - up * 1.0)
 			if hit and (hit.position as Vector3).dot(up) > top:
