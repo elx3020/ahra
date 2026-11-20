@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 13
+const SECTIONS := 14
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 const RUNNER := preload("res://enemy/runner/runner.tscn")
@@ -25,7 +25,7 @@ func _run() -> void:
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,
-		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_demo]
+		_test_climb_swim, _test_swing_fly, _test_player_attacks, _test_types, _test_edges, _test_polish, _test_areas, _test_patrol, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -656,6 +656,69 @@ func _test_areas() -> void:
 	var lake := _area(Vector3(-17.5, 1, 8), _boxed(Vector3(4, 2, 4))) # entirely over the water
 	await _wait(2)
 	_check(lake.random_ground(walker) == null, "random_ground: null when there's nowhere to stand")
+	sections += 1
+
+
+func _test_patrol() -> void:
+	var calm := {sight_radius = 0.0, patrol_pause = Vector2(0.2, 0.4)}
+	_course(Vector3(-30, 1, 0))
+	var yard := _area(Vector3(5, 1, 0), _boxed(Vector3(10, 2, 8))) # x 0..10, z -4..4
+	var a := _enemy(Vector3(5, 1, 0), calm.merged({patrol_area = yard}, true))
+	var b := _enemy(Vector3(7, 1, 2), calm.merged({patrol_area = yard}, true))
+	var jog := _enemy(Vector3(3, 1, -2), calm.merged({patrol_area = yard, abilities = Enemy.Ability.RUN}, true))
+	a.rng.seed = 1
+	b.rng.seed = 2
+	jog.rng.seed = 3
+	var spots: Array[Vector3] = []
+	var inside := true
+	var b_moved := false
+	var relaxed := true
+	for i in 600:
+		await _wait(1)
+		for e: Enemy in [a, b, jog]:
+			inside = inside and absf(e.global_position.x - 5.0) <= 5.5 and absf(e.global_position.z) <= 4.5
+		if a.state_name == &"idle" and (spots.is_empty() or spots[-1].distance_to(a.global_position) > 1.0):
+			spots.append(a.global_position)
+		b_moved = b_moved or b.global_position.distance_to(Vector3(7, 0.8, 2)) > 2.0
+		relaxed = relaxed and jog.planar().length() <= jog.walk_speed + 0.2 and jog.stamina == jog.max_stamina
+	_check(spots.size() >= 3, "patrol: visits several spots (%d)" % spots.size())
+	_check(inside, "patrol: never leaves the patrol area")
+	_check(b_moved, "two enemies share one patrol area")
+	_check(relaxed, "roaming is at walk speed and costs no stamina, even for a runner")
+
+	_course(Vector3(-30, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10)) # x -16..0
+	_box(Vector3(9.5, -0.5, 0), Vector3(13, 1, 10)) # x 3..16: a 3 m gap
+	var both := _area(Vector3(0, 1, 0), _boxed(Vector3(16, 3, 8)))
+	var hop := _enemy(Vector3(-4, 1, 0), calm.merged({patrol_area = both, abilities = Enemy.Ability.JUMP, jump_height = 2.3, jump_reach = 6.5}, true))
+	hop.rng.seed = 4
+	var left := false
+	var right := false
+	for i in 900:
+		await _wait(1)
+		if is_instance_valid(hop) and hop.is_on_floor():
+			left = left or hop.global_position.x < -1.0
+			right = right or hop.global_position.x > 4.0
+	_check(left and right and is_instance_valid(hop), "patrol uses its moves: a jumper roams both sides of a 3 m gap")
+
+	_course(Vector3(-30, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+	_box(Vector3(13.5, -0.5, 0), Vector3(13, 1, 10)) # 7 m gap
+	var wide := _area(Vector3(2, 1, 0), _boxed(Vector3(20, 3, 8)))
+	var walker := _enemy(Vector3(-4, 1, 0), calm.merged({patrol_area = wide}, true))
+	walker.rng.seed = 5
+	await _wait(600)
+	_check(is_instance_valid(walker) and walker.global_position.x < 0.6 and walker.global_position.y > 0.5, "spots across a gap it can't cross: it roams its own side, never falls in")
+
+	_course(Vector3(-30, 1, 0))
+	var pen := _area(Vector3(10, 1, 0), _boxed(Vector3(6, 2, 6)))
+	var stray := _enemy(Vector3(-5, 1, 0), calm.merged({patrol_area = pen}, true))
+	_check(await _wait_until(func() -> bool: return pen.contains(stray.global_position), 400), "an enemy outside its patrol area walks back in")
+	pen.queue_free()
+	await _wait(120)
+	var still := stray.global_position
+	await _wait(60)
+	_check(stray.state_name == &"idle" and stray.global_position.distance_to(still) < 0.2, "its patrol area freed: no errors, it stops roaming")
 	sections += 1
 
 

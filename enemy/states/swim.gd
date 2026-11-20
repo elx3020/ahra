@@ -16,13 +16,16 @@ func enter(_prev: StringName) -> void:
 func physics(delta: float) -> StringName:
 	if not e.swimming():
 		return e.goal
-	if not e.has_target() or e.dist_to_target() > e.lose_radius:
+	var patrolling := e.goal == &"patrol" and e.aim_override != null
+	if not patrolling and (not e.has_target() or e.dist_to_target() > e.lose_radius):
 		e.goal = &"idle"
 		return &"idle"
 	var up := e.up_direction
 	var top := e.water_zone.surface_height(up) - 0.3 # body centre here: head above water
 	var here := e.global_position
-	var aim := e.target_pos()
+	var aim: Vector3 = e.aim_override if patrolling else e.target_pos()
+	if patrolling and (aim - here).slide(up).length() < 0.5:
+		return e.goal
 	if e.goal == &"flee":
 		aim = here + (here - aim).slide(up).normalized() * 4.0
 	var breath_time := maxf(top - here.dot(up), 0.0) / (e.swim_speed * e.mult(&"swim")) + 0.5
@@ -40,7 +43,8 @@ func physics(delta: float) -> StringName:
 	if e.goal == &"pursuit" and not _breathe and e.in_attack_range() and e.attack_cd <= 0.0 \
 			and e.oxygen > breath_time + e.attack_windup + e.attack_recover:
 		return &"attack"
-	if e.water_at(e.target_pos()) == null: # target on land: leap onto the bank ahead
+	var land := aim + up * 0.1 if patrolling else e.target_pos()
+	if e.water_at(land) == null: # target (or patrol spot) on land: leap onto the bank ahead
 		var dir := (aim - here).slide(up).normalized()
 		if dir != Vector3.ZERO and e.test_move(e.global_transform, dir * 0.6):
 			if e.water_bound(): # the bank is as far as it goes

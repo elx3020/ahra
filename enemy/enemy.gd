@@ -105,6 +105,7 @@ var death_cause: StringName ## &"fall", &"drown", &"hit"
 var env: EnvProfile ## every EnvZone the enemy is in, blended (EnvProfile.combine)
 var water_zone: EnvZone
 var puppet_target: Variant = null
+var aim_override: Variant = null ## a patrol spot the swim state heads for instead of the player
 var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
 var _fall_speed := 0.0 ## fastest downward speed since leaving the floor
@@ -119,6 +120,7 @@ var rng := RandomNumberGenerator.new() ## patrol picks; tests seed it
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
 	&"pursuit": preload("states/pursuit.gd").new(),
+	&"patrol": preload("states/patrol.gd").new(),
 	&"attack": preload("states/attack.gd").new(),
 	&"flee": preload("states/flee.gd").new(),
 	&"hurt": preload("states/hurt.gd").new(),
@@ -289,7 +291,7 @@ func altitude() -> float:
 ## FLY: heads for `point` in 3D without gravity, at least hover_height above the ground below.
 ## A wall in the way: climbs straight up it, up to hover_height + 6 above the ground; pressed
 ## against a wall at that cap for 1 s -> &"blocked".
-func fly_toward(point: Vector3, delta: float) -> StringName:
+func fly_toward(point: Vector3, delta: float, leash: EnemyArea = null) -> StringName:
 	var up := up_direction
 	var cap := hover_height + 6.0
 	var alt := altitude()
@@ -299,6 +301,10 @@ func fly_toward(point: Vector3, delta: float) -> StringName:
 		var h := clampf(want.dot(up), ground + hover_height + HALF_HEIGHT, ground + cap + HALF_HEIGHT)
 		want += up * (h - want.dot(up))
 	face(want)
+	var ahead := global_position + (want - global_position).slide(up).limit_length(1.0) * 0.6 - up * HALF_HEIGHT
+	if leashed(leash, ahead):
+		hold(delta)
+		return &"blocked"
 	var aim := (want - global_position).limit_length(1.0) * fly_speed
 	if is_on_wall(): # keep a light push into the wall so the contact holds while climbing
 		aim = (want - global_position).slide(up).limit_length(1.0) + up * (fly_speed if alt < cap else 0.0)
@@ -348,37 +354,45 @@ func face(point: Vector3) -> void:
 
 ## One step toward `point`: moves when the ground ahead is open, hands off to a move state
 ## (returns its name, with `goal` set to the current state), or returns &"blocked".
-func step_toward(point: Vector3, delta: float) -> StringName:
+## `leash`: an area whose border counts as a ledge while the enemy is inside it (see leashed).
+## `hurry` false: walk speed, no stamina spent on running or flying (roaming).
+func step_toward(point: Vector3, delta: float, leash: EnemyArea = null, hurry := true) -> StringName:
 	if can(Ability.FLY):
-		spend(fly_cost * delta)
-		return fly_toward(point + up_direction * hover_height, delta)
+		if hurry:
+			spend(fly_cost * delta)
+		return fly_toward(point + up_direction * hover_height, delta, leash)
 	var to := (point - global_position).slide(up_direction)
 	if to.length() < 0.05: # straight above or below: nothing to steer toward
 		hold(delta)
 		return &""
 	var dir := to.normalized()
-	var p := probe(dir)
 	var up := up_direction
 	var feet := global_position - up * HALF_HEIGHT
+	if to.length() < 1.2: # closer than the probe looks: don't judge the ground beyond the point
+		var under := cast(point + up * 0.5, point - up * (safe_drop + 1.0))
+		if under and not leashed(leash, under.position) and (can(Ability.SWIM) or not deep_water_at(under.position)):
+			_walk(dir, delta, hurry)
+			return &""
+	var p := probe(dir)
 	match p.kind:
 		&"open":
-			if not water_bound() or water_at(p.point + up * 0.1):
-				_walk(dir, delta)
+			if (not water_bound() or water_at(p.point + up * 0.1)) and not leashed(leash, p.point):
+				_walk(dir, delta, hurry)
 				return &""
 		&"water":
-			if can(Ability.SWIM): # walk in; the states hand off to swim once it's deep
-				_walk(dir, delta)
+			if can(Ability.SWIM) and not leashed(leash, p.point): # walk in; the states hand off to swim once it's deep
+				_walk(dir, delta, hurry)
 				return &""
 		&"gap":
 			if p.landing != null:
 				var land: Vector3 = p.landing + dir * 0.4
-				if can(Ability.JUMP):
-					var v: Variant = solve_jump(land)
-					if v != null:
-						launch = v
-						return _hand_off(&"jump")
+				var v: Variant = solve_jump(land) if can(Ability.JUMP) and not leashed(leash, land) else null
+				if v != null:
+					launch = v
+					return _hand_off(&"jump")
 				var rise := (land - feet).dot(up)
-				if can(Ability.DASH) and rise >= -safe_drop and rise <= 0.3 and (land - feet).slide(up).length() <= dash_distance:
+				if can(Ability.DASH) and rise >= -safe_drop and rise <= 0.3 and (land - feet).slide(up).length() <= dash_distance \
+						and not leashed(leash, land):
 					move_to = land
 					return _hand_off(&"dash")
 			if can(Ability.SWING):
@@ -386,18 +400,18 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 				if sp:
 					var reach := (sp.global_position - global_position).slide(up).length()
 					var far: Variant = find_landing(dir, 1.5, 2.0 * reach + 1.5)
-					if far != null:
+					if far != null and not leashed(leash, far):
 						swing_point = sp
 						move_to = far + dir * 0.4
 						return _hand_off(&"swing")
 		&"wall":
-			if can(Ability.CLIMB) and p.climbable and (point - feet).dot(up) > 0.5:
+			if can(Ability.CLIMB) and p.climbable and (point - feet).dot(up) > 0.5 and not leashed(leash, p.point):
 				move_to = p.point
 				return _hand_off(&"climb")
 			if can(Ability.JUMP) and p.height <= jump_height - 0.3:
 				var top := p.point + dir * 0.6
 				top += up * (feet.dot(up) + p.height - top.dot(up)) # raised to the wall's top
-				var v: Variant = solve_jump(top)
+				var v: Variant = solve_jump(top) if not leashed(leash, top) else null
 				if v != null:
 					launch = v
 					return _hand_off(&"jump")
@@ -407,8 +421,8 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 	return &"blocked"
 
 
-func _walk(dir: Vector3, delta: float) -> void:
-	var running := can(Ability.RUN)
+func _walk(dir: Vector3, delta: float, hurry := true) -> void:
+	var running := hurry and can(Ability.RUN)
 	move_planar(dir, run_speed if running else walk_speed, delta)
 	if running:
 		spend(run_cost * delta)
@@ -429,6 +443,22 @@ func _swing_point_ahead(dir: Vector3, feet: Vector3) -> SwingPoint:
 			best = sp
 			best_d = off.length()
 	return best
+
+
+## True when stepping to the feet point `feet_to` would take the enemy out of `leash`: its border
+## is a ledge. Never holds without a leash, or when the enemy is already outside it (so it can walk
+## back in). Points are tested 0.5 m above the ground, flyers at the ground under them, so an
+## area only needs to cover the ground.
+func leashed(leash: EnemyArea, feet_to: Vector3) -> bool:
+	if not is_instance_valid(leash):
+		return false
+	var up := up_direction
+	var drop := 0.0
+	if can(Ability.FLY):
+		var alt := altitude()
+		drop = alt if alt != INF else 0.0
+	var feet := global_position - up * (HALF_HEIGHT + drop)
+	return leash.contains(feet + up * 0.5) and not leash.contains(feet_to - up * (drop - 0.5))
 
 
 ## Hands off to a move state, which returns to the current state when it ends.
