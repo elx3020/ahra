@@ -108,6 +108,7 @@ var states: Dictionary[StringName, EnemyState] = {
 	&"hurt": preload("states/hurt.gd").new(),
 	&"stun": preload("states/stun.gd").new(),
 	&"jump": preload("states/jump.gd").new(),
+	&"dash": preload("states/dash.gd").new(),
 	&"death": preload("states/death.gd").new(),
 	&"puppet": preload("states/puppet.gd").new(),
 }
@@ -271,19 +272,69 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 		return &""
 	var dir := to.normalized()
 	var p := probe(dir)
-	if p.kind == &"open":
-		var running := can(Ability.RUN)
-		move_planar(dir, run_speed if running else walk_speed, delta)
-		if running:
-			spend(run_cost * delta)
-		apply_gravity(delta)
-		move_and_slide()
-		anim = &"run" if running else &"walk"
-		return &""
+	var up := up_direction
+	var feet := global_position - up * HALF_HEIGHT
+	match p.kind:
+		&"open":
+			var running := can(Ability.RUN)
+			move_planar(dir, run_speed if running else walk_speed, delta)
+			if running:
+				spend(run_cost * delta)
+			apply_gravity(delta)
+			move_and_slide()
+			anim = &"run" if running else &"walk"
+			return &""
+		&"gap":
+			if p.landing != null:
+				var land: Vector3 = p.landing + dir * 0.4
+				if can(Ability.JUMP):
+					var v: Variant = solve_jump(land)
+					if v != null:
+						launch = v
+						return _hand_off(&"jump")
+				var rise := (land - feet).dot(up)
+				if can(Ability.DASH) and rise >= -safe_drop and rise <= 0.3 and (land - feet).slide(up).length() <= dash_distance:
+					move_to = land
+					return _hand_off(&"dash")
+		&"wall":
+			if can(Ability.JUMP) and p.height <= jump_height - 0.3:
+				var top := p.point + dir * 0.6
+				top += up * (feet.dot(up) + p.height - top.dot(up)) # raised to the wall's top
+				var v: Variant = solve_jump(top)
+				if v != null:
+					launch = v
+					return _hand_off(&"jump")
 	facing = dir
 	hold(delta)
 	anim = &"blocked"
 	return &"blocked"
+
+
+## Hands off to a move state, which returns to the current state when it ends.
+func _hand_off(move: StringName) -> StringName:
+	goal = state_name
+	return move
+
+
+## Launch velocity of a ballistic arc from the body centre to the feet point `to`, peaking `h`
+## above the start, under plain gravity (launched jumps ignore the environment, see the jump
+## state). The caller keeps h at least 0.3 above the rise.
+func arc_to(to: Vector3, h: float) -> Vector3:
+	var d := to + up_direction * HALF_HEIGHT - global_position
+	var rise := d.dot(up_direction)
+	var vy := sqrt(2.0 * gravity * h)
+	var t := vy / gravity + sqrt(2.0 * maxf(h - rise, 0.0) / gravity)
+	return d.slide(up_direction) / t + up_direction * vy
+
+
+## A full-height jump to the feet point `to`, or null when it's too high or beyond jump_reach.
+func solve_jump(to: Vector3) -> Variant:
+	var rise := (to + up_direction * HALF_HEIGHT - global_position).dot(up_direction)
+	if rise + 0.3 > jump_height:
+		return null
+	var v := arc_to(to, jump_height)
+	var max_flat := jump_reach / (2.0 * sqrt(2.0 * gravity * jump_height) / gravity) # covers jump_reach on level ground
+	return null if v.slide(up_direction).length() > max_flat else v
 
 
 ## Looks just past the body's edge along `dir` (planar, normalized). Rays skip the player and

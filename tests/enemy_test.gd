@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 4
+const SECTIONS := 5
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -23,6 +23,7 @@ func _run() -> void:
 	await _test_pursuit()
 	await _test_combat()
 	await _test_attack_flee()
+	await _test_jump_dash()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -251,6 +252,30 @@ func _test_attack_flee() -> void:
 	actor.end_puppet()
 	await _wait(2)
 	_check(actor.state_name != &"puppet", "end_puppet hands back to the AI")
+	sections += 1
+
+
+func _test_jump_dash() -> void:
+	var base := {sight_radius = 30.0, lose_radius = 40.0, attack_damage = 0.0}
+	var jumper := base.merged({abilities = Enemy.Ability.JUMP, jump_height = 2.3, jump_reach = 6.5}, true)
+	var dasher := base.merged({abilities = Enemy.Ability.DASH, dash_distance = 6.0}, true)
+	var runs := [ # props, far block centre, size, player at, crosses, label
+		[jumper, Vector3(9.5, -0.5, 0), Vector3(13, 1, 10), Vector3(10, 1, 0), true, "JUMP clears a 3 m gap"],
+		[jumper, Vector3(13.5, -0.5, 0), Vector3(13, 1, 10), Vector3(14, 1, 0), false, "JUMP refuses a 7 m gap"],
+		[jumper, Vector3(8, 0.75, 0), Vector3(16, 1.5, 10), Vector3(8, 2.5, 0), true, "JUMP gets onto a 1.5 m wall"],
+		[jumper, Vector3(8, 1.5, 0), Vector3(16, 3, 10), Vector3(8, 4, 0), false, "JUMP refuses a 3 m wall"],
+		[dasher, Vector3(9.5, -0.5, 0), Vector3(13, 1, 10), Vector3(10, 1, 0), true, "DASH crosses a level 3 m gap"],
+		[dasher, Vector3(13.5, -0.5, 0), Vector3(13, 1, 10), Vector3(14, 1, 0), false, "DASH refuses a 7 m gap"],
+	]
+	for r: Array in runs:
+		_course(r[3], false)
+		_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+		_box(r[1], r[2])
+		var e := _enemy(Vector3(-4, 1, 0), r[0])
+		var near_x: float = r[1].x - r[2].x / 2.0
+		var top: float = r[1].y + r[2].y / 2.0
+		var crossed := await _wait_until(func() -> bool: return is_instance_valid(e) and e.global_position.x > near_x + 0.3 and e.global_position.y > top and e.is_on_floor(), 300)
+		_check(crossed == r[4] and is_instance_valid(e) and (crossed or e.global_position.x < 1.2 and e.global_position.y > 0.5), r[5])
 	sections += 1
 
 
