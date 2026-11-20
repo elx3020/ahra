@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://ba6vvtinv3kyo" path="res://demo/materials/pbr/ice_floor/ice_floor_sss.png" id="6"]
 
 [resource]
-transparency = 1
 albedo_color = Color(1.1913072, 1.1913072, 1.1913072, 1)
 albedo_texture = ExtResource("1")
 roughness = 0.13

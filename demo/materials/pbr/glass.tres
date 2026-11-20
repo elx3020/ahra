@@ -1,9 +1,13 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://ctxpo1cdvaft"]
+
+[ext_resource type="Texture2D" uid="uid://gyuls5ulsaoo" path="res://demo/materials/pbr/ice_floor/ice_floor_heightmap.png" id="1_02p5y"]
 
 [resource]
 resource_name = "Glass"
 transparency = 1
 albedo_color = Color(0.92, 0.97, 1, 0.1)
 roughness = 0.02
+normal_enabled = true
+heightmap_texture = ExtResource("1_02p5y")
 refraction_enabled = true
 refraction_scale = 0.06
