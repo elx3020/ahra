@@ -9,6 +9,9 @@ func physics(delta: float) -> StringName:
 		return &""
 	if not e.has_target():
 		return &"idle"
+	if e.swimming():
+		e.goal = &"flee"
+		return &"swim"
 	if not e.is_on_floor():
 		e.goal = &"flee"
 		return &"jump"

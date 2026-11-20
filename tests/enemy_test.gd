@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 5
+const SECTIONS := 6
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -24,6 +24,7 @@ func _run() -> void:
 	await _test_combat()
 	await _test_attack_flee()
 	await _test_jump_dash()
+	await _test_climb_swim()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -276,6 +277,42 @@ func _test_jump_dash() -> void:
 		var top: float = r[1].y + r[2].y / 2.0
 		var crossed := await _wait_until(func() -> bool: return is_instance_valid(e) and e.global_position.x > near_x + 0.3 and e.global_position.y > top and e.is_on_floor(), 300)
 		_check(crossed == r[4] and is_instance_valid(e) and (crossed or e.global_position.x < 1.2 and e.global_position.y > 0.5), r[5])
+	sections += 1
+
+
+func _pool() -> void: # banks at x < 0 and x > 6 (tops y = 0), pool floor y = -4, surface y = -0.3
+	_box(Vector3(-8, -2.5, 0), Vector3(16, 5, 10))
+	_box(Vector3(14, -2.5, 0), Vector3(16, 5, 10))
+	_box(Vector3(3, -4.5, 0), Vector3(6, 1, 10))
+	_water(Vector3(3, -2.15, 0), Vector3(6, 3.7, 10))
+
+
+func _test_climb_swim() -> void:
+	var base := {sight_radius = 40.0, lose_radius = 50.0, attack_damage = 0.0}
+	for climbable in [true, false]:
+		_course(Vector3(8, 5, 0))
+		_box(Vector3(8, 2, 0), Vector3(8, 4, 10), climbable) # 4 m block, face at x = 4
+		var c := _enemy(Vector3(0, 1, 0), base.merged({abilities = Enemy.Ability.CLIMB}, true))
+		var up := await _wait_until(func() -> bool: return c.global_position.y > 4.5 and c.is_on_floor(), 400)
+		_check(up == climbable, "CLIMB scales a climbable 4 m wall" if climbable else "CLIMB can't scale a plain wall")
+
+	for swims in [true, false]:
+		_course(Vector3(12, 1, 0), false)
+		_pool()
+		var w := _enemy(Vector3(-4, 1, 0), base.merged({abilities = Enemy.Ability.SWIM if swims else 0, max_oxygen = 30.0}, true))
+		var crossed := await _wait_until(func() -> bool: return is_instance_valid(w) and w.global_position.x > 6.5 and w.is_on_floor(), 600)
+		_check(crossed == swims, "SWIM crosses the pool and climbs out" if swims else "no SWIM: stops at the pool")
+
+	_course(Vector3(14, 1, 0), false)
+	_pool()
+	player.teleport(Vector3(3, -3, 0)) # stands on the pool floor (the player sinks when idle underwater)
+	var diver := _enemy(Vector3(1, -2, 0), base.merged({abilities = Enemy.Ability.SWIM, max_oxygen = 2.0}, true))
+	var causes := _deaths(diver)
+	var low := INF
+	for i in 300:
+		await _wait(1)
+		low = minf(low, diver.oxygen)
+	_check(causes.is_empty() and low < diver.max_oxygen * 0.3 and diver.oxygen > low, "a swimmer low on oxygen surfaces to breathe instead of drowning")
 	sections += 1
 
 

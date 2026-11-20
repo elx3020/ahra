@@ -10,6 +10,9 @@ func physics(delta: float) -> StringName:
 		return &"idle"
 	if e.mood < e.flee_mood:
 		return &"flee"
+	if e.swimming():
+		e.goal = &"pursuit"
+		return &"swim"
 	if not e.is_on_floor():
 		e.goal = &"pursuit"
 		return &"jump"

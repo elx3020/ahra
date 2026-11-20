@@ -109,6 +109,8 @@ var states: Dictionary[StringName, EnemyState] = {
 	&"stun": preload("states/stun.gd").new(),
 	&"jump": preload("states/jump.gd").new(),
 	&"dash": preload("states/dash.gd").new(),
+	&"climb": preload("states/climb.gd").new(),
+	&"swim": preload("states/swim.gd").new(),
 	&"death": preload("states/death.gd").new(),
 	&"puppet": preload("states/puppet.gd").new(),
 }
@@ -233,11 +235,20 @@ func apply_gravity(delta: float) -> void:
 	velocity -= velocity * minf(env.drag * delta, 1.0)
 
 
-## Stops in place. With `fall`, gravity always applies.
-func hold(delta: float, _fall := false) -> void:
-	move_planar(Vector3.ZERO, 0.0, delta)
-	apply_gravity(delta)
+## Stops in place. A swimmer in deep water stays put without gravity; with `fall`, gravity
+## always applies.
+func hold(delta: float, fall := false) -> void:
+	if not fall and swimming():
+		velocity = velocity.move_toward(Vector3.ZERO, 20.0 * delta)
+	else:
+		move_planar(Vector3.ZERO, 0.0, delta)
+		apply_gravity(delta)
 	move_and_slide()
+
+
+## A SWIM enemy in deep water: swims instead of falling.
+func swimming() -> bool:
+	return can(Ability.SWIM) and deep_water()
 
 
 ## A non-swimmer in deep water can't act: it flails and sinks (and drowns when its oxygen runs
@@ -276,14 +287,12 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 	var feet := global_position - up * HALF_HEIGHT
 	match p.kind:
 		&"open":
-			var running := can(Ability.RUN)
-			move_planar(dir, run_speed if running else walk_speed, delta)
-			if running:
-				spend(run_cost * delta)
-			apply_gravity(delta)
-			move_and_slide()
-			anim = &"run" if running else &"walk"
+			_walk(dir, delta)
 			return &""
+		&"water":
+			if can(Ability.SWIM): # walk in; the states hand off to swim once it's deep
+				_walk(dir, delta)
+				return &""
 		&"gap":
 			if p.landing != null:
 				var land: Vector3 = p.landing + dir * 0.4
@@ -297,6 +306,9 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 					move_to = land
 					return _hand_off(&"dash")
 		&"wall":
+			if can(Ability.CLIMB) and p.climbable and (point - feet).dot(up) > 0.5:
+				move_to = p.point
+				return _hand_off(&"climb")
 			if can(Ability.JUMP) and p.height <= jump_height - 0.3:
 				var top := p.point + dir * 0.6
 				top += up * (feet.dot(up) + p.height - top.dot(up)) # raised to the wall's top
@@ -308,6 +320,16 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 	hold(delta)
 	anim = &"blocked"
 	return &"blocked"
+
+
+func _walk(dir: Vector3, delta: float) -> void:
+	var running := can(Ability.RUN)
+	move_planar(dir, run_speed if running else walk_speed, delta)
+	if running:
+		spend(run_cost * delta)
+	apply_gravity(delta)
+	move_and_slide()
+	anim = &"run" if running else &"walk"
 
 
 ## Hands off to a move state, which returns to the current state when it ends.
@@ -348,7 +370,7 @@ func probe(dir: Vector3) -> Probe:
 	var look := 0.6 + planar().length() * 0.1
 	var reach := 0.4 + look
 	for h: float in [0.3, HALF_HEIGHT]: # knees, chest
-		var hit := _ray(feet + up * h, feet + up * h + dir * reach)
+		var hit := cast(feet + up * h, feet + up * h + dir * reach)
 		if hit and (hit.normal as Vector3).dot(up) < 0.7:
 			p.kind = &"wall"
 			p.point = hit.position
@@ -358,7 +380,7 @@ func probe(dir: Vector3) -> Probe:
 			return p
 	var edge := feet + dir * reach
 	p.point = edge
-	var ground := _ray(edge + up * 0.5, edge - up * (safe_drop + 0.05))
+	var ground := cast(edge + up * 0.5, edge - up * (safe_drop + 0.05))
 	if ground:
 		var w := water_at(ground.position + up * 0.1)
 		var deep := w and w.surface_height(up) - (ground.position as Vector3).dot(up) > HALF_HEIGHT + HEAD
@@ -380,7 +402,7 @@ func find_landing(dir: Vector3, near: float, far: float) -> Variant:
 	var d := near
 	while d <= far:
 		var at := feet + dir * d
-		var hit := _ray(at + up * (jump_height + 0.3), at - up * safe_drop)
+		var hit := cast(at + up * (jump_height + 0.3), at - up * safe_drop)
 		if hit:
 			var w := water_at(hit.position + up * 0.1)
 			if not (w and w.surface_height(up) - (hit.position as Vector3).dot(up) > HALF_HEIGHT + HEAD):
@@ -406,13 +428,14 @@ func water_at(point: Vector3) -> EnvZone:
 func _wall_height(feet: Vector3, dir: Vector3, reach: float) -> float:
 	var up := up_direction
 	var high := feet + up * (jump_height + 0.5)
-	if _ray(high, high + dir * (reach + 0.15)):
+	if cast(high, high + dir * (reach + 0.15)):
 		return INF
-	var top := _ray(high + dir * (reach + 0.15), feet - up * 0.1 + dir * (reach + 0.15))
+	var top := cast(high + dir * (reach + 0.15), feet - up * 0.1 + dir * (reach + 0.15))
 	return (top.position - feet).dot(up) if top else INF
 
 
-func _ray(from: Vector3, to: Vector3) -> Dictionary:
+## A ray that skips the player and every enemy and ignores back faces (see probe).
+func cast(from: Vector3, to: Vector3) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(from, to, collision_mask, _exclude())
 	q.hit_back_faces = false
 	return get_world_3d().direct_space_state.intersect_ray(q)
