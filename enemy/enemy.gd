@@ -98,6 +98,7 @@ var puppet_target: Variant = null
 var _envs: Array[EnvProfile] = []
 var _drained := false ## stamina was spent since the last tick: no regen this tick
 var _fall_speed := 0.0 ## fastest downward speed since leaving the floor
+var _stuck := 0.0 ## fly_toward: seconds pressed against a wall at the height cap
 var _label: Label3D
 
 var states: Dictionary[StringName, EnemyState] = {
@@ -111,6 +112,7 @@ var states: Dictionary[StringName, EnemyState] = {
 	&"dash": preload("states/dash.gd").new(),
 	&"climb": preload("states/climb.gd").new(),
 	&"swim": preload("states/swim.gd").new(),
+	&"swing": preload("states/swing.gd").new(),
 	&"death": preload("states/death.gd").new(),
 	&"puppet": preload("states/puppet.gd").new(),
 }
@@ -235,15 +237,51 @@ func apply_gravity(delta: float) -> void:
 	velocity -= velocity * minf(env.drag * delta, 1.0)
 
 
-## Stops in place. A swimmer in deep water stays put without gravity; with `fall`, gravity
-## always applies.
+## Stops in place. A flyer hovers at hover_height above the ground, a swimmer in deep water stays
+## put; both without gravity. With `fall`, gravity always applies (stunned flyers drop).
 func hold(delta: float, fall := false) -> void:
-	if not fall and swimming():
+	if not fall and can(Ability.FLY):
+		var alt := altitude()
+		var vy := 0.0 if alt == INF else clampf((hover_height - alt) * 4.0, -fly_speed, fly_speed)
+		velocity = planar().move_toward(Vector3.ZERO, accel * delta) + up_direction * move_toward(vspeed(), vy, 20.0 * delta)
+	elif not fall and swimming():
 		velocity = velocity.move_toward(Vector3.ZERO, 20.0 * delta)
 	else:
 		move_planar(Vector3.ZERO, 0.0, delta)
 		apply_gravity(delta)
 	move_and_slide()
+
+
+## Feet height above the ground below (INF over a void).
+func altitude() -> float:
+	var hit := cast(global_position, global_position - up_direction * (hover_height + 10.0))
+	return (global_position - up_direction * HALF_HEIGHT - hit.position).dot(up_direction) if hit else INF
+
+
+## FLY: heads for `point` in 3D without gravity, at least hover_height above the ground below.
+## A wall in the way: climbs straight up it, up to hover_height + 6 above the ground; pressed
+## against a wall at that cap for 1 s -> &"blocked".
+func fly_toward(point: Vector3, delta: float) -> StringName:
+	var up := up_direction
+	var cap := hover_height + 6.0
+	var alt := altitude()
+	var want := point
+	if alt != INF:
+		var ground := global_position.dot(up) - HALF_HEIGHT - alt
+		var h := clampf(want.dot(up), ground + hover_height + HALF_HEIGHT, ground + cap + HALF_HEIGHT)
+		want += up * (h - want.dot(up))
+	face(want)
+	var aim := (want - global_position).limit_length(1.0) * fly_speed
+	if is_on_wall(): # keep a light push into the wall so the contact holds while climbing
+		aim = (want - global_position).slide(up).limit_length(1.0) + up * (fly_speed if alt < cap else 0.0)
+	velocity = velocity.move_toward(aim * mult(&"speed"), accel * delta)
+	move_and_slide()
+	anim = &"fly"
+	_stuck = _stuck + delta if is_on_wall() and alt >= cap - 0.3 else 0.0
+	if _stuck > 1.0:
+		_stuck = 0.0
+		return &"blocked"
+	return &""
 
 
 ## A SWIM enemy in deep water: swims instead of falling.
@@ -277,6 +315,9 @@ func face(point: Vector3) -> void:
 ## One step toward `point`: moves when the ground ahead is open, hands off to a move state
 ## (returns its name, with `goal` set to the current state), or returns &"blocked".
 func step_toward(point: Vector3, delta: float) -> StringName:
+	if can(Ability.FLY):
+		spend(fly_cost * delta)
+		return fly_toward(point + up_direction * hover_height, delta)
 	var to := (point - global_position).slide(up_direction)
 	if to.length() < 0.05: # straight above or below: nothing to steer toward
 		hold(delta)
@@ -305,6 +346,15 @@ func step_toward(point: Vector3, delta: float) -> StringName:
 				if can(Ability.DASH) and rise >= -safe_drop and rise <= 0.3 and (land - feet).slide(up).length() <= dash_distance:
 					move_to = land
 					return _hand_off(&"dash")
+			if can(Ability.SWING):
+				var sp := _swing_point_ahead(dir, feet)
+				if sp:
+					var reach := (sp.global_position - global_position).slide(up).length()
+					var far: Variant = find_landing(dir, 1.5, 2.0 * reach + 1.5)
+					if far != null:
+						swing_point = sp
+						move_to = far + dir * 0.4
+						return _hand_off(&"swing")
 		&"wall":
 			if can(Ability.CLIMB) and p.climbable and (point - feet).dot(up) > 0.5:
 				move_to = p.point
@@ -330,6 +380,20 @@ func _walk(dir: Vector3, delta: float) -> void:
 	apply_gravity(delta)
 	move_and_slide()
 	anim = &"run" if running else &"walk"
+
+
+## Nearest SwingPoint within its grab_radius, at least 1 m above the feet and ahead along `dir`.
+func _swing_point_ahead(dir: Vector3, feet: Vector3) -> SwingPoint:
+	var best: SwingPoint
+	var best_d := INF
+	for n: Node in get_tree().get_nodes_in_group(&"swing_point"):
+		var sp := n as SwingPoint
+		var off := sp.global_position - global_position
+		var ahead := off.slide(up_direction).dot(dir) > 0.0
+		if ahead and off.length() < minf(sp.grab_radius, best_d) and (sp.global_position - feet).dot(up_direction) > 1.0:
+			best = sp
+			best_d = off.length()
+	return best
 
 
 ## Hands off to a move state, which returns to the current state when it ends.

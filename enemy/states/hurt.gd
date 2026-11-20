@@ -17,7 +17,7 @@ func physics(delta: float) -> StringName:
 	_t -= delta
 	if _t > 0.0:
 		return &""
-	if not e.is_on_floor():
+	if not e.is_on_floor() and not e.can(Enemy.Ability.FLY):
 		e.goal = &"pursuit"
 		return &"jump"
 	return &"pursuit" if e.has_target() else &"idle"

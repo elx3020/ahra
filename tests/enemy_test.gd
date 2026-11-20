@@ -4,7 +4,7 @@ extends SceneTree
 ## Each section builds its own small course in code (see _course) so tests don't depend on
 ## the demo layout.
 
-const SECTIONS := 6
+const SECTIONS := 7
 const ENEMY := preload("res://enemy/enemy.tscn")
 const PLAYER := preload("res://player/player.tscn")
 
@@ -25,6 +25,7 @@ func _run() -> void:
 	await _test_attack_flee()
 	await _test_jump_dash()
 	await _test_climb_swim()
+	await _test_swing_fly()
 	_check(sections == SECTIONS, "all %d sections ran (%d)" % [SECTIONS, sections])
 	print("ENEMIES: ", "OK" if fails == 0 else "%d FAILED" % fails)
 	quit(fails)
@@ -313,6 +314,49 @@ func _test_climb_swim() -> void:
 		await _wait(1)
 		low = minf(low, diver.oxygen)
 	_check(causes.is_empty() and low < diver.max_oxygen * 0.3 and diver.oxygen > low, "a swimmer low on oxygen surfaces to breathe instead of drowning")
+	sections += 1
+
+
+func _test_swing_fly() -> void:
+	var base := {sight_radius = 30.0, lose_radius = 40.0, attack_damage = 0.0}
+	for anchor in [true, false]:
+		_course(Vector3(12, 1, 0), false)
+		_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+		_box(Vector3(16, -0.5, 0), Vector3(16, 1, 10)) # 8 m gap
+		if anchor:
+			var sp := SwingPoint.new()
+			sp.position = Vector3(4, 6, 0)
+			sp.grab_radius = 8.0
+			course.add_child(sp)
+		var sw := _enemy(Vector3(-3, 1, 0), base.merged({abilities = Enemy.Ability.SWING}, true))
+		var crossed := await _wait_until(func() -> bool: return is_instance_valid(sw) and sw.global_position.x > 8.5 and sw.is_on_floor(), 400)
+		_check(crossed == anchor, "SWING crosses an 8 m gap on a swing point" if anchor else "no swing point: SWING stops at the gap")
+
+	_course(Vector3(14, 1, 0), false)
+	_box(Vector3(-8, -0.5, 0), Vector3(16, 1, 10))
+	_box(Vector3(16, -0.5, 0), Vector3(16, 1, 10))
+	var fl := _enemy(Vector3(-4, 1, 0), base.merged({abilities = Enemy.Ability.FLY, sight_radius = 0.0, hover_height = 2.5}, true))
+	await _wait(120)
+	var alt := fl.global_position.y - Enemy.HALF_HEIGHT
+	_check(alt > 2.0 and alt < 3.0, "FLY hovers at hover_height (%.2f)" % alt)
+	fl.sight_radius = 30.0
+	_check(await _wait_until(func() -> bool: return fl.global_position.x > 9.0, 400), "FLY crosses an 8 m gap")
+	fl.stun_on_hit = 1.0
+	fl.hit(1.0, 0.0, fl.global_position)
+	_check(fl.state_name == &"stun", "stun_on_hit stuns a flyer")
+	_check(await _wait_until(func() -> bool: return fl.is_on_floor(), 90), "a stunned flyer drops to the ground")
+	_check(await _wait_until(func() -> bool: return fl.global_position.y - Enemy.HALF_HEIGHT > 2.0, 200), "after the stun it flies back up")
+
+	_course(Vector3(30, 1, 0))
+	var winded := _enemy(Vector3(0, 1, 0), base.merged({abilities = Enemy.Ability.FLY, sight_radius = 60.0, lose_radius = 80.0, max_stamina = 10.0, fly_cost = 20.0, stun_time = 1.0}, true))
+	_check(await _wait_until(func() -> bool: return winded.state_name == &"stun", 200), "a long flight ends in an exhaustion stun")
+	_check(await _wait_until(func() -> bool: return winded.is_on_floor(), 90), "...and a drop to the ground")
+
+	_course(Vector3(10, 1, 0))
+	_box(Vector3(4, 10, 0), Vector3(1, 20, 30)) # 20 m wall across the floor
+	var walled := _enemy(Vector3(-2, 1, 0), base.merged({abilities = Enemy.Ability.FLY}, true))
+	var seen := await _watch([walled], 300)
+	_check(&"idle" in seen and walled.global_position.x < 3.5, "FLY gives up at a wall too high to rise over")
 	sections += 1
 
 

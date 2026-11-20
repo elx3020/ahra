@@ -6,11 +6,11 @@ extends EnemyState
 func physics(delta: float) -> StringName:
 	if e.flail(delta):
 		return &""
-	if not e.is_on_floor() and not e.swimming():
+	if not e.is_on_floor() and not e.swimming() and not e.can(Enemy.Ability.FLY):
 		e.goal = &"idle"
 		return &"jump"
 	if e.give_up <= 0.0 and e.has_target() and e.dist_to_target() <= e.sight_radius:
 		return &"pursuit"
-	e.anim = &"idle"
+	e.anim = &"fly" if e.can(Enemy.Ability.FLY) else &"idle"
 	e.hold(delta)
 	return &""

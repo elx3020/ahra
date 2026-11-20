@@ -13,7 +13,7 @@ func physics(delta: float) -> StringName:
 	if e.swimming():
 		e.goal = &"pursuit"
 		return &"swim"
-	if not e.is_on_floor():
+	if not e.is_on_floor() and not e.can(Enemy.Ability.FLY):
 		e.goal = &"pursuit"
 		return &"jump"
 	if e.dist_to_target() <= e.attack_range:
