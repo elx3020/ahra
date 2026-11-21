@@ -4,7 +4,8 @@ extends CharacterBody3D
 ## A non-player character the player talks to. It holds an ordered list of NpcInteractions,
 ## started by the interact key in its Talk zone (KEY) or by the player coming close (NEAR).
 ## No state machine: it is either idle (the head follows the player when close) or running one
-## interaction. Marks (Marker3D children of Marks) are the places its steps walk to and look at.
+## interaction. Marks (Marker3D children of Marks) are floor points its steps walk to and look at
+## (the head looks 1.5 m above a mark: someone standing there).
 ## Memory lives in World.npcs under this placement's Channels.id: plays per interaction, whether
 ## it left, and where it stands, so a moved NPC stays moved and a departed one stays gone.
 ## Presentation is polled like the player's and enemies': `anim`, `face`, `look_target`,
@@ -16,6 +17,7 @@ signal finished ## an interaction ended
 signal _advanced ## the interact key, during a locked interaction
 
 const ARRIVE := 0.3 ## m from the walk target that counts as there
+const FEET := 0.8 ## the NPC's origin above its feet; marks are floor points, so a snap lands this high
 const HEAD_YAW := 75.0 ## degrees the head turns either way
 const HEAD_PITCH := 35.0
 const LEAVE_HOLD := 0.15 ## seconds a leave holds the screen black between its two fades
@@ -430,7 +432,7 @@ func _move(delta: float) -> void:
 	velocity = velocity.slide(up_direction).move_toward(dir * speed, accel * delta) + vert
 	move_and_slide()
 	if snap:
-		global_position = _target
+		global_position = (_target as Vector3) + up_direction * FEET
 		reset_physics_interpolation()
 	if _target != null and (snap or (_target - global_position).slide(up_direction).length() < ARRIVE):
 		_target = null
