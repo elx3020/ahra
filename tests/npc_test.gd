@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 4
+const SECTIONS := 10
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -24,7 +24,8 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body]
+	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -173,6 +174,156 @@ func _test_body() -> void:
 	sections += 1
 
 
+func _test_key() -> void:
+	world.reset_story()
+	_course()
+	var n := _npc(Vector3(0, 1, 0), [_talk(&"t", [_say(["One"]), _say(["Two"])])])
+	await _wait(10)
+	player.teleport(n.global_position + Vector3(1.5, 0, 0))
+	await _wait(5)
+	_check(player.interactable == n.talk_zone and n.prompt.visible, "in Talk: interactable and prompt")
+	await _press(&"interact")
+	await _wait(3)
+	_check(player.state_name == &"puppet" and n.playing != null and n.line == "One", "talk starts on line 1 (start press doesn't skip it)")
+	_check(n.bubble.visible and n.bubble.text.ends_with("▸") and not n.prompt.visible, "bubble waits for the key; prompt hidden")
+	await _press(&"interact")
+	await _wait(2)
+	_check(n.line == "Two", "one press, one line")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.playing == null and player.state_name != &"puppet" and not n.bubble.visible, "end: player released, bubble hidden")
+	await _wait(10)
+	_check(n.playing == null, "the closing press doesn't reopen the talk")
+	sections += 1
+
+
+func _test_memory() -> void:
+	world.reset_story()
+	_course()
+	var make := func() -> Node3D: return _npc(Vector3(0, 1, 0), [_talk(&"intro", [_say(["Hi"])], {once = true}), _talk(&"chat", [_say(["A", "B", "C"])])], {}, "Mem")
+	var n: Node3D = make.call()
+	await _wait(10)
+	await _start_key(n)
+	_check(n.line == "Hi", "first talk: the once intro")
+	await _press(&"interact")
+	await _wait(3)
+	var last := ""
+	var repeated := false
+	var seen := {}
+	for k in 20:
+		await _start_key(n)
+		repeated = repeated or n.line == last
+		last = n.line
+		seen[n.line] = true
+		await _press(&"interact")
+		await _wait(3)
+	_check(not seen.has("Hi") and seen.size() == 3 and not repeated, "intro never again; versions vary, never back to back")
+	_check(world.npcs[n.memory_id()].plays["intro"] == 1 and world.npcs[n.memory_id()].plays["chat"] == 20, "plays counted")
+	course.remove_child(n)
+	n.free()
+	n = make.call()
+	await _wait(10)
+	await _start_key(n)
+	_check(n.line != "Hi" and n.line != "", "re-instanced NPC remembers")
+	await _press(&"interact")
+	sections += 1
+
+
+func _test_progression() -> void:
+	world.reset_story()
+	_course()
+	var n := _npc(Vector3(0, 1, 0), [_talk(&"ch2", [_say(["New"])], {needs = PackedStringArray(["ch2"])}), _talk(&"old", [_say(["Old"])])])
+	await _wait(10)
+	await _start_key(n)
+	_check(n.line == "Old", "flag unset: skipped")
+	await _press(&"interact")
+	await _wait(3)
+	world.set_flag(&"ch2")
+	await _start_key(n)
+	_check(n.line == "New", "flag set: the higher entry wins")
+	await _press(&"interact")
+	await _wait(3)
+	var mute := _npc(Vector3(0, 1, -8), [_talk(&"x", [_say(["X"])], {needs = PackedStringArray(["never"])})])
+	await _wait(5)
+	await _start_key(mute)
+	_check(not mute.talk_zone.can_interact() and not mute.prompt.visible and player.state_name != &"puppet", "nothing to say: no prompt, press does nothing")
+	sections += 1
+
+
+func _test_beats() -> void:
+	world.reset_story()
+	_course()
+	var steps := [_step(NpcStep.Kind.ANIM, {anim = &"wave"}), _step(NpcStep.Kind.FACE, {face = &"happy"}), _say(["Look"]),
+		_step(NpcStep.Kind.MOVE, {mark = &"A", wait = false}), _say(["Walking"]),
+		_step(NpcStep.Kind.LOOK, {look = NpcStep.Look.MARK, mark = &"B"}), _step(NpcStep.Kind.MOVE, {mark = &"Nope"}),
+		_step(NpcStep.Kind.SOUND, {sound = _tone(0.3), sound_wait = true}), _step(NpcStep.Kind.FLAG, {flag = &"seen_show"}),
+		_step(NpcStep.Kind.MOVE, {mark = &"B"}), _say(["Done"])]
+	var n := _npc(Vector3(0, 1, 0), [_talk(&"show", steps)], {}, "Show", {"A": Vector3(4, 0, 0), "B": Vector3(4, 0, 4)})
+	await _wait(10)
+	await _start_key(n)
+	_check(n.anim == &"wave" and n.face == &"happy" and n.line == "Look", "a beat: anim, face and line together")
+	await _press(&"interact")
+	await _wait(10)
+	_check(n.walking() and n.line == "Walking", "move without wait: talks while walking")
+	await _press(&"interact")
+	await _wait_until(func() -> bool: return n.line == "Done", 600)
+	_check(n.line == "Done" and world.flag(&"seen_show") == 1, "missing mark skipped, sound wait ends, flag set")
+	_check(_flat(n.global_position).distance_to(_flat(n.marks[&"B"])) < 0.3, "move with wait arrives before the next line")
+	_check(n.look_target != null and n.look_target.distance_to(n.marks[&"B"] + Vector3.UP * 1.5) < 0.01, "look at a mark")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.anim == &"idle" and n.face == &"neutral" and n.playing == null, "reset at the end")
+	_check(world.npcs[n.memory_id()].pos.distance_to(n.global_position) < 0.05, "end of talk saves position")
+	sections += 1
+
+
+func _test_talk_overlap() -> void:
+	world.reset_story()
+	_course()
+	var a := _npc(Vector3(0, 1, 0), [_talk(&"a", [_say(["A"])])])
+	var b := _npc(Vector3(2.5, 1, 0), [_talk(&"b", [_say(["B"])])])
+	await _wait(10)
+	player.teleport(Vector3(1.0, 1, 0))
+	await _wait(5)
+	_check(player.interactable == a.talk_zone and a.prompt.visible and not b.prompt.visible, "nearer NPC answers, alone shows the prompt")
+	a.interactions[0].needs = PackedStringArray(["never"])
+	await _wait(2)
+	_check(player.interactable == b.talk_zone and b.prompt.visible and not a.prompt.visible, "NPC with nothing to say is passed over")
+	sections += 1
+
+
+func _test_edges() -> void:
+	world.reset_story()
+	_course()
+	var n := _npc(Vector3(0, 1, 0), [null, _talk(&"", [null, _say(["Once"])], {once = true}), _talk(&"", [_say(["Twice"])], {once = true})])
+	await _wait(10)
+	await _start_key(n)
+	_check(n.line == "Once", "null entries skipped")
+	await _press(&"interact")
+	await _wait(3)
+	await _start_key(n)
+	_check(n.line == "Twice", "empty ids remembered apart (#1, #2)")
+	await _press(&"interact")
+	await _wait(3)
+	var gone := _npc(Vector3(0, 1, -8), [_talk(&"t", [_say(["Bye"])])])
+	await _wait(5)
+	await _start_key(gone)
+	_check(player.state_name == &"puppet", "locked")
+	gone.queue_free()
+	await _wait(3)
+	_check(player.state_name != &"puppet" and is_zero_approx(world.fade_rect.color.a), "NPC freed mid-talk releases the player")
+	var bad: Node3D = load(NPC).instantiate()
+	bad.interactions.assign([_talk(&"", []), _talk(&"d", [_step(NpcStep.Kind.LEAVE), _say(["late"])]), _talk(&"d", [_step(NpcStep.Kind.MOVE, {mark = &"Nowhere"}), _say([])])])
+	var w: String = " ".join(bad._get_configuration_warnings())
+	_check(["empty id", "duplicate id", "after leave", "mark", "no lines", "no steps"].all(func(k: String) -> bool: return w.contains(k)), "config warnings: " + w)
+	var good: Node3D = load(NPC).instantiate()
+	good.interactions.assign([_talk(&"ok", [_say(["Fine"])])])
+	_check(good._get_configuration_warnings().is_empty(), "no warnings when all is well")
+	bad.free()
+	good.free()
+	sections += 1
+
+
 # --- course building ---------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -224,6 +375,51 @@ func _npc(at: Vector3, interactions := [], props := {}, npc_name := "", marks :=
 	course.add_child(n)
 	n.owner = course
 	return n
+
+
+func _step(kind: NpcStep.Kind, props := {}) -> NpcStep:
+	var s := NpcStep.new()
+	s.kind = kind
+	for k: String in props:
+		s.set(k, props[k])
+	return s
+
+
+func _say(lines: Array, props := {}) -> NpcStep:
+	var p := props.duplicate()
+	p.lines = PackedStringArray(lines)
+	return _step(NpcStep.Kind.SAY, p)
+
+
+func _talk(id: StringName, steps: Array, props := {}) -> NpcInteraction:
+	var i := NpcInteraction.new()
+	i.id = id
+	i.steps.assign(steps)
+	for k: String in props:
+		i.set(k, props[k])
+	return i
+
+
+## A short sine tone (16-bit mono, 22050 Hz).
+func _tone(seconds: float) -> AudioStreamWAV:
+	var rate := 22050
+	var data := PackedByteArray()
+	data.resize(int(seconds * rate) * 2)
+	for i in int(seconds * rate):
+		data.encode_s16(i * 2, int(sin(i * TAU * 440.0 / rate) * 8000.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.data = data
+	return w
+
+
+## The player steps into `n`'s Talk zone and presses interact.
+func _start_key(n: Node3D) -> void:
+	player.teleport(n.global_position + Vector3(1.5, 0, 0))
+	await _wait(5)
+	await _press(&"interact")
+	await _wait(3)
 
 
 func _flat(v: Vector3) -> Vector3:

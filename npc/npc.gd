@@ -13,6 +13,7 @@ extends CharacterBody3D
 signal arrived ## a walk_to ended (reached, or snapped there after the timeout)
 signal cue(name: StringName) ## one-shot presentation events: say, arrive, leave
 signal finished ## an interaction ended
+signal _advanced ## the interact key, during a locked interaction
 
 const ARRIVE := 0.3 ## m from the walk target that counts as there
 const HEAD_YAW := 75.0 ## degrees the head turns either way
@@ -41,7 +42,16 @@ var speaking := false ## a line is showing (the mouth moves)
 var facing := Vector3.FORWARD
 var present := true ## false while absent (appears_if unmet, or it left)
 var marks := {} ## mark name (StringName) -> global position, cached before the NPC ever moves
+var playing: NpcInteraction ## the interaction running, or null
+var line := "" ## the line showing in the bubble (without the key mark), or ""
 
+var _run := 0 ## bumped when an interaction starts or is cut: a stale coroutine stops at its next step
+var _locked := false ## the running interaction holds the player
+var _started_frame := -1 ## physics frame the interaction started on (its key press doesn't advance it)
+var _ended_frame := -1 ## physics frame the last one ended on (its closing press doesn't reopen one)
+var _look_mode := -1 ## -1: default look; else the NpcStep.Look a step set
+var _look_mark: StringName
+var _last_line := {} ## NpcStep -> index of the version shown last
 var _target: Variant = null ## walk target (global), or null
 var _running := false
 var _walk_left := 0.0 ## seconds before a walk gives up and snaps to its target
@@ -99,6 +109,206 @@ func player() -> Player:
 	return _player
 
 
+# --- interactions -------------------------------------------------------------------------
+
+## Memory key of `i`: its id, or its list position when the id is empty.
+func key_of(i: NpcInteraction) -> String:
+	return String(i.id) if i.id else "#%d" % interactions.find(i)
+
+
+## The first interaction in list order with this trigger that can play now (null if none).
+func choose(trigger: NpcInteraction.Trigger) -> NpcInteraction:
+	var plays: Dictionary = memory().plays
+	for i in interactions:
+		if i and i.trigger == trigger and i.available(World.flags, plays.get(key_of(i), 0)):
+			return i
+	return null
+
+
+## Whether the interact key would start something: present, not holding the player, not the
+## frame a talk just ended on, and a key interaction is available. NpcTalk asks this.
+func can_talk() -> bool:
+	return present and not _locked and Engine.get_physics_frames() > _ended_frame \
+		and choose(NpcInteraction.Trigger.KEY) != null
+
+
+## The interact key in the Talk zone: cuts an unlocked interaction (a bark) and plays the first
+## available key interaction.
+func start_talk() -> void:
+	if not can_talk():
+		return
+	var i := choose(NpcInteraction.Trigger.KEY)
+	if playing:
+		stop_walk()
+	play(i)
+
+
+## Runs `i` step by step (a coroutine). Steps run back to back until one waits. Starting another
+## interaction cuts this one: it stops at its next step.
+func play(i: NpcInteraction) -> void:
+	_run += 1
+	var run := _run
+	_hush()
+	playing = i
+	_started_frame = Engine.get_physics_frames()
+	var plays: Dictionary = memory().plays
+	plays[key_of(i)] = plays.get(key_of(i), 0) + 1 # counted at the start: a cut `once` doesn't replay
+	_locked = i.locks_player
+	var p := player()
+	if _locked and p:
+		p.start_puppet()
+		_face(p.global_position)
+	for s in i.steps:
+		if s == null:
+			continue
+		await _do(s, run)
+		if run != _run:
+			return
+	_end()
+
+
+func _do(s: NpcStep, run: int) -> void:
+	match s.kind:
+		NpcStep.Kind.SAY:
+			if s.lines.is_empty():
+				push_warning("%s: a say step has no lines" % name)
+				return
+			var at := s.pick_line(_last_line.get(s, -1))
+			_last_line[s] = at
+			line = s.lines[at]
+			speaking = true
+			bubble.text = line + (" ▸" if _locked else "")
+			bubble.visible = true
+			cue.emit(&"say")
+			if _locked:
+				await _advanced
+			else:
+				await _sleep(s.say_time(line))
+			if run == _run:
+				_hush()
+		NpcStep.Kind.ANIM:
+			anim = s.anim
+			if s.time > 0.0:
+				await _sleep(s.time)
+		NpcStep.Kind.FACE:
+			face = s.face
+		NpcStep.Kind.LOOK:
+			if s.look == NpcStep.Look.MARK and not marks.has(s.mark):
+				push_warning("%s: no mark %s to look at" % [name, s.mark])
+				return
+			_look_mode = s.look
+			_look_mark = s.mark
+		NpcStep.Kind.MOVE:
+			if not marks.has(s.mark):
+				push_warning("%s: no mark %s to walk to" % [name, s.mark])
+				return
+			walk_to(marks[s.mark], s.run)
+			if s.wait:
+				await arrived
+		NpcStep.Kind.SOUND:
+			if s.sound == null:
+				push_warning("%s: a sound step has no sound" % name)
+				return
+			voice.stream = s.sound
+			voice.play()
+			if s.sound_wait: # its end, or its length (a dummy audio driver may never finish)
+				var left := s.sound.get_length()
+				while left > 0.0 and voice.playing and run == _run:
+					await get_tree().physics_frame
+					left -= get_physics_process_delta_time()
+		NpcStep.Kind.WAIT:
+			if s.time > 0.0:
+				await _sleep(s.time)
+			elif _locked:
+				await _advanced
+			else:
+				await _sleep(1.0)
+		NpcStep.Kind.FLAG:
+			if s.flag:
+				World.set_flag(s.flag, s.value)
+		NpcStep.Kind.LEAVE:
+			push_warning("%s: leave isn't supported yet" % name)
+
+
+## Back to idle: neutral face, default look, no bubble, position saved, player released.
+func _end() -> void:
+	anim = &"idle"
+	face = &"neutral"
+	_look_mode = -1
+	_hush()
+	save_position()
+	var was_locked := _locked
+	_locked = false
+	playing = null
+	_ended_frame = Engine.get_physics_frames()
+	if was_locked and is_instance_valid(player()):
+		player().end_puppet()
+	finished.emit()
+
+
+func _hush() -> void:
+	line = ""
+	speaking = false
+	bubble.visible = false
+
+
+func _sleep(seconds: float) -> void:
+	await get_tree().create_timer(seconds, false, true).timeout
+
+
+func _face(point: Vector3) -> void:
+	var f := (point - global_position).slide(up_direction)
+	if f.length() > 0.01:
+		facing = f.normalized()
+
+
+## Freed or unloaded mid-interaction: never leave the player held (or the screen black).
+func _exit_tree() -> void:
+	if Engine.is_editor_hint() or playing == null:
+		return
+	_run += 1
+	if _locked and is_instance_valid(player()) and player().is_inside_tree():
+		player().end_puppet()
+	World.fade(0.0, 0.0)
+	_locked = false
+	playing = null
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var out := PackedStringArray()
+	var mark_names := get_node(^"Marks").get_children().map(func(m: Node) -> StringName: return StringName(m.name))
+	var ids := {}
+	for at in interactions.size():
+		var i := interactions[at]
+		if i == null:
+			continue
+		var label := "Interaction %d (%s)" % [at, i.id]
+		if i.id == &"":
+			out.append("Interaction %d has an empty id: give it one so the NPC remembers it apart." % at)
+		elif ids.has(i.id):
+			out.append("%s: duplicate id, the two share one memory." % label)
+		ids[i.id] = true
+		if i.steps.is_empty():
+			out.append("%s has no steps." % label)
+		var left := false
+		for s in i.steps:
+			if s == null:
+				continue
+			if left:
+				out.append("%s: steps after leave never run." % label)
+				break
+			match s.kind:
+				NpcStep.Kind.SAY:
+					if s.lines.is_empty():
+						out.append("%s: a say step has no lines." % label)
+				NpcStep.Kind.MOVE, NpcStep.Kind.LOOK:
+					if (s.kind == NpcStep.Kind.MOVE or s.look == NpcStep.Look.MARK) and s.mark not in mark_names:
+						out.append("%s: mark \"%s\" isn't a child of Marks." % [label, s.mark])
+				NpcStep.Kind.LEAVE:
+					left = true
+	return out
+
+
 # --- presence ---------------------------------------------------------------------------
 
 ## Present when every `appears_if` flag is set and the NPC hasn't left. Absent: hidden, no
@@ -109,6 +319,7 @@ func refresh_presence() -> void:
 		on = on and World.flag(f) > 0
 	present = on
 	visible = on
+	prompt.visible = prompt.visible and on
 	$Collision.set_deferred(&"disabled", not on)
 	talk_zone.set_deferred(&"monitoring", on)
 	if not on:
@@ -151,6 +362,10 @@ func save_position() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if _locked and Input.is_action_just_pressed(&"interact") and Engine.get_physics_frames() > _started_frame:
+		_advanced.emit()
+	var p := player()
+	prompt.visible = present and p != null and p.interactable == talk_zone and not _locked
 	_move(delta)
 	_look(delta)
 	_orient(delta)
@@ -183,8 +398,10 @@ func _move(delta: float) -> void:
 		save_position()
 		cue.emit(&"arrive")
 		arrived.emit()
-	if anim in [&"idle", &"walk", &"run"]:
-		anim = (&"run" if _running else &"walk") if _target != null else &"idle"
+	if _target != null: # walking overrides a step's anim; it ends back on idle
+		anim = &"run" if _running else &"walk"
+	elif anim in [&"walk", &"run"]:
+		anim = &"idle"
 
 
 func _orient(delta: float) -> void:
@@ -197,9 +414,17 @@ func _orient(delta: float) -> void:
 
 # --- head look and placeholder animation --------------------------------------------------
 
-## What the head follows: the player's head within notice_distance, else straight ahead.
+## What the head follows: a look step's choice during an interaction, else the player's head
+## within notice_distance, else straight ahead.
 func _look_point() -> Variant:
 	var p := player()
+	match _look_mode:
+		NpcStep.Look.PLAYER:
+			return p.global_position + p.up_direction * Player.HEAD if p else null
+		NpcStep.Look.MARK:
+			return marks[_look_mark] + up_direction * 1.5
+		NpcStep.Look.AHEAD:
+			return null
 	if p and p.global_position.distance_to(global_position) <= notice_distance:
 		return p.global_position + p.up_direction * Player.HEAD
 	return null
