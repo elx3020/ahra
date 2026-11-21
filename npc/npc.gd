@@ -17,6 +17,9 @@ signal finished ## an interaction ended
 signal _advanced ## the interact key, during a locked interaction
 
 const ARRIVE := 0.3 ## m from the walk target that counts as there
+const CLEARANCE := 1.0 ## m kept from people while walking (NPC 0.35 + player 0.4 + a margin)
+const LOOK_AHEAD := 2.0 ## m ahead a walk looks for someone in its way
+const STOP_SHORT := 0.3 ## a taken destination: wait this much farther than CLEARANCE from it
 const FEET := 0.8 ## the NPC's origin above its feet; marks are floor points, so a snap lands this high
 const HEAD_YAW := 75.0 ## degrees the head turns either way
 const HEAD_PITCH := 35.0
@@ -44,6 +47,7 @@ var look_target: Variant = null ## global point the head turns to, or null (stra
 var speaking := false ## a line is showing (the mouth moves)
 var facing := Vector3.FORWARD
 var present := true ## false while absent (appears_if unmet, or it left)
+var waiting := false ## a walk paused beside its destination because the player stands on it
 var marks := {} ## mark name (StringName) -> global position, cached before the NPC ever moves
 var playing: NpcInteraction ## the interaction running, or null
 var line := "" ## the line showing in the bubble (without the key mark), or ""
@@ -424,18 +428,30 @@ func _cache_marks() -> void:
 			marks[StringName(m.name)] = m.global_position
 
 
-## Walks (or runs) to `point`. Emits `arrived` within ARRIVE m, or after distance / speed * 2 + 1
-## seconds by snapping there, so a blocked walk never strands an interaction.
+## Walks (or runs) to `point`, a floor point. On the way it steers around the player and other
+## NPCs (_steer). If the player stands on `point` it walks up close and waits (`waiting`, anim
+## `wait`, cue `blocked`) until the spot is free; but when its own locked interaction holds the
+## player (who can't move), it stops beside the spot and counts as arrived. Emits `arrived` within
+## ARRIVE m, or after distance / speed * 2 + 1 seconds of walking (waiting doesn't count) by
+## snapping there, never onto the player, so a blocked walk never strands an interaction.
 func walk_to(point: Vector3, running := false) -> void:
 	_target = point
 	_running = running
 	_moved = true
+	waiting = false
 	var d := (point - global_position).slide(up_direction).length()
 	_walk_left = d / (run_speed if running else walk_speed) * 2.0 + 1.0
 
 
 func stop_walk() -> void:
 	_target = null
+	waiting = false
+
+
+## Whether the player stands on `point` (within CLEARANCE, planar).
+func taken(point: Vector3) -> bool:
+	var p := player()
+	return p != null and (p.global_position - point).slide(up_direction).length() < CLEARANCE
 
 
 func walking() -> bool:
@@ -468,14 +484,32 @@ func _physics_process(delta: float) -> void:
 func _move(delta: float) -> void:
 	var dir := Vector3.ZERO
 	var snap := false
+	var beside := false
 	if _target != null:
-		var to: Vector3 = (_target - global_position).slide(up_direction)
-		_walk_left -= delta
-		if _walk_left <= 0.0:
-			snap = true
-		elif to.length() > 0.01:
-			dir = to.normalized()
-			facing = dir
+		var target: Vector3 = _target
+		var to := (target - global_position).slide(up_direction)
+		var p := player()
+		var close := to.length() <= CLEARANCE + STOP_SHORT 			or (p != null and (p.global_position - global_position).slide(up_direction).length() < CLEARANCE + 0.05)
+		if taken(target) and close:
+			if _locked:
+				beside = true # the player it holds can't step aside: beside the spot will do
+			else:
+				if not waiting:
+					waiting = true
+					cue.emit(&"blocked")
+				if to.length() > 0.01:
+					facing = to.normalized()
+		else:
+			waiting = false
+			_walk_left -= delta
+			if _walk_left <= 0.0:
+				if taken(target):
+					_walk_left = 1.0 # never snap onto the player
+				else:
+					snap = true
+			elif to.length() > 0.01:
+				dir = _steer(to.normalized(), target)
+				facing = dir
 	var speed := run_speed if _running else walk_speed
 	var vert := velocity.project(up_direction)
 	if not is_on_floor():
@@ -485,16 +519,52 @@ func _move(delta: float) -> void:
 	if snap:
 		global_position = (_target as Vector3) + up_direction * FEET
 		reset_physics_interpolation()
-	if _target != null and (snap or (_target - global_position).slide(up_direction).length() < ARRIVE):
+	if _target != null and (beside or snap or (_target - global_position).slide(up_direction).length() < ARRIVE):
 		_target = null
+		waiting = false
 		velocity = velocity.project(up_direction)
 		save_position()
 		cue.emit(&"arrive")
 		arrived.emit()
 	if _target != null: # walking overrides a step's anim; it ends back on idle
-		anim = &"run" if _running else &"walk"
-	elif anim in [&"walk", &"run"]:
+		anim = &"wait" if waiting else (&"run" if _running else &"walk")
+	elif anim in [&"walk", &"run", &"wait"]:
 		anim = &"idle"
+
+
+## The way to walk: straight at the target, or toward a point beside the nearest obstacle ahead
+## (the player or another present NPC) whose centre is within CLEARANCE of the walk line and
+## LOOK_AHEAD of the NPC. The detour is on the side the NPC is already on; dead ahead, its right
+## (two NPCs meeting head-on both keep right and pass). Someone standing on the target itself is
+## left to the waiting rule (walk_to).
+## ponytail: every walking NPC checks every NPC each frame (O(n^2)); a spatial query if crowds walk.
+func _steer(dir: Vector3, target: Vector3) -> Vector3:
+	var nearest := INF
+	var detour := Vector3.ZERO
+	for o in _obstacles():
+		var at := (o.global_position - global_position).slide(up_direction)
+		var ahead := at.dot(dir)
+		if ahead <= 0.0 or ahead > LOOK_AHEAD or ahead >= nearest:
+			continue
+		var side := at - dir * ahead # from the walk line to the obstacle
+		if side.length() >= CLEARANCE or (o.global_position - target).slide(up_direction).length() < CLEARANCE:
+			continue
+		var away := -side.normalized() if side.length() > 0.05 else dir.cross(up_direction).normalized()
+		nearest = ahead
+		detour = at + away * CLEARANCE
+	return detour.normalized() if nearest < INF else dir
+
+
+## What walks steer around: the player and every other present NPC.
+func _obstacles() -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	var p := player()
+	if p:
+		out.append(p)
+	for n in get_tree().get_nodes_in_group(&"npc"):
+		if n != self and n.present:
+			out.append(n)
+	return out
 
 
 func _orient(delta: float) -> void:
@@ -511,6 +581,8 @@ func _orient(delta: float) -> void:
 ## within notice_distance, else straight ahead.
 func _look_point() -> Variant:
 	var p := player()
+	if waiting and p: # someone is standing on its spot
+		return p.global_position + p.up_direction * Player.HEAD
 	match _look_mode:
 		NpcStep.Look.PLAYER:
 			return p.global_position + p.up_direction * Player.HEAD if p else null
@@ -559,6 +631,7 @@ func _animate(delta: float) -> void:
 		&"jump": off = absf(sin(t * 6.0)) * 0.35; sc = Vector3(0.9, 1.1, 0.9)
 		&"point": tilt = -0.15; sc = Vector3(1.05, 1.0, 1.05)
 		&"shrug": sc = Vector3(1.12, 0.92, 1.12)
+		&"wait": off = absf(sin(t * 5.0)) * 0.03; roll = sin(t * 1.5) * 0.05 # foot tapping, swaying
 		_: off = sin(t * 2.0) * 0.01 # idle breathing; nod and shake move the head (_look)
 	var k := 1.0 - exp(-15.0 * delta)
 	_visual.position = _visual_base + Vector3.UP * off

@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 15
+const SECTIONS := 16
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -515,6 +515,76 @@ func _test_minors() -> void:
 	await _wait(2)
 	_check(s1.memory_id() != s2.memory_id() and s1.memory_id().ends_with("Spawned1"), "NPCs spawned from code have their own memory (%s, %s)" % [s1.memory_id(), s2.memory_id()])
 	sections += 1
+
+
+func _test_avoid() -> void:
+	world.reset_story()
+	_course()
+	# around a standing player: no snap, never touches
+	var n := _npc(Vector3(-8, 1, 0), [], {}, "Around", {"T": Vector3(8, -0.8, 0)})
+	player.teleport(Vector3(-4, 1, 0))
+	await _wait(10)
+	var r := await _walk_watch(n, n.marks[&"T"], 400)
+	_check(r.arrived and r.frames < 5 * Engine.physics_ticks_per_second, "walks around a standing player (%d frames, no snap)" % r.frames)
+	_check(r.closest > 0.7, "never runs into the player (closest %.2f m)" % r.closest)
+
+	# waits at a taken mark past the timeout; arrives once the player leaves
+	var w := _npc(Vector3(-8, 1, 8), [], {}, "Waiter", {"M": Vector3(6, -0.8, 0)})
+	await _wait(5)
+	player.teleport(w.marks[&"M"] + Vector3.UP)
+	var blocked := [0]
+	w.cue.connect(func(c: StringName) -> void:
+		if c == &"blocked":
+			blocked[0] += 1)
+	w.walk_to(w.marks[&"M"])
+	await _wait(int((6.0 / w.walk_speed * 2.0 + 1.0) * Engine.physics_ticks_per_second) + 120)
+	var d := _flat(w.global_position).distance_to(_flat(w.marks[&"M"]))
+	_check(w.waiting and w.walking() and w.anim == &"wait" and d <= 1.4 and d >= 0.7 and blocked[0] == 1, "waits beside a taken mark past the timeout (%.2f m, %d blocked cues)" % [d, blocked[0]])
+	player.teleport(Vector3(-20, 1, 8))
+	var got := [false]
+	w.arrived.connect(func() -> void: got[0] = true)
+	_check(await _wait_until(func() -> bool: return got[0], 120) and not w.waiting and w.anim != &"wait", "arrives once the mark is free")
+
+	# two NPCs swapping places: both arrive
+	var p1 := _npc(Vector3(-6, 1, -8), [], {}, "P1", {"G": Vector3(12, -0.8, 0)})
+	var p2 := _npc(Vector3(6, 1, -8), [], {}, "P2", {"G": Vector3(-12, -0.8, 0)})
+	await _wait(5)
+	var both := [0]
+	for q: Node3D in [p1, p2]:
+		q.arrived.connect(func() -> void: both[0] += 1)
+		q.walk_to(q.marks[&"G"])
+	_check(await _wait_until(func() -> bool: return both[0] == 2, 360), "two NPCs walking at each other both arrive")
+
+	# locked talk, the held player on the mark: arrives beside it and the talk goes on
+	var h := _npc(Vector3(10, 1, 6), [_talk(&"t", [_say(["Go"]), _step(NpcStep.Kind.MOVE, {mark = &"M"}), _say(["Here"])])], {}, "Holder", {"M": Vector3(1.5, -0.8, 0)})
+	await _wait(5)
+	await _start_key(h) # the player stands at the NPC + (1.5, 0, 0): on the mark
+	await _press(&"interact")
+	_check(await _wait_until(func() -> bool: return h.line == "Here", 180), "held player on the mark: arrives beside it")
+	await _press(&"interact")
+	await _wait(3)
+
+	# the Performer case: the held player between the NPC and its mark
+	var perf := _npc(Vector3(20, 1, -6), [_talk(&"show", [_say(["Watch"]), _step(NpcStep.Kind.MOVE, {mark = &"Far"}), _say(["Done"])])], {}, "Perf", {"Far": Vector3(8, -0.8, 0)})
+	await _wait(5)
+	await _start_key(perf)
+	await _press(&"interact")
+	var t0 := Engine.get_physics_frames()
+	_check(await _wait_until(func() -> bool: return perf.line == "Done", 400) and Engine.get_physics_frames() - t0 < 5 * Engine.physics_ticks_per_second, "walks around the held player to its mark (no snap)")
+	await _press(&"interact")
+	sections += 1
+
+
+## Walks `n` to `to`, returning {arrived, frames, closest (planar m to the player)}.
+func _walk_watch(n: Node3D, to: Vector3, frames: int) -> Dictionary:
+	var r := {arrived = false, frames = 0, closest = INF}
+	n.arrived.connect(func() -> void: r.arrived = true, CONNECT_ONE_SHOT)
+	n.walk_to(to)
+	while not r.arrived and r.frames < frames:
+		await physics_frame
+		r.frames += 1
+		r.closest = minf(r.closest, _flat(n.global_position).distance_to(_flat(player.global_position)))
+	return r
 
 
 func _test_demo() -> void:
