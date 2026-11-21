@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 12
+const SECTIONS := 13
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -404,6 +404,64 @@ func _test_leave() -> void:
 	sections += 1
 
 
+func _test_demo() -> void:
+	world.reset_story()
+	if course:
+		root.remove_child(course)
+		course.queue_free()
+		course = null
+	var demo: Node = load("res://demo/npcs/npcs.tscn").instantiate()
+	root.add_child(demo)
+	await _wait(60)
+	var npcs := get_nodes_in_group(&"npc")
+	var by_name := {}
+	for n: Node in npcs:
+		by_name[String(n.name)] = n
+	_check(["Greeter", "Smith", "Ringer", "Performer", "Doorman", "Mara", "MaraDock"].all(func(k: String) -> bool: return by_name.has(k)), "demo: the seven NPCs")
+	_check(by_name.has("MaraDock") and not by_name.MaraDock.present and npcs.filter(func(n: Node) -> bool: return n.present).size() == 6, "only MaraDock absent at the start")
+	_check(npcs.all(func(n: Node) -> bool: return n._get_configuration_warnings().is_empty()), "no config warnings")
+	_check(npcs.all(func(n: Node) -> bool: return not n.present or n.is_on_floor()), "every present NPC stands on the floor")
+	_check(load("res://demo/npcs/blip.tres") is AudioStreamWAV, "blip sound")
+	_check(demo.area_id == &"npcs" and demo.help().contains("7 clear"), "area id and debug keys in the help")
+
+	# a short playthrough: the bell changes Smith's lines; the Doorman steps aside for good
+	player = demo.get_node("Player")
+	await _talk_through(by_name.Ringer)
+	_check(world.flag(&"bell_rang") == 1, "demo: the Ringer rings the bell")
+	player.teleport(by_name.Smith.global_position + Vector3(0, 0, 1.5))
+	await _wait(5)
+	await _press(&"interact")
+	await _wait(3)
+	_check(by_name.Smith.line == "You rang the bell!", "demo: Smith's new line after the bell")
+	await _talk_through(by_name.Smith)
+	var aside: Vector3 = by_name.Doorman.marks[&"Aside"]
+	await _talk_through(by_name.Doorman)
+	_check(_flat(by_name.Doorman.global_position).distance_to(_flat(aside)) < 0.4, "demo: the Doorman steps aside")
+	root.remove_child(demo)
+	demo.free()
+	demo = load("res://demo/npcs/npcs.tscn").instantiate()
+	root.add_child(demo)
+	await _wait(10)
+	var doorman: Node3D = demo.get_node("Bays/Performer/Doorman")
+	_check(_flat(doorman.global_position).distance_to(_flat(aside)) < 0.4, "demo: still aside after a reload")
+	root.remove_child(demo)
+	demo.queue_free()
+	sections += 1
+
+
+## Stands in front of `n` (NPCs face +z in the demo) and presses interact until the talk ends.
+func _talk_through(n: Node3D) -> void:
+	player.teleport(n.global_position + Vector3(0, 0, 1.5))
+	await _wait(5)
+	await _press(&"interact")
+	for k in 40:
+		await _wait(8)
+		if n.playing == null:
+			break
+		await _press(&"interact")
+	await _wait(3)
+
+
 # --- course building ---------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -450,7 +508,7 @@ func _npc(at: Vector3, interactions := [], props := {}, npc_name := "", marks :=
 		var mk := Marker3D.new()
 		mk.name = m
 		mk.position = marks[m]
-		n.get_node("Marks").add_child(mk)
+		n.add_child(mk)
 	n.position = at
 	course.add_child(n)
 	n.owner = course

@@ -1,0 +1,730 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/npcs/npcs.gd" id="1_ruaq3"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_uc5h7"]
+[ext_resource type="Script" path="res://player/stat_mods.gd" id="3_n8mu7"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="4_yu15y"]
+[ext_resource type="PackedScene" path="res://npc/npc.tscn" id="5_qg12c"]
+[ext_resource type="Script" path="res://npc/npc_interaction.gd" id="6_53q5i"]
+[ext_resource type="Script" path="res://npc/npc_step.gd" id="7_qe6st"]
+[ext_resource type="AudioStream" path="res://demo/npcs/blip.tres" id="8_3053x"]
+
+[sub_resource type="Environment" id="Environment_0v1oj"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="Resource" id="Resource_0tnh6"]
+script = ExtResource("3_n8mu7")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jannu"]
+size = Vector3(240, 2, 120)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jmxdr"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[sub_resource type="Resource" id="Resource_3b0iy"]
+resource_name = "say \"Hey! Over here!\" (+2)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Hey! Over here!", "Oh, hi again!", "Psst! Press E!")
+time = 1.6
+
+[sub_resource type="Resource" id="Resource_ypyc1"]
+resource_name = "bark · near 6.0 m · 1 step"
+script = ExtResource("6_53q5i")
+id = &"bark"
+trigger = 1
+distance = 6.0
+locks_player = false
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_3b0iy")])
+
+[sub_resource type="Resource" id="Resource_sm8t5"]
+resource_name = "anim wave"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"wave"
+
+[sub_resource type="Resource" id="Resource_tf63b"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_dx0lh"]
+resource_name = "say \"Welcome to the NPC demo!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Welcome to the NPC demo!")
+
+[sub_resource type="Resource" id="Resource_1w0uv"]
+resource_name = "say \"Walk close and I call you. Pres…\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Walk close and I call you. Press E and we talk.")
+
+[sub_resource type="Resource" id="Resource_bqvnw"]
+resource_name = "anim nod"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"nod"
+
+[sub_resource type="Resource" id="Resource_4nule"]
+resource_name = "face neutral"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"neutral"
+
+[sub_resource type="Resource" id="Resource_bb0nb"]
+resource_name = "say \"Some things I say only once. As…\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Some things I say only once. Ask me again.")
+
+[sub_resource type="Resource" id="Resource_p5c81"]
+resource_name = "intro · key · once · 7 steps"
+script = ExtResource("6_53q5i")
+id = &"intro"
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_sm8t5"), SubResource("Resource_tf63b"), SubResource("Resource_dx0lh"), SubResource("Resource_1w0uv"), SubResource("Resource_bqvnw"), SubResource("Resource_4nule"), SubResource("Resource_bb0nb")])
+
+[sub_resource type="Resource" id="Resource_82jin"]
+resource_name = "face thinking"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"thinking"
+
+[sub_resource type="Resource" id="Resource_fhvhy"]
+resource_name = "say \"Nice weather.\" (+3)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Nice weather.", "Have you met Smith? Next bay.", "Mara is off to the dock, I hear.", "Hm?")
+
+[sub_resource type="Resource" id="Resource_llgwd"]
+resource_name = "chat · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"chat"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_82jin"), SubResource("Resource_fhvhy")])
+
+[sub_resource type="Resource" id="Resource_fo522"]
+resource_name = "face surprised"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"surprised"
+
+[sub_resource type="Resource" id="Resource_f8tn2"]
+resource_name = "say \"You rang the bell!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("You rang the bell!")
+
+[sub_resource type="Resource" id="Resource_i4n1t"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_b46d8"]
+resource_name = "anim nod"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"nod"
+
+[sub_resource type="Resource" id="Resource_28j5u"]
+resource_name = "say \"Now I have something new to say.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Now I have something new to say.")
+
+[sub_resource type="Resource" id="Resource_r121t"]
+resource_name = "rung · key · once · needs bell_rang · 5 steps"
+script = ExtResource("6_53q5i")
+id = &"rung"
+needs = PackedStringArray("bell_rang")
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_fo522"), SubResource("Resource_f8tn2"), SubResource("Resource_i4n1t"), SubResource("Resource_b46d8"), SubResource("Resource_28j5u")])
+
+[sub_resource type="Resource" id="Resource_nbc72"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_4ax8h"]
+resource_name = "say \"The bell still rings in my ears.\" (+1)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("The bell still rings in my ears.", "Thanks for ringing it.")
+
+[sub_resource type="Resource" id="Resource_xvgf5"]
+resource_name = "after · key · needs bell_rang · 2 steps"
+script = ExtResource("6_53q5i")
+id = &"after"
+needs = PackedStringArray("bell_rang")
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_nbc72"), SubResource("Resource_4ax8h")])
+
+[sub_resource type="Resource" id="Resource_8iuat"]
+resource_name = "face sad"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"sad"
+
+[sub_resource type="Resource" id="Resource_oijco"]
+resource_name = "say \"Come back when the bell has run…\" (+2)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Come back when the bell has rung.", "No bell yet...", "The Ringer is right there.")
+
+[sub_resource type="Resource" id="Resource_xctvu"]
+resource_name = "before · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"before"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_8iuat"), SubResource("Resource_oijco")])
+
+[sub_resource type="Resource" id="Resource_1a6b1"]
+resource_name = "look mark Bell"
+script = ExtResource("7_qe6st")
+kind = 3
+look = 1
+mark = &"Bell"
+
+[sub_resource type="Resource" id="Resource_5fols"]
+resource_name = "say \"Want to hear the bell?\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Want to hear the bell?")
+
+[sub_resource type="Resource" id="Resource_31enn"]
+resource_name = "anim jump"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"jump"
+
+[sub_resource type="Resource" id="Resource_acw4d"]
+resource_name = "sound blip.tres"
+script = ExtResource("7_qe6st")
+kind = 5
+sound = ExtResource("8_3053x")
+sound_wait = true
+
+[sub_resource type="Resource" id="Resource_qm0be"]
+resource_name = "say \"DONG!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("DONG!")
+
+[sub_resource type="Resource" id="Resource_7iwb3"]
+resource_name = "flag bell_rang = 1"
+script = ExtResource("7_qe6st")
+kind = 7
+flag = &"bell_rang"
+
+[sub_resource type="Resource" id="Resource_whjmd"]
+resource_name = "look player"
+script = ExtResource("7_qe6st")
+kind = 3
+
+[sub_resource type="Resource" id="Resource_in7l3"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_5386p"]
+resource_name = "say \"Go tell Smith.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Go tell Smith.")
+
+[sub_resource type="Resource" id="Resource_l57l8"]
+resource_name = "ring · key · once · 9 steps"
+script = ExtResource("6_53q5i")
+id = &"ring"
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_1a6b1"), SubResource("Resource_5fols"), SubResource("Resource_31enn"), SubResource("Resource_acw4d"), SubResource("Resource_qm0be"), SubResource("Resource_7iwb3"), SubResource("Resource_whjmd"), SubResource("Resource_in7l3"), SubResource("Resource_5386p")])
+
+[sub_resource type="Resource" id="Resource_k27ul"]
+resource_name = "say \"Smith is waiting.\" (+1)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Smith is waiting.", "Loud, right?")
+
+[sub_resource type="Resource" id="Resource_f3mv0"]
+resource_name = "done · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"done"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_k27ul")])
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f1b0n"]
+albedo_color = Color(0.85, 0.7, 0.25, 1)
+
+[sub_resource type="Resource" id="Resource_n7jgx"]
+resource_name = "say \"Watch this!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Watch this!")
+
+[sub_resource type="Resource" id="Resource_rbga8"]
+resource_name = "move → Left (run)"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"Left"
+run = true
+
+[sub_resource type="Resource" id="Resource_l2ny5"]
+resource_name = "anim jump"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"jump"
+
+[sub_resource type="Resource" id="Resource_3ofaa"]
+resource_name = "sound blip.tres"
+script = ExtResource("7_qe6st")
+kind = 5
+sound = ExtResource("8_3053x")
+
+[sub_resource type="Resource" id="Resource_nwjqv"]
+resource_name = "say \"Ta-da!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Ta-da!")
+
+[sub_resource type="Resource" id="Resource_0mq46"]
+resource_name = "look mark Right"
+script = ExtResource("7_qe6st")
+kind = 3
+look = 1
+mark = &"Right"
+
+[sub_resource type="Resource" id="Resource_q7g5p"]
+resource_name = "anim point"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"point"
+
+[sub_resource type="Resource" id="Resource_u0gxq"]
+resource_name = "face surprised"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"surprised"
+
+[sub_resource type="Resource" id="Resource_hkewk"]
+resource_name = "say \"Look over there!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Look over there!")
+
+[sub_resource type="Resource" id="Resource_gmxk0"]
+resource_name = "move → Right (no wait)"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"Right"
+wait = false
+
+[sub_resource type="Resource" id="Resource_1q6yq"]
+resource_name = "say \"Yes, I talk while I walk.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Yes, I talk while I walk.")
+
+[sub_resource type="Resource" id="Resource_n5ub5"]
+resource_name = "move → Stage"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"Stage"
+
+[sub_resource type="Resource" id="Resource_rmogr"]
+resource_name = "look player"
+script = ExtResource("7_qe6st")
+kind = 3
+
+[sub_resource type="Resource" id="Resource_816s1"]
+resource_name = "anim bow"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"bow"
+
+[sub_resource type="Resource" id="Resource_db3ph"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_nqmlu"]
+resource_name = "sound blip.tres"
+script = ExtResource("7_qe6st")
+kind = 5
+sound = ExtResource("8_3053x")
+
+[sub_resource type="Resource" id="Resource_1ha8b"]
+resource_name = "say \"Thank you, thank you.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Thank you, thank you.")
+
+[sub_resource type="Resource" id="Resource_tl35i"]
+resource_name = "anim idle"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"idle"
+
+[sub_resource type="Resource" id="Resource_xa17y"]
+resource_name = "say \"Again? Just ask.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Again? Just ask.")
+
+[sub_resource type="Resource" id="Resource_4omxn"]
+resource_name = "show · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"show"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_n7jgx"), SubResource("Resource_rbga8"), SubResource("Resource_l2ny5"), SubResource("Resource_3ofaa"), SubResource("Resource_nwjqv"), SubResource("Resource_0mq46"), SubResource("Resource_q7g5p"), SubResource("Resource_u0gxq"), SubResource("Resource_hkewk"), SubResource("Resource_gmxk0"), SubResource("Resource_1q6yq"), SubResource("Resource_n5ub5"), SubResource("Resource_rmogr"), SubResource("Resource_816s1"), SubResource("Resource_db3ph"), SubResource("Resource_nqmlu"), SubResource("Resource_1ha8b"), SubResource("Resource_tl35i"), SubResource("Resource_xa17y")])
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v11j7"]
+albedo_color = Color(0.28, 0.28, 0.32, 1)
+
+[sub_resource type="Resource" id="Resource_3qpin"]
+resource_name = "say \"Oh, you want through?\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Oh, you want through?")
+
+[sub_resource type="Resource" id="Resource_yir68"]
+resource_name = "face thinking"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"thinking"
+
+[sub_resource type="Resource" id="Resource_obwby"]
+resource_name = "say \"Fine.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Fine.")
+
+[sub_resource type="Resource" id="Resource_1hhkr"]
+resource_name = "move → Aside"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"Aside"
+
+[sub_resource type="Resource" id="Resource_747s0"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_n83fc"]
+resource_name = "say \"Go ahead. I'll stay here.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Go ahead. I\'ll stay here.")
+
+[sub_resource type="Resource" id="Resource_i32au"]
+resource_name = "aside · key · once · 6 steps"
+script = ExtResource("6_53q5i")
+id = &"aside"
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_3qpin"), SubResource("Resource_yir68"), SubResource("Resource_obwby"), SubResource("Resource_1hhkr"), SubResource("Resource_747s0"), SubResource("Resource_n83fc")])
+
+[sub_resource type="Resource" id="Resource_alfi1"]
+resource_name = "say \"Go on through.\" (+1)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Go on through.", "I like this spot better anyway.")
+
+[sub_resource type="Resource" id="Resource_jhcrc"]
+resource_name = "after · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"after"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_alfi1")])
+
+[sub_resource type="Resource" id="Resource_vg6ea"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_xv8a0"]
+resource_name = "say \"I'm off to the dock.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("I\'m off to the dock.")
+
+[sub_resource type="Resource" id="Resource_3vd1j"]
+resource_name = "anim wave"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"wave"
+
+[sub_resource type="Resource" id="Resource_e0h7c"]
+resource_name = "say \"Find me there!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Find me there!")
+
+[sub_resource type="Resource" id="Resource_q75gl"]
+resource_name = "leave → mara_at_dock"
+script = ExtResource("7_qe6st")
+kind = 8
+flag = &"mara_at_dock"
+
+[sub_resource type="Resource" id="Resource_cfx6c"]
+resource_name = "bye · key · once · 5 steps"
+script = ExtResource("6_53q5i")
+id = &"bye"
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_vg6ea"), SubResource("Resource_xv8a0"), SubResource("Resource_3vd1j"), SubResource("Resource_e0h7c"), SubResource("Resource_q75gl")])
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_r4608"]
+albedo_color = Color(0.2, 0.45, 0.75, 1)
+
+[sub_resource type="Resource" id="Resource_vy2au"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_n2o1b"]
+resource_name = "anim wave"
+script = ExtResource("7_qe6st")
+kind = 1
+anim = &"wave"
+
+[sub_resource type="Resource" id="Resource_x5l3u"]
+resource_name = "say \"You found me!\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("You found me!")
+
+[sub_resource type="Resource" id="Resource_q51os"]
+resource_name = "say \"The dock is nicer anyway.\""
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("The dock is nicer anyway.")
+
+[sub_resource type="Resource" id="Resource_omt3t"]
+resource_name = "found · key · once · 4 steps"
+script = ExtResource("6_53q5i")
+id = &"found"
+once = true
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_vy2au"), SubResource("Resource_n2o1b"), SubResource("Resource_x5l3u"), SubResource("Resource_q51os")])
+
+[sub_resource type="Resource" id="Resource_vx1jo"]
+resource_name = "say \"Lovely water.\" (+2)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Lovely water.", "Still here.", "The fish are biting.")
+
+[sub_resource type="Resource" id="Resource_aspev"]
+resource_name = "dock · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"dock"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_vx1jo")])
+
+[node name="Npcs" type="Node3D" unique_id=1638703754]
+script = ExtResource("1_ruaq3")
+bounds_center = Vector3(60, 0, 0)
+bounds_radius = 160.0
+area_id = &"npcs"
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2063033313]
+environment = SubResource("Environment_0v1oj")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2104039184]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1668616782]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=217801220]
+
+[node name="Label" type="Label" parent="HUD" unique_id=2001518606]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." unique_id=1602617663 instance=ExtResource("2_uc5h7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+progression = SubResource("Resource_0tnh6")
+
+[node name="Void" type="Area3D" parent="." unique_id=1289680561]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, -14, 0)
+script = ExtResource("4_yu15y")
+color = Color(1, 0, 0, 0.06)
+
+[node name="Box" type="CollisionShape3D" parent="Void" unique_id=1784903266]
+shape = SubResource("BoxShape3D_jannu")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1422130954]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, -0.5, 0)
+use_collision = true
+size = Vector3(150, 1, 30)
+material = SubResource("StandardMaterial3D_jmxdr")
+
+[node name="Bays" type="Node3D" parent="." unique_id=131852754]
+
+[node name="Greeter" type="Node3D" parent="Bays" unique_id=465527333]
+
+[node name="Label" type="Label3D" parent="Bays/Greeter" unique_id=1951135600]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "GREETER
+walk close: he calls you (a bark, you keep moving)
+E: a once-only intro, then repeats with versions
+his head follows you within 6 m"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Greeter" unique_id=1315587831]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Greeter" parent="Bays/Greeter" unique_id=2145119813 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0.8, -3)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_ypyc1"), SubResource("Resource_p5c81"), SubResource("Resource_llgwd")])
+
+[node name="Progression" type="Node3D" parent="Bays" unique_id=383264382]
+
+[node name="Label" type="Label3D" parent="Bays/Progression" unique_id=633745943]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "PROGRESSION
+Smith waits for the bell
+talk to the Ringer, then to Smith again
+7 forgets the bell"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Progression" unique_id=764834531]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 7)
+
+[node name="Smith" parent="Bays/Progression" unique_id=1880329960 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 27, 0.8, -3)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_r121t"), SubResource("Resource_xvgf5"), SubResource("Resource_xctvu")])
+color = Color(0.55, 0.4, 0.3, 1)
+
+[node name="Ringer" parent="Bays/Progression" unique_id=555718328 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 34, 0.8, -3)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_l57l8"), SubResource("Resource_f3mv0")])
+color = Color(0.35, 0.45, 0.8, 1)
+
+[node name="Bell" type="Marker3D" parent="Bays/Progression/Ringer" unique_id=958188130]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5000001, -0.8, 0.9999999)
+
+[node name="Bell" type="CSGCylinder3D" parent="Bays/Progression" unique_id=686147317]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.5, 0.6, -4)
+use_collision = true
+radius = 0.4
+height = 1.2
+material = SubResource("StandardMaterial3D_f1b0n")
+
+[node name="Performer" type="Node3D" parent="Bays" unique_id=1002074465]
+
+[node name="Label" type="Label3D" parent="Bays/Performer" unique_id=768983267]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "PERFORMER (E): walks between marks, talks while walking,
+looks and points, faces, sounds; stays where he ends
+DOORMAN (E, right): steps aside for good (8 reloads: still aside)"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Performer" unique_id=82376929]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 1, 7)
+
+[node name="Performer" parent="Bays/Performer" unique_id=1498275717 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 56, 0.8, -2)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_4omxn")])
+color = Color(0.75, 0.35, 0.55, 1)
+
+[node name="Left" type="Marker3D" parent="Bays/Performer/Performer" unique_id=1232338252]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, -0.8, 3.496911e-07)
+
+[node name="Right" type="Marker3D" parent="Bays/Performer/Performer" unique_id=325790960]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, -0.8, -4.371139e-07)
+
+[node name="Stage" type="Marker3D" parent="Bays/Performer/Performer" unique_id=1226284625]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0000004, -0.8, 4)
+
+[node name="WallWest" type="CSGBox3D" parent="Bays/Performer" unique_id=1425976602]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65, 1.5, 3)
+use_collision = true
+size = Vector3(6, 3, 1)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="WallEast" type="CSGBox3D" parent="Bays/Performer" unique_id=688733459]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 72, 1.5, 3)
+use_collision = true
+size = Vector3(4, 3, 1)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="SideWest" type="CSGBox3D" parent="Bays/Performer" unique_id=366437728]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62.5, 1.5, -1.5)
+use_collision = true
+size = Vector3(1, 3, 10)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="SideEast" type="CSGBox3D" parent="Bays/Performer" unique_id=1999971646]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 73.5, 1.5, -1.5)
+use_collision = true
+size = Vector3(1, 3, 10)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="Back" type="CSGBox3D" parent="Bays/Performer" unique_id=1829720383]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 68, 1.5, -6)
+use_collision = true
+size = Vector3(12, 3, 1)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="Doorman" parent="Bays/Performer" unique_id=915296477 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 69, 0.8, 3)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_i32au"), SubResource("Resource_jhcrc")])
+color = Color(0.45, 0.45, 0.5, 1)
+
+[node name="Aside" type="Marker3D" parent="Bays/Performer/Doorman" unique_id=960288781]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7484555e-07, -0.8, -2)
+
+[node name="Beyond" type="Label3D" parent="Bays/Performer" unique_id=323158037]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69, 1.5, -1)
+pixel_size = 0.01
+billboard = 1
+text = "you got through!"
+font_size = 40
+
+[node name="Leaver" type="Node3D" parent="Bays" unique_id=710680259]
+
+[node name="Label" type="Label3D" parent="Bays/Leaver" unique_id=1353769087]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "LEAVER
+Mara (E) says goodbye and leaves: the screen fades
+find her at the dock, next bay ( ] )"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Leaver" unique_id=15679183]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1, 7)
+
+[node name="Mara" parent="Bays/Leaver" unique_id=670125285 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 90, 0.8, -3)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_cfx6c")])
+color = Color(0.8, 0.55, 0.25, 1)
+
+[node name="Dock" type="Node3D" parent="Bays" unique_id=1095523358]
+
+[node name="Label" type="Label3D" parent="Bays/Dock" unique_id=334411574]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "DOCK
+Mara appears here once she has left the Leaver bay"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Dock" unique_id=1723211494]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 1, 7)
+
+[node name="Water" type="CSGBox3D" parent="Bays/Dock" unique_id=1117440616]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -0.45, -8)
+use_collision = true
+size = Vector3(14, 1, 6)
+material = SubResource("StandardMaterial3D_r4608")
+
+[node name="Pier" type="CSGBox3D" parent="Bays/Dock" unique_id=778029718]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0.15, -5)
+use_collision = true
+size = Vector3(3, 0.3, 4)
+material = SubResource("StandardMaterial3D_v11j7")
+
+[node name="MaraDock" parent="Bays/Dock" unique_id=2112794951 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 120, 1.1, -5)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_omt3t"), SubResource("Resource_aspev")])
+appears_if = PackedStringArray("mara_at_dock")
+color = Color(0.8, 0.55, 0.25, 1)
