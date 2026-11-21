@@ -6,8 +6,9 @@ extends Area3D
 ## translucent `color` mesh, in the editor and in game.
 ## With the Shape Tools plugin (addons/shape_tools) the inspector's Shapes section adds, removes
 ## and edits the shapes, and the viewport shows resize handles while the zone is selected.
-## Subclasses override _player_entered/_player_exited, and _enemy_entered/_enemy_exited
-## where enemies are affected too (EnvZone, KillZone).
+## Subclasses override _player_entered/_player_exited, and _enemy_entered/_enemy_exited,
+## _npc_entered/_npc_exited or _weight_entered/_weight_exited where those are affected too
+## (EnvZone, KillZone, GravityZone).
 
 @export var color := Color(1, 1, 1, 0.2):
 	set(v):
@@ -71,6 +72,10 @@ func _on_body_entered(b: Node3D) -> void:
 		_player_entered(b)
 	elif b is Enemy:
 		_enemy_entered(b)
+	elif b is WeightBody:
+		_weight_entered(b)
+	elif b.is_in_group(&"npc"): # by group: Npc reaches the World autoload (see CLAUDE.md)
+		_npc_entered(b)
 
 
 func _on_body_exited(b: Node3D) -> void:
@@ -78,6 +83,10 @@ func _on_body_exited(b: Node3D) -> void:
 		_player_exited(b)
 	elif b is Enemy:
 		_enemy_exited(b)
+	elif b is WeightBody:
+		_weight_exited(b)
+	elif b.is_in_group(&"npc"):
+		_npc_exited(b)
 
 
 func _player_entered(_p: Player) -> void:
@@ -94,4 +103,21 @@ func _enemy_entered(_e: Enemy) -> void:
 
 
 func _enemy_exited(_e: Enemy) -> void:
+	pass
+
+
+## NPCs (an Npc, reached by its group) and weights get hooks of their own too (GravityZone, KillZone).
+func _npc_entered(_n: Node3D) -> void:
+	pass
+
+
+func _npc_exited(_n: Node3D) -> void:
+	pass
+
+
+func _weight_entered(_w: WeightBody) -> void:
+	pass
+
+
+func _weight_exited(_w: WeightBody) -> void:
 	pass

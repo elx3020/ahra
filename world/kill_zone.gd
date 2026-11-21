@@ -2,6 +2,7 @@
 class_name KillZone
 extends Zone
 ## Instant death on touch: pits, the void, lava, spikes... `cause` picks the death animation.
+## Weights that fall in are destroyed (a dispenser replaces them).
 
 @export var cause: StringName = &"fall"
 
@@ -12,3 +13,7 @@ func _player_entered(p: Player) -> void:
 
 func _enemy_entered(e: Enemy) -> void:
 	e.die(cause)
+
+
+func _weight_entered(w: WeightBody) -> void:
+	w.destroy()

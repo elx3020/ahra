@@ -76,6 +76,8 @@ const SHOOT_STATES: Array[StringName] = [&"idle", &"walk", &"run", &"jump", &"sw
 @export var shoot_speed := 30.0
 @export var shoot_cooldown := 0.35
 @export var shoot_range := 20.0 ## aim assist reach
+@export_group("Carry")
+@export var push_strength := 6.0 ## walking into a weight pushes it at walk speed * push_strength / weight (at most x1)
 @export_group("")
 @export var ambient: EnvProfile ## environment used outside of any EnvZone
 @export var progression := StatMods.new() ## permanent % bonuses earned in play; this is what gets saved
@@ -179,6 +181,7 @@ func _physics_process(delta: float) -> void:
 	if state_name == &"puppet": # held by a talk or a cutscene: nothing else answers interact
 		interactable = null
 	var next := state.physics(delta)
+	WeightBody.push_from(self, push_strength, walk_speed)
 	if next:
 		change_state(next)
 	floor_velocity = get_platform_velocity() if is_on_floor() else Vector3.ZERO

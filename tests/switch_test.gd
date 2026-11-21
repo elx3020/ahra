@@ -7,8 +7,10 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 1
+const SECTIONS := 2
 const PLAYER := preload("res://player/player.tscn")
+const BOX := preload("res://puzzle/box.tscn")
+const BALL := preload("res://puzzle/ball.tscn")
 
 var fails := 0
 var sections := 0
@@ -25,7 +27,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world]
+	var all: Array[Callable] = [_test_world, _test_weight]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -82,6 +84,46 @@ func _test_world() -> void:
 	sections += 1
 
 
+func _test_weight() -> void:
+	_course()
+	var b := _weight(Vector3(0, 2, 0))
+	await _wait(60)
+	_check(b.linear_velocity.length() < 0.1 and absf(b.global_position.y - 0.5) < 0.05, "falls and rests on the floor")
+	_check(is_equal_approx(b.mass, 12.0) and b.gravity_scale == 0.0 and b.is_in_group(&"weight"), "mass = weight, own gravity")
+	_box(Vector3(0, 8.5, 0), Vector3(6, 1, 6)) # ceiling, underside at y 8
+	b.set_gravity_dir(Vector3.UP)
+	await _wait(60)
+	_check(absf(b.global_position.y - 7.5) < 0.1, "flipped: falls up onto the ceiling and stays")
+	var gz: GravityZone = _zone(GravityZone, Vector3(10, 2, 0), Vector3(3, 4, 3))
+	gz.gravity_dir = Vector3.UP
+	var c := _weight(Vector3(10, 0.5, 0))
+	await _wait(5)
+	_check(c.gravity_dir == Vector3.UP, "a gravity zone sets a weight's gravity on entry")
+	var gone := [false]
+	var k := _weight(Vector3(-20, 3, 0))
+	k.destroyed.connect(func() -> void: gone[0] = true)
+	_zone(KillZone, Vector3(-20, 0.5, 0), Vector3(3, 1, 3))
+	await _wait(40)
+	_check(gone[0] and not is_instance_valid(k), "a kill zone destroys a weight")
+	# pushing: the same walk into a heavy box and a light ball
+	var moved: Array[float] = []
+	for scene_w: Array in [[BOX, 30.0], [BALL, 4.0]]:
+		_course(Vector3(-3, 1, 0))
+		var w := _weight(Vector3(0, 0.5, 0), scene_w[0], scene_w[1])
+		await _wait(20)
+		Input.action_press(&"move_right")
+		await _wait(90)
+		Input.action_release(&"move_right")
+		await _wait(30)
+		moved.append(w.global_position.x)
+	_check(moved[0] > 0.3 and moved[1] > moved[0] * 2.0, "walking into weights pushes them; the light one goes much farther (%.2f, %.2f)" % moved)
+	_course(Vector3(0, 2, 0))
+	var under := _weight(Vector3(0, 0.5, 0))
+	await _wait(40)
+	_check(_flat(under.global_position).length() < 0.05 and player.is_on_floor(), "standing on a weight doesn't push it")
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -104,6 +146,27 @@ func _box(at: Vector3, size: Vector3) -> CSGBox3D:
 	b.use_collision = true
 	course.add_child(b)
 	return b
+
+
+## A weight (box by default) at `at`; `w` >= 0 sets its weight before it is ready.
+func _weight(at: Vector3, scene: PackedScene = BOX, w := -1.0) -> WeightBody:
+	var b: WeightBody = scene.instantiate()
+	if w >= 0.0:
+		b.weight = w
+	b.position = at
+	course.add_child(b)
+	return b
+
+
+## A zone of `script` (GravityZone, KillZone...) with one box shape.
+func _zone(script: GDScript, at: Vector3, size: Vector3) -> Zone:
+	var z: Zone = script.new()
+	z.position = at
+	course.add_child(z)
+	var s := BoxShape3D.new()
+	s.size = size
+	z.add_shape(s)
+	return z
 
 
 func _flat(v: Vector3) -> Vector3:
