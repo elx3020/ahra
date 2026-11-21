@@ -205,10 +205,15 @@ func _resume_routine() -> void:
 	await get_tree().physics_frame
 	if not is_inside_tree() or not present or playing != null:
 		return
-	var r := choose(NpcInteraction.Trigger.ROUTINE)
+	var r: NpcInteraction
+	var from := 0
+	if _routine and _routine in interactions and _routine.available(World.flags, 0): # its needs still hold
+		r = _routine # (a cut `once` routine too: it finishes)
+		from = _routine_from if _routine_from < r.steps.size() else 0
+	else:
+		r = choose(NpcInteraction.Trigger.ROUTINE)
 	if r == null:
 		return
-	var from := _routine_from if r == _routine and _routine_from < r.steps.size() else 0
 	_routine = null
 	_routine_from = 0
 	play(r, from)
@@ -222,8 +227,9 @@ func play(i: NpcInteraction, from_step := 0) -> void:
 	_hush()
 	playing = i
 	_started_frame = Engine.get_physics_frames()
-	var plays: Dictionary = memory().plays
-	plays[key_of(i)] = plays.get(key_of(i), 0) + 1 # counted at the start: a cut `once` doesn't replay
+	if from_step == 0: # counted at the start (a cut `once` bark doesn't replay); a resumed routine isn't a new play
+		var plays: Dictionary = memory().plays
+		plays[key_of(i)] = plays.get(key_of(i), 0) + 1
 	_locked = i.locks_player and i.trigger != NpcInteraction.Trigger.ROUTINE
 	var p := player()
 	if _locked and p:
@@ -299,26 +305,31 @@ func _do(s: NpcStep, run: int) -> void:
 			if s.flag:
 				World.set_flag(s.flag, s.value)
 		NpcStep.Kind.LEAVE: # fade out, gone for good (memory), flag set, fade in; the interaction ends
+			# a routine runs wherever the player is and never holds them: it just goes (walk it out
+			# of sight first). Anything else holds the player and fades.
+			var quiet := playing != null and playing.trigger == NpcInteraction.Trigger.ROUTINE
 			var p := player()
-			if not _locked and p:
+			if not quiet and not _locked and p:
 				_locked = true # a bark that leaves still holds the player through the fade
 				p.start_puppet()
-			_leaving = true # freed or unloaded meanwhile: _exit_tree clears the screen
-			await World.fade(1.0, s.fade)
-			if run != _run:
-				return
+			if not quiet:
+				_leaving = true # freed or unloaded meanwhile: _exit_tree clears the screen
+				await World.fade(1.0, s.fade)
+				if run != _run:
+					return
 			memory().gone = true
 			if s.flag:
 				World.set_flag(s.flag) # flags_changed: this NPC goes, copies waiting on the flag come
 			refresh_presence()
 			cue.emit(&"leave")
-			await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
-			if run != _run:
-				return
-			await World.fade(0.0, s.fade)
-			if run != _run:
-				return
-			_leaving = false
+			if not quiet:
+				await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
+				if run != _run:
+					return
+				await World.fade(0.0, s.fade)
+				if run != _run:
+					return
+				_leaving = false
 			_run += 1 # steps after a leave never run (bumped first: a `finished` listener may play again)
 			_end()
 
@@ -338,7 +349,8 @@ func _check_near(p: Player) -> void:
 		elif fire == null and d <= i.distance and _armed.get(i, true) \
 				and i.available(World.flags, memory().plays.get(key_of(i), 0)):
 			fire = i
-	if fire == null or (playing != null and playing.trigger != NpcInteraction.Trigger.ROUTINE) 			or p.state_name == &"puppet":
+	if fire == null or (playing != null and playing.trigger != NpcInteraction.Trigger.ROUTINE) \
+			or p.state_name == &"puppet":
 		return
 	for i in interactions:
 		if i and i.trigger == NpcInteraction.Trigger.NEAR and d <= i.distance:
@@ -538,7 +550,8 @@ func _move(delta: float) -> void:
 		var target: Vector3 = _target
 		var to := (target - global_position).slide(up_direction)
 		var p := player()
-		var close := to.length() <= CLEARANCE + STOP_SHORT 			or (p != null and (p.global_position - global_position).slide(up_direction).length() < CLEARANCE + 0.05)
+		var close := to.length() <= CLEARANCE + STOP_SHORT \
+			or (p != null and (p.global_position - global_position).slide(up_direction).length() < CLEARANCE + 0.05)
 		if taken(target) and close:
 			if _locked:
 				beside = true # the player it holds can't step aside: beside the spot will do
@@ -552,7 +565,9 @@ func _move(delta: float) -> void:
 			waiting = false
 			_walk_left -= delta
 			if _walk_left <= 0.0:
-				if taken(target):
+				if taken(target) and _locked:
+					beside = true # the held player is on it, something is in the way: here will do
+				elif taken(target):
 					_walk_left = 1.0 # never snap onto the player
 				else:
 					snap = true

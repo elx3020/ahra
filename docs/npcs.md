@@ -104,7 +104,9 @@ cuts it and starts the NPC's key talk.
 **Routines** play whenever the NPC is present and nothing else runs, and loop: the first available
 routine in list order (so `needs` switches routines as the game progresses, at the next loop). A
 key talk or a near bark cuts the routine; when it ends, the routine resumes at the step it was on
-(a walk walks on to the same mark). A routine never holds the player, starts when the area loads
+(a walk walks on to the same mark), as long as its `needs` still hold: a `once` routine cut
+halfway still finishes. A `LEAVE` in a routine doesn't hold the player or fade the screen (the
+routine runs wherever the player is): the NPC just goes, so walk it out of sight first. A routine never holds the player, starts when the area loads
 (from where the NPC stood), and stops while the NPC is absent. Give it at least one step that
 takes time (a walk, a wait, a line): the NPC warns otherwise, and loops at most once a frame.
 
@@ -134,7 +136,8 @@ in its way (within 2 m ahead, less than 1 m from its line) gives a detour point 
 side the NPC is already on (dead ahead: its right, so two NPCs meeting head-on both keep right).
 If the player stands on the mark it is walking to, it walks up close and **waits** (`waiting`,
 anim `wait`, cue `blocked`, looking at the player) until the spot is free; but when its own talk
-holds the player, who can't move, it stops beside the mark and counts as arrived. Walls are not
+holds the player, who can't move, it stops beside the mark and counts as arrived (or, if something
+like a counter keeps it from getting close, where it stands once the walk times out). Walls are not
 avoided: a walk that hasn't arrived after `distance / speed * 2 + 1` seconds of walking (waiting
 doesn't count) snaps the NPC to its mark, never onto the player, so a blocked walk never strands
 the player. Don't put a mark where the player stands while talking to that NPC.
