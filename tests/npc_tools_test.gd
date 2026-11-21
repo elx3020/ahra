@@ -49,18 +49,20 @@ func run() -> void:
 	var t2: NpcInteraction = nt.add_interaction(n, "talk")
 	var b: NpcInteraction = nt.add_interaction(n, "bark")
 	var l: NpcInteraction = nt.add_interaction(n, "leave")
+	var ro: NpcInteraction = nt.add_interaction(n, "routine")
 	check(t1.id == &"talk" and t1.once and t1.steps.size() == 2 and t2.id == &"talk2" and t2.steps[0].lines.size() == 3, "talk templates")
 	check(b.trigger == NpcInteraction.Trigger.NEAR and not b.locks_player and b.id == &"bark" and l.steps[-1].kind == NpcStep.Kind.LEAVE and l.once and l.id == &"leave", "bark and leave templates")
-	check(n.interactions.size() == 4 and n._get_configuration_warnings().is_empty(), "four interactions, no warnings")
+	check(ro.trigger == NpcInteraction.Trigger.ROUTINE and ro.id == &"routine" and ro.steps.any(func(s: NpcStep) -> bool: return s.kind == NpcStep.Kind.MOVE and s.mark == &"Mark2"), "routine template (walks between Mark and Mark2)")
+	check(n.interactions.size() == 5, "five interactions")
 	hist.undo()
-	check(n.interactions.size() == 3, "undo add interaction")
+	check(n.interactions.size() == 4, "undo add interaction")
 	hist.redo()
-	check(n.interactions.size() == 4, "redo add interaction")
+	check(n.interactions.size() == 5, "redo add interaction")
 	var dup: Node3D = n.duplicate() # what Ctrl+D does
 	add_child(dup, true)
 	dup.owner = self
 	await frames(3)
-	check(dup.interactions.size() == 4 and dup.interactions[0].id == &"talk", "a duplicate keeps the interactions")
+	check(dup.interactions.size() == 5 and dup.interactions[0].id == &"talk", "a duplicate keeps the interactions")
 	check(dup.interactions[0] != n.interactions[0] and dup.interactions[0].steps[0] != n.interactions[0].steps[0], "a duplicate gets its own copies (editing it doesn't edit the original)")
 	check(n.interactions[0] == t1, "the original keeps its own")
 	remove_child(dup)
@@ -70,6 +72,7 @@ func run() -> void:
 	var m2: Marker3D = nt.place_mark(n, Vector3(0, 0, 3))
 	check(m1.get_parent() == n and m1.name == &"Mark" and m2.name == &"Mark2" and m1.owner == self and m1.global_position.is_equal_approx(Vector3(3, 0, 0)), "marks placed")
 	check(EditorInterface.get_selection().get_selected_nodes() == [n], "the NPC stays selected while placing marks")
+	check(n._get_configuration_warnings().is_empty(), "with its two marks placed, no warnings: " + " ".join(n._get_configuration_warnings()))
 	var saved := PackedScene.new()
 	saved.pack(self)
 	var names := []
@@ -99,7 +102,7 @@ func run() -> void:
 	hist.undo() # mark 2
 	hist.undo() # mark 1
 	check(n.get_children().all(func(c: Node) -> bool: return not c is Marker3D), "undo marks")
-	for k in 4: # the four interactions...
+	for k in 5: # the five interactions...
 		hist.undo()
 	hist.undo() # ...then the NPC itself
 	check(n.get_parent() == null and nt.all_npcs().is_empty(), "undo add NPC")

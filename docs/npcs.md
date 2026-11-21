@@ -2,7 +2,7 @@
 
 Non-player characters the player talks to. An NPC holds an ordered list of **interactions**; the
 player triggers one by pressing interact in the NPC's talk zone (**key**) or by walking close
-(**near**). An interaction is a straight sequence of **steps**: a line in a billboard bubble, an
+(**near**), and a **routine** keeps the NPC busy (a patrol, a chore) whenever nothing else runs. An interaction is a straight sequence of **steps**: a line in a billboard bubble, an
 animation, a facial expression, a walk to a mark, a look, a sound, a wait, a story flag, leaving.
 Pressing interact moves a talk to its next beat.
 
@@ -54,7 +54,8 @@ Npc (CharacterBody3D, npc.gd)
 With an NPC selected, a second icon menu appears:
 
 - **Add Interaction**: **Talk once** (key, once), **Talk** (key, a line with three versions),
-  **Bark** (near, doesn't hold the player), **Leave** (key, once, says goodbye and leaves). Each
+  **Bark** (near, doesn't hold the player), **Leave** (key, once, says goodbye and leaves),
+  **Routine** (walks between `Mark` and `Mark2`, pausing and humming: then Add Mark twice). Each
   gets a unique id and placeholder lines to edit.
 - **Add Mark**: click in the viewport to drop a `Marker3D` child on the surface there (`Mark`,
   `Mark2`...; rename them). Esc cancels. You can also add `Marker3D` children by hand.
@@ -72,11 +73,11 @@ FileSystem dock to take it back); a taken or invalid name is refused with the re
 | Field | Meaning |
 |-------|---------|
 | `id` | memory key (how many times it played); unique per NPC |
-| `trigger` | `KEY`: interact in the talk zone. `NEAR`: the player comes within `distance` |
+| `trigger` | `KEY`: interact in the talk zone. `NEAR`: the player comes within `distance`. `ROUTINE`: loops whenever nothing else runs |
 | `distance` | near only, metres (default 4) |
 | `needs` | story flags that must all be set |
 | `once` | plays a single time, ever |
-| `locks_player` | the player stands still and interact advances the lines (key talks). Off: lines advance on timers and the player keeps moving (barks) |
+| `locks_player` | the player stands still and interact advances the lines (key talks). Off: lines advance on timers and the player keeps moving (barks). Routines never lock |
 | `steps` | the sequence |
 
 **List order is priority.** When a trigger fires, the NPC plays the first interaction in its list
@@ -90,6 +91,7 @@ old line below it stops showing up. A typical NPC:
 3. intro       key · once
 4. chat        key                            (repeats, with versions)
 5. bark        near 6 m · free
+6. sweep       routine                        (loops: walk, sweep, mutter)
 ```
 
 A play is counted when it starts, so a `once` bark the player cuts short doesn't come back.
@@ -98,6 +100,13 @@ A play is counted when it starts, so a `once` bark the player cuts short doesn't
 player has been farther than `distance + 1 m`: standing still never loops a bark. They don't fire
 while the player is held by another NPC's talk. Pressing interact in the talk zone during a bark
 cuts it and starts the NPC's key talk.
+
+**Routines** play whenever the NPC is present and nothing else runs, and loop: the first available
+routine in list order (so `needs` switches routines as the game progresses, at the next loop). A
+key talk or a near bark cuts the routine; when it ends, the routine resumes at the step it was on
+(a walk walks on to the same mark). A routine never holds the player, starts when the area loads
+(from where the NPC stood), and stops while the NPC is absent. Give it at least one step that
+takes time (a walk, a wait, a line): the NPC warns otherwise, and loops at most once a frame.
 
 ## Steps and beats
 
@@ -118,9 +127,17 @@ moves on to the next beat.
 | `LEAVE` | `flag`, `fade` | see Leaving | the fade; ends the interaction |
 
 Only interact advances lines and key waits; walks, timed waits and sounds finish on their own. A
-walk that hasn't arrived after `distance / speed * 2 + 1` seconds snaps the NPC to its mark, so a
-blocked walk never strands the player. A step that can't run (a missing mark, no sound, no lines)
-warns and is skipped.
+step that can't run (a missing mark, no sound, no lines) warns and is skipped.
+
+**Walking around people.** A walking NPC steers around the player and other NPCs: the nearest one
+in its way (within 2 m ahead, less than 1 m from its line) gives a detour point beside it, on the
+side the NPC is already on (dead ahead: its right, so two NPCs meeting head-on both keep right).
+If the player stands on the mark it is walking to, it walks up close and **waits** (`waiting`,
+anim `wait`, cue `blocked`, looking at the player) until the spot is free; but when its own talk
+holds the player, who can't move, it stops beside the mark and counts as arrived. Walls are not
+avoided: a walk that hasn't arrived after `distance / speed * 2 + 1` seconds of walking (waiting
+doesn't count) snaps the NPC to its mark, never onto the player, so a blocked walk never strands
+the player. Don't put a mark where the player stands while talking to that NPC.
 
 At the end of every interaction the NPC goes back to `idle`, `neutral`, its default look, hides the
 bubble, saves where it stands (if it walked) and releases the player.
@@ -171,12 +188,15 @@ unloaded mid-talk, it releases the player and clears the fade.
 Gameplay never waits on presentation. Presentation only reads:
 
 - **`anim: StringName`**: what the body plays. `idle`, `walk`, `run` (walking overrides a step's
-  anim and ends back on `idle`), plus whatever `ANIM` steps name. The placeholder knows `talk`,
-  `wave`, `nod`, `shake`, `bow`, `jump`, `point`, `shrug`.
+  anim and ends back on `idle`), `wait` (waiting at a taken mark), plus whatever `ANIM` steps
+  name. The placeholder knows `talk`, `wave`, `nod`, `shake`, `bow`, `jump`, `point`, `shrug`,
+  `sweep`.
 - **`face: StringName`**: `neutral`, `happy`, `sad`, `angry`, `surprised`, `thinking`.
 - **`look_target: Variant`**: the global point the head turns to, or `null` for straight ahead.
 - **`speaking: bool`**: a line is showing.
-- **`cue(name)`**: one-shot events: `say` (a line appears), `arrive` (a walk ended), `leave`.
+- **`cue(name)`**: one-shot events: `say` (a line appears), `arrive` (a walk ended), `blocked`
+  (the player stands on its mark: it starts waiting), `leave`.
+- **`waiting: bool`**: a walk paused beside a taken mark.
 - **`finished`**: an interaction ended.
 
 ### Body animation
@@ -251,7 +271,7 @@ line and a blip never overlap on the same NPC.
 
 ## Demo
 
-`demo/npcs/npcs.tscn`, five bays (`[` `]` to warp):
+`demo/npcs/npcs.tscn`, six bays (`[` `]` to warp):
 
 1. **Greeter**: a bark when you come close, a once intro (wave, happy), then a repeat line with
    versions. The head follows you within 6 m.
@@ -262,6 +282,9 @@ line and a blip never overlap on the same NPC.
    of a gap in a wall, for good.
 4. **Leaver**: Mara says goodbye and leaves behind a fade.
 5. **Dock**: Mara's copy, there once she has left.
+6. **Routine**: the Sweeper loops four corners on her own, sweeping and muttering. Stand in her
+   way and she walks around you; stand on a corner and she waits; press E and she stops to talk,
+   then goes on where she was.
 
 Key 7 forgets every flag and all NPC memory; key 8 reloads the scene to show what NPCs remember.
 

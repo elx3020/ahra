@@ -7,8 +7,9 @@ extends EditorPlugin
 ##   npc/npc.tscn (look and defaults), then opens it;
 ## - NPCs (count): pick one to select it, or remove the selected ones.
 ## While an NPC is selected a second icon menu configures it:
-## - Add Interaction: Talk once, Talk (versions), Bark (near, doesn't hold the player), Leave;
-##   each gets a unique id and placeholder lines to edit in the inspector;
+## - Add Interaction: Talk once, Talk (versions), Bark (near, doesn't hold the player), Leave,
+##   Routine (walks between Mark and Mark2: Add Mark twice); each gets a unique id and
+##   placeholder lines to edit in the inspector;
 ## - Add Mark: the next click in the viewport puts a Marker3D child on the NPC, on the surface
 ##   under the cursor (Esc cancels). Marks are floor points the NPC walks to and looks at; they
 ##   are children of the NPC's root, which an instanced scene saves (nodes added under the
@@ -23,6 +24,7 @@ const TEMPLATES := {
 	"talk": "Talk (key, repeats with versions)",
 	"bark": "Bark (near, doesn't hold the player)",
 	"leave": "Leave (key, once: says goodbye, fades out)",
+	"routine": "Routine (loops when nothing else runs: walks between Mark and Mark2)",
 }
 
 # toolbar controls, made in _build_toolbar (member defaults would leak on a script reload)
@@ -308,7 +310,20 @@ func _template(kind: String) -> NpcInteraction:
 			var leave := NpcStep.new()
 			leave.kind = NpcStep.Kind.LEAVE
 			i.steps = [_say(["I'll be going now."]), leave]
+		"routine":
+			i.trigger = NpcInteraction.Trigger.ROUTINE
+			i.steps = [_step(NpcStep.Kind.MOVE, {mark = &"Mark"}), _step(NpcStep.Kind.WAIT, {time = 1.0}),
+				_step(NpcStep.Kind.SAY, {lines = PackedStringArray(["Hm hm hm."]), time = 2.0}),
+				_step(NpcStep.Kind.MOVE, {mark = &"Mark2"}), _step(NpcStep.Kind.WAIT, {time = 1.0})]
 	return i
+
+
+func _step(kind: NpcStep.Kind, props: Dictionary) -> NpcStep:
+	var s := NpcStep.new()
+	s.kind = kind
+	for k: String in props:
+		s.set(k, props[k])
+	return s
 
 
 func _say(lines: Array) -> NpcStep:

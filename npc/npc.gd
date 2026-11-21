@@ -681,6 +681,7 @@ func _animate(delta: float) -> void:
 		&"point": tilt = -0.15; sc = Vector3(1.05, 1.0, 1.05)
 		&"shrug": sc = Vector3(1.12, 0.92, 1.12)
 		&"wait": off = absf(sin(t * 5.0)) * 0.03; roll = sin(t * 1.5) * 0.05 # foot tapping, swaying
+		&"sweep": tilt = -0.35; roll = sin(t * 6.0) * 0.15
 		_: off = sin(t * 2.0) * 0.01 # idle breathing; nod and shake move the head (_look)
 	var k := 1.0 - exp(-15.0 * delta)
 	_visual.position = _visual_base + Vector3.UP * off

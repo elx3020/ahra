@@ -681,8 +681,9 @@ func _test_demo() -> void:
 	var by_name := {}
 	for n: Node in npcs:
 		by_name[String(n.name)] = n
-	_check(["Greeter", "Smith", "Ringer", "Performer", "Doorman", "Mara", "MaraDock"].all(func(k: String) -> bool: return by_name.has(k)), "demo: the seven NPCs")
-	_check(by_name.has("MaraDock") and not by_name.MaraDock.present and npcs.filter(func(n: Node) -> bool: return n.present).size() == 6, "only MaraDock absent at the start")
+	_check(["Greeter", "Smith", "Ringer", "Performer", "Doorman", "Mara", "MaraDock", "Sweeper"].all(func(k: String) -> bool: return by_name.has(k)), "demo: the eight NPCs")
+	_check(by_name.has("MaraDock") and not by_name.MaraDock.present and npcs.filter(func(n: Node) -> bool: return n.present).size() == 7, "only MaraDock absent at the start")
+	_check(by_name.has("Sweeper") and by_name.Sweeper.playing != null and by_name.Sweeper.playing.trigger == NpcInteraction.Trigger.ROUTINE, "the Sweeper is busy with her routine")
 	_check(npcs.all(func(n: Node) -> bool: return n._get_configuration_warnings().is_empty()), "no config warnings")
 	_check(npcs.all(func(n: Node) -> bool: return not n.present or n.is_on_floor()), "every present NPC stands on the floor")
 	_check(load("res://demo/npcs/blip.tres") is AudioStreamWAV, "blip sound")
