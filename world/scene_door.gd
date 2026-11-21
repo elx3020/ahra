@@ -7,6 +7,7 @@ extends Zone
 @export var spawn: StringName
 
 
-func _player_entered(_p: Player) -> void:
+func _player_entered(p: Player) -> void:
+	p.drop_held() # weights stay in their area
 	World.spawn = spawn
 	get_tree().change_scene_to_file.call_deferred(scene)

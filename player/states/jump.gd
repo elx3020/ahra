@@ -29,11 +29,11 @@ func physics(delta: float) -> StringName:
 		p.do_jump()
 		p.variable_jump = false
 		_cut = false
-	if Input.is_action_just_pressed(&"dash") and p.dash_cd <= 0.0 and p.air_dashes_left > 0:
+	if Input.is_action_just_pressed(&"dash") and p.dash_cd <= 0.0 and p.air_dashes_left > 0 and p.held == null:
 		return &"dash"
-	if Input.is_action_just_pressed(&"attack") and p.melee_cd <= 0.0:
+	if Input.is_action_just_pressed(&"attack") and p.melee_cd <= 0.0 and p.held == null:
 		return &"melee"
-	if Input.is_action_just_pressed(&"grab"):
+	if Input.is_action_just_pressed(&"grab") and p.held == null:
 		p.swing_point = p.find_swing_point()
 		if p.swing_point:
 			return &"swing"

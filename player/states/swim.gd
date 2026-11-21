@@ -5,6 +5,7 @@ extends PlayerState
 
 
 func enter(_prev: StringName) -> void:
+	p.drop_held() # can't swim with a weight
 	p.anim = &"swim"
 
 

@@ -7,7 +7,7 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 2
+const SECTIONS := 3
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
@@ -27,7 +27,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -124,6 +124,84 @@ func _test_weight() -> void:
 	sections += 1
 
 
+func _test_carry() -> void:
+	_course(Vector3(0, 1, 0))
+	player.facing = Vector3.RIGHT
+	var b := _weight(Vector3(1, 0.5, 0))
+	await _wait(30)
+	await _press(&"carry")
+	_check(player.held == b and b.freeze and b.collision_layer == 0 and b.carrier == player, "carry lifts the weight in front")
+	await _wait(2)
+	_check((b.global_position - player.global_position).dot(player.up_direction) > 1.2, "held over the head")
+	var s0 := player.stamina
+	await _wait(60)
+	_check(absf((s0 - player.stamina) - 7.2) < 1.0, "drains carry_cost * weight / 10 per second")
+	Input.action_press(&"move_right")
+	Input.action_press(&"run")
+	await _wait(40)
+	_check(player.state_name == &"walk" and absf(player.planar().length() - 4.5 / 1.36) < 0.3, "no running; walk slowed by weight")
+	Input.action_release(&"run")
+	Input.action_release(&"move_right")
+	await _press(&"dash")
+	await _press(&"attack")
+	_check(player.state_name in [&"idle", &"walk"] and player.held == b, "dash and melee ignored while carrying")
+	await _wait(20)
+	var x0 := player.global_position.x
+	await _press(&"carry")
+	await _wait(30)
+	_check(player.held == null and not b.freeze and absf(b.global_position.x - x0 - 1.2) < 0.4, "carry again puts it down in front")
+	await _press(&"carry")
+	_box(player.global_position + Vector3(1.2, 0.5, 0), Vector3(0.5, 3, 3))
+	await _wait(3) # CSG builds its collision a frame later
+	await _press(&"carry")
+	_check(player.held == b, "no room in front: put down refused")
+	player.set_gravity_dir(Vector3.UP)
+	player.drop_held()
+	_check(b.gravity_dir == Vector3.UP, "a released weight takes the player's gravity")
+	player.respawn(Vector3(0, 1, 0))
+	await _wait(30)
+	var throws: Array[float] = []
+	for s: PackedScene in [BOX, BALL]:
+		_course(Vector3(0, 1, 0))
+		player.facing = Vector3.RIGHT
+		var w := _weight(Vector3(1, 0.5, 0), s)
+		await _wait(30)
+		await _press(&"carry")
+		await _press(&"throw")
+		await _wait(90)
+		throws.append(w.global_position.x)
+	_check(throws[0] > 3.0 and throws[1] > throws[0] + 2.0, "throw flies; the lighter weight farther")
+	_course(Vector3(0, 1, 0))
+	var h := _weight(Vector3(1, 0.5, 0))
+	await _wait(30)
+	player.facing = Vector3.RIGHT
+	await _press(&"carry")
+	player.damage(5)
+	_check(player.held == null and not h.freeze, "hurt: drops it")
+	await _wait(60)
+	await _reset_lift(h) # player back at the origin facing +x, h 1 m in front, settled
+	player.stamina = 0.5
+	await _press(&"carry")
+	await _wait(30) # it regenerates until the lift lands, then drains 0.12 a frame
+	_check(player.held == null and player.exhausted, "out of stamina: drops it, exhausted")
+	await _reset_lift(h)
+	await _press(&"carry")
+	_check(player.held == null, "can't lift while exhausted")
+	player.exhausted = false
+	player.stamina = player.max_sp()
+	await _press(&"carry")
+	_check(player.held == h, "lifts again once rested")
+	h.queue_free()
+	await _wait(3)
+	_check(player.held == null, "a carried weight freed by other code: held clears")
+	var under := _weight(Vector3(5, 0.5, 0))
+	player.teleport(Vector3(5, 1.8, 0))
+	await _wait(30)
+	await _press(&"carry")
+	_check(player.held == null, "never lifts the weight it stands on")
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -167,6 +245,15 @@ func _zone(script: GDScript, at: Vector3, size: Vector3) -> Zone:
 	s.size = size
 	z.add_shape(s)
 	return z
+
+
+## Puts the player at the origin facing +x with `w` 1 m in front, settled.
+func _reset_lift(w: WeightBody) -> void:
+	player.teleport(Vector3(0, 1, 0))
+	player.facing = Vector3.RIGHT
+	w.global_position = Vector3(1, 0.5, 0)
+	w.linear_velocity = Vector3.ZERO
+	await _wait(20)
 
 
 func _flat(v: Vector3) -> Vector3:

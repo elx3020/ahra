@@ -9,6 +9,7 @@ extends CharacterBody3D
 ##   final = base * (1 + progression% + environment%)   (see StatMods)
 
 signal puppet_arrived
+signal cue(name: StringName) ## one-shot presentation events: lift, put_down, throw, blocked (no room to put down)
 
 const HEAD := 0.8 ## head height above the body center, for breathing checks
 const PROJECTILE := preload("res://world/projectile.tscn")
@@ -77,6 +78,11 @@ const SHOOT_STATES: Array[StringName] = [&"idle", &"walk", &"run", &"jump", &"sw
 @export var shoot_cooldown := 0.35
 @export var shoot_range := 20.0 ## aim assist reach
 @export_group("Carry")
+@export var carry_reach := 1.2 ## a weight within this (and 60 degrees of facing) can be lifted; put down this far in front
+@export var carry_cost := 6.0 ## stamina/s per 10 weight while carrying
+@export var carry_slow := 0.03 ## walk speed x 1 / (1 + weight * carry_slow) while carrying
+@export var throw_speed := 12.0 ## x clamp(10 / weight, 0.3, 1.5)
+@export var hold_height := 1.5 ## carried weight's centre above the body centre
 @export var push_strength := 6.0 ## walking into a weight pushes it at walk speed * push_strength / weight (at most x1)
 @export_group("")
 @export var ambient: EnvProfile ## environment used outside of any EnvZone
@@ -114,6 +120,8 @@ var dash_cd := 0.0
 var melee_cd := 0.0
 var shoot_cd := 0.0
 var _attacks: Array[bool] = []
+var held: WeightBody ## the weight being carried (frozen, collision off, over the head)
+var _held_layers := Vector2i.ZERO ## its collision layer and mask, restored on release
 
 var states: Dictionary[StringName, PlayerState] = {
 	&"idle": preload("states/idle.gd").new(),
@@ -174,8 +182,16 @@ func _physics_process(delta: float) -> void:
 	shoot_cd -= delta
 	invuln -= delta
 	_tick_stats(delta)
-	if Input.is_action_just_pressed(&"shoot") and shoot_cd <= 0.0 and state_name in SHOOT_STATES:
+	if Input.is_action_just_pressed(&"shoot") and shoot_cd <= 0.0 and state_name in SHOOT_STATES and held == null:
 		shoot()
+
+	if Input.is_action_just_pressed(&"carry"):
+		if held:
+			put_down()
+		else:
+			lift()
+	elif held and Input.is_action_just_pressed(&"throw"):
+		throw_held()
 
 	interactable = _pick_interactable()
 	if state_name == &"puppet": # held by a talk or a cutscene: nothing else answers interact
@@ -185,6 +201,7 @@ func _physics_process(delta: float) -> void:
 	if next:
 		change_state(next)
 	floor_velocity = get_platform_velocity() if is_on_floor() else Vector3.ZERO
+	_hold()
 	_orient(delta)
 	_animate(delta)
 
@@ -204,7 +221,16 @@ func _pick_interactable() -> Interactable:
 
 
 func _tick_stats(delta: float) -> void:
-	if state_name != &"run":
+	if held != null and not is_instance_valid(held):
+		held = null # freed by other code while carried
+	if held:
+		stamina -= carry_cost * held.weight / 10.0 * mult(&"stamina_cost") * delta
+		if stamina <= 0.0:
+			stamina = 0.0
+			exhausted = true
+			exhaust_t = exhaust_time
+			drop_held()
+	elif state_name != &"run":
 		stamina += stamina_regen * mult(&"stamina_regen") * delta
 	stamina = minf(stamina, max_sp())
 	health = minf(health, max_hp())
@@ -247,7 +273,7 @@ func move_input() -> Vector3:
 
 
 func can_run() -> bool:
-	return Input.is_action_pressed(&"run") and not exhausted
+	return Input.is_action_pressed(&"run") and not exhausted and held == null
 
 
 # --- movement helpers (used by states) -------------------------------------
@@ -272,7 +298,7 @@ func move_planar(dir: Vector3, speed: float, rate: float, delta: float, drift :=
 
 func move_ground(dir: Vector3, speed: float, delta: float) -> void:
 	var rate := (accel if dir != Vector3.ZERO else decel) * mult(&"traction")
-	move_planar(dir, speed * mult(&"speed"), rate, delta, wind_drift(wind_response_ground))
+	move_planar(dir, speed * mult(&"speed") * carry_factor(), rate, delta, wind_drift(wind_response_ground))
 
 
 func move_air(dir: Vector3, delta: float) -> void:
@@ -337,9 +363,9 @@ func ground_step(dir: Vector3, speed: float, delta: float) -> StringName:
 		return &"jump"
 	if not is_on_floor():
 		return &"jump"
-	if Input.is_action_just_pressed(&"dash") and dash_cd <= 0.0:
+	if Input.is_action_just_pressed(&"dash") and dash_cd <= 0.0 and held == null:
 		return &"dash"
-	if Input.is_action_just_pressed(&"attack") and melee_cd <= 0.0:
+	if Input.is_action_just_pressed(&"attack") and melee_cd <= 0.0 and held == null:
 		return &"melee"
 	if interactable and Input.is_action_just_pressed(&"interact") and Engine.get_physics_frames() > _released:
 		return &"interact"
@@ -362,7 +388,7 @@ func recover_state() -> StringName:
 
 
 func can_climb() -> bool:
-	if not is_on_wall() or move_input().dot(-get_wall_normal()) < 0.3:
+	if held or not is_on_wall() or move_input().dot(-get_wall_normal()) < 0.3:
 		return false
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i).get_collider()
@@ -432,6 +458,129 @@ func aim_dir() -> Vector3:
 	return best
 
 
+# --- carrying weights ---------------------------------------------------------
+
+## The weight `carry` would lift: the nearest one within reach and 60 degrees of facing, about
+## level with the player, not carried and not the one under the player's feet.
+func weight_in_reach() -> WeightBody:
+	var under := []
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		if c.get_normal().dot(up_direction) > 0.7:
+			under.append(c.get_collider())
+	var best: WeightBody
+	var best_d := carry_reach + 0.25
+	for n: Node in get_tree().get_nodes_in_group(&"weight"):
+		var w := n as WeightBody
+		if w == null or w.carrier != null or w.gone or w in under:
+			continue
+		var to := w.global_position - global_position
+		var flat := to.slide(up_direction)
+		if flat.length() <= best_d and absf(to.dot(up_direction)) < 1.2 and flat.length() > 0.05 				and facing.angle_to(flat) <= deg_to_rad(60.0):
+			best = w
+			best_d = flat.length()
+	return best
+
+
+## Picks up the weight in reach (from the ground states, not while exhausted).
+func lift() -> bool:
+	if held or exhausted or state_name not in [&"idle", &"walk", &"run"]:
+		return false
+	var w := weight_in_reach()
+	if w == null:
+		return false
+	held = w
+	w.carrier = self
+	_held_layers = Vector2i(w.collision_layer, w.collision_mask)
+	w.collision_layer = 0
+	w.collision_mask = 0
+	w.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	w.freeze = true
+	cue.emit(&"lift")
+	return true
+
+
+## Sets the carried weight down on the ground carry_reach in front. False (and a `blocked` cue)
+## when it doesn't fit there.
+func put_down() -> bool:
+	if held == null:
+		return false
+	var half := ShapeSet.bounds(held).size.y * 0.5
+	var spot := global_position + facing * carry_reach
+	var space := get_world_3d().direct_space_state
+	var ray := PhysicsRayQueryParameters3D.create(spot + up_direction * 1.0, spot - up_direction * 3.0, _held_layers.y, [get_rid()])
+	var ground := space.intersect_ray(ray)
+	if ground:
+		spot = ground.position + up_direction * (half + 0.02)
+	var at := Transform3D(global_basis, spot)
+	# a wall between the player and the spot: CSG collision is a hollow trimesh, so a shape whose
+	# centre ends up inside a wall overlaps none of its (front) faces; the line from here catches it
+	var line := PhysicsRayQueryParameters3D.create(global_position, spot, _held_layers.y, [get_rid()])
+	if space.intersect_ray(line):
+		cue.emit(&"blocked")
+		return false
+	for cs in ShapeSet.of(held):
+		var q := PhysicsShapeQueryParameters3D.new()
+		q.shape = cs.shape
+		q.transform = at * cs.transform
+		q.collision_mask = _held_layers.y
+		q.exclude = [get_rid()]
+		if not space.intersect_shape(q, 1).is_empty():
+			cue.emit(&"blocked")
+			return false
+	_release(at, Vector3.ZERO)
+	cue.emit(&"put_down")
+	return true
+
+
+## Throws the carried weight forward and up; lighter ones fly farther.
+func throw_held() -> void:
+	if held == null:
+		return
+	var v := (facing + up_direction * 0.5).normalized() * throw_speed * clampf(10.0 / held.weight, 0.3, 1.5) + planar()
+	_release(held.global_transform, v)
+	cue.emit(&"throw")
+
+
+## Lets go of the carried weight where it is, with the player's velocity (hurt, death, water...).
+func drop_held() -> void:
+	if held != null and not is_instance_valid(held):
+		held = null
+	if held:
+		_release(held.global_transform, velocity)
+
+
+## Walk speed multiplier while carrying: heavier is slower.
+func carry_factor() -> float:
+	return 1.0 / (1.0 + held.weight * carry_slow) if held else 1.0
+
+
+## Keeps the carried weight over the head; it takes the player's gravity when let go.
+func _hold() -> void:
+	if held != null and not is_instance_valid(held):
+		held = null
+	if held:
+		held.global_transform = Transform3D(global_basis, global_position + up_direction * hold_height)
+	if state_name == &"walk":
+		anim = &"carry_walk" if held else &"walk"
+	elif state_name == &"idle" and held:
+		anim = &"carry_idle"
+
+
+func _release(at: Transform3D, v: Vector3) -> void:
+	var w := held
+	held = null
+	w.carrier = null
+	w.global_transform = at
+	w.collision_layer = _held_layers.x
+	w.collision_mask = _held_layers.y
+	w.freeze = false
+	w.set_gravity_dir(gravity_dir)
+	w.linear_velocity = v
+	w.angular_velocity = Vector3.ZERO
+	w.reset_physics_interpolation()
+
+
 # --- special mechanics -------------------------------------------------------
 
 ## Instant relocation. Velocity is kept (optionally rotated, e.g. portal-style).
@@ -478,6 +627,7 @@ func remove_env(e: EnvProfile) -> void:
 func damage(amount: float, from: Variant = null) -> void:
 	if amount <= 0.0 or invuln > 0.0 or state_name in [&"death", &"puppet"]:
 		return
+	drop_held()
 	health = maxf(health - amount, 0.0)
 	if health <= 0.0:
 		die(&"hit")
@@ -501,6 +651,7 @@ func heal(amount: float) -> void:
 func die(cause: StringName) -> void:
 	if state_name == &"death":
 		return
+	drop_held()
 	death_cause = cause
 	health = 0.0
 	change_state(&"death")
