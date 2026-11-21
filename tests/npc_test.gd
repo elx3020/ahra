@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 14
+const SECTIONS := 15
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -463,6 +463,57 @@ func _test_review() -> void:
 	await _press(&"interact")
 	await _wait(3)
 	_check(still.playing == null and not world.npcs[still.memory_id()].has("pos"), "a talk without walking saves no position")
+	sections += 1
+
+
+## The final review's minor findings.
+func _test_minors() -> void:
+	world.reset_story()
+	_course()
+	# the E prompt never shows over a neighbouring NPC while the player is in a talk
+	var a := _npc(Vector3(0, 1, 0), [_talk(&"a", [_say(["A"])])], {}, "A")
+	var b := _npc(Vector3(2.5, 1, 0), [_talk(&"b", [_say(["B"])])], {}, "B")
+	await _wait(10)
+	player.teleport(Vector3(1.0, 1, 0))
+	await _wait(5)
+	await _press(&"interact")
+	await _wait(3)
+	_check(a.line == "A" and not b.prompt.visible and player.interactable == null, "in a talk: no prompt on the neighbour, nothing to interact with")
+	await _press(&"interact")
+	await _wait(3)
+
+	# a zone freed without an exit signal is dropped from the player's list
+	var loose := Interactable.new()
+	player.interactables.append(loose)
+	loose.free()
+	await _wait(3)
+	_check(player.interactables.all(func(z: Variant) -> bool: return is_instance_valid(z)) and player.interactables.size() == 2, "freed zone pruned from the list")
+
+	# a bark cut by the key talk doesn't carry its face and look into the talk, and reports finished
+	var moody_bark := _talk(&"bark", [_step(NpcStep.Kind.FACE, {face = &"angry"}), _step(NpcStep.Kind.LOOK, {look = NpcStep.Look.AHEAD}),
+		_say(["Grr"], {time = 3.0})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false})
+	var moody := _npc(Vector3(12, 1, 0), [moody_bark, _talk(&"talk", [_say(["Calm"])])], {}, "Moody")
+	var ended := [0]
+	moody.finished.connect(func() -> void: ended[0] += 1)
+	await _wait(5)
+	player.teleport(Vector3(13.5, 1, 0))
+	await _wait(5)
+	_check(moody.playing == moody_bark and moody.face == &"angry", "barking angrily")
+	await _press(&"interact")
+	await _wait(3)
+	_check(moody.line == "Calm" and moody.face == &"neutral" and moody.look_target != null and ended[0] == 1, "cut bark: face and look reset, finished reported")
+	await _press(&"interact")
+	await _wait(3)
+
+	# NPCs spawned from code (no owner) each get their own memory
+	var s1: Node3D = load(NPC).instantiate()
+	s1.name = "Spawned1"
+	course.add_child(s1)
+	var s2: Node3D = load(NPC).instantiate()
+	s2.name = "Spawned2"
+	course.add_child(s2)
+	await _wait(2)
+	_check(s1.memory_id() != s2.memory_id() and s1.memory_id().ends_with("Spawned1"), "NPCs spawned from code have their own memory (%s, %s)" % [s1.memory_id(), s2.memory_id()])
 	sections += 1
 
 

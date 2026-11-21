@@ -123,11 +123,16 @@ func _start() -> void:
 	set_physics_process(true)
 
 
-## This placement's key in World.npcs: area and path (Channels.id).
+## This placement's key in World.npcs: area and path (Channels.id). An NPC spawned from code has
+## no owner, so Channels would take it for its own area (every such NPC would share "npc:."): it is
+## keyed by its path under its parent's area instead.
 ## ponytail: keyed by node path, so renaming or moving the NPC node forgets its memory; add a
 ## stable key export if saves must survive scene edits.
 func memory_id() -> String:
-	return Channels.id(self)
+	if owner != null or get_parent() == null:
+		return Channels.id(self)
+	var area := Channels.area_of(get_parent())
+	return Channels.area_name(area) + ":" + String(area.get_path_to(self)) if area else String(get_path())
 
 
 func memory() -> Dictionary:
@@ -169,8 +174,10 @@ func start_talk() -> void:
 	if not can_talk():
 		return
 	var i := choose(NpcInteraction.Trigger.KEY)
-	if playing:
+	if playing: # cut the bark the normal way: its face and look don't carry over, `finished` fires
 		stop_walk()
+		_run += 1
+		_end()
 	play(i)
 
 

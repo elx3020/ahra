@@ -64,7 +64,8 @@ The inspector does the rest. Each interaction and step row shows a one-line summ
 only the fields of its kind, and the NPC's configuration warnings flag empty or duplicate ids,
 missing marks, steps after a leave, lines without text and interactions without steps.
 
-Every tool change is undoable.
+Every change to the scene is undoable. New NPC Type writes a file instead (delete it from the
+FileSystem dock to take it back); a taken or invalid name is refused with the reason.
 
 ## Interactions
 
@@ -272,4 +273,5 @@ Known ceilings (marked `ponytail:` in the code where they live):
 - No branching dialog, choices or player lines: a later `actor` field on `SAY` could give lines
   to someone else.
 - NPCs fall world-down only and don't react to enemies or combat.
-- Memory is keyed by node path: renaming an NPC forgets it (see Flags, memory and saving).
+- Memory is keyed by node path: renaming an NPC forgets it (see Flags, memory and saving). An NPC
+  spawned from code (no owner) is keyed by its path under its parent's area.

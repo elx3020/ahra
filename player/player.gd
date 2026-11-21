@@ -176,6 +176,8 @@ func _physics_process(delta: float) -> void:
 		shoot()
 
 	interactable = _pick_interactable()
+	if state_name == &"puppet": # held by a talk or a cutscene: nothing else answers interact
+		interactable = null
 	var next := state.physics(delta)
 	if next:
 		change_state(next)
@@ -184,14 +186,13 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 
 
-## The nearest zone in `interactables` that can_interact(), or null. Freed zones are dropped.
+## The nearest zone in `interactables` that can_interact(), or null. Freed zones (gone without
+## an exit signal) are dropped first: a typed array can't erase a freed object.
 func _pick_interactable() -> Interactable:
+	interactables.assign(interactables.filter(func(z: Variant) -> bool: return is_instance_valid(z)))
 	var best: Interactable = null
 	var best_d := INF
-	for z: Variant in interactables.duplicate(): # untyped: a freed zone can't be assigned to a typed var
-		if not is_instance_valid(z):
-			interactables.erase(z)
-			continue
+	for z in interactables:
 		var d := global_position.distance_squared_to(z.global_position)
 		if d < best_d and z.can_interact():
 			best = z

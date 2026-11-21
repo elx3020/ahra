@@ -14,10 +14,10 @@ extends EditorPlugin
 ##   are children of the NPC's root, which an instanced scene saves (nodes added under the
 ##   instance's own nodes would need Editable Children).
 ## The inspector does the rest (summaries on each row, fields per step kind, config warnings).
-## Every change is undoable.
+## Every change to the scene is undoable. New NPC Type writes a file instead: delete it from the
+## FileSystem dock to take it back.
 
 const NPC_SCENE := "res://npc/npc.tscn"
-const FEET := 0.8 ## an NPC's origin is this far above its feet
 const TEMPLATES := {
 	"talk_once": "Talk once (key, plays a single time)",
 	"talk": "Talk (key, repeats with versions)",
@@ -36,6 +36,8 @@ var _status: Label
 var _type_dialog: ConfirmationDialog
 var _type_name: LineEdit
 var _marking: Npc = null ## the NPC waiting for a click to place a mark, or null
+var type_error := "" ## why the last create_type() refused, or ""
+var _alert: AcceptDialog
 
 
 func _enter_tree() -> void:
@@ -62,6 +64,7 @@ func _build_toolbar() -> void:
 	_templates = PopupMenu.new()
 	_status = Label.new()
 	_type_dialog = ConfirmationDialog.new()
+	_alert = AcceptDialog.new()
 	_type_name = LineEdit.new()
 
 	_main.icon = _icon(&"CharacterBody3D")
@@ -97,8 +100,13 @@ func _build_toolbar() -> void:
 	_type_name.placeholder_text = "Name, e.g. Guard"
 	_type_dialog.add_child(_type_name)
 	_type_dialog.register_text_enter(_type_name)
-	_type_dialog.confirmed.connect(func() -> void: create_type(_type_name.text))
+	_type_dialog.confirmed.connect(func() -> void:
+		if create_type(_type_name.text) == "":
+			_alert.dialog_text = type_error
+			_alert.popup_centered())
 	_bar.add_child(_type_dialog)
+	_alert.title = "New NPC Type"
+	_bar.add_child(_alert)
 
 
 func _refresh() -> void:
@@ -166,21 +174,25 @@ func npc_scenes() -> PackedStringArray:
 
 
 ## Writes npc/<snake_name>/<snake_name>.tscn, inherited from npc.tscn, and opens it when `open`.
-## Returns its path, or "" for an empty name or one already taken.
+## Returns its path, or "" with the reason in `type_error` (an invalid or taken name).
 func create_type(type_name: String, open := true) -> String:
+	type_error = ""
 	var pascal := type_name.strip_edges().to_pascal_case()
 	var snake := pascal.to_snake_case()
 	if snake.is_empty() or not snake.is_valid_identifier():
+		type_error = "\"%s\" can't name a type: use letters, digits and spaces, starting with a letter (e.g. Guard)." % type_name
 		return ""
 	var dir := "res://npc/" + snake
 	var path := "%s/%s.tscn" % [dir, snake]
 	if FileAccess.file_exists(path):
+		type_error = "%s already exists: pick another name, or open that one." % path
 		return ""
 	# an inherited scene is its root instancing the base; PackedScene.pack() can't record that
 	# from script (it saves a full copy), so the file is written as the editor writes it
 	DirAccess.make_dir_recursive_absolute(dir)
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
+		type_error = "Can't write %s." % path
 		return ""
 	f.store_string('[gd_scene format=3]\n\n[ext_resource type="PackedScene" path="%s" id="1_base"]\n\n[node name="%s" instance=ExtResource("1_base")]\n' % [NPC_SCENE, pascal])
 	f.close()
@@ -198,7 +210,7 @@ func add_npc(scene_path: String) -> Node3D:
 	n.name = scene_path.get_file().get_basename().to_pascal_case()
 	var ur := EditorInterface.get_editor_undo_redo()
 	ur.create_action("Add NPC", UndoRedo.MERGE_DISABLE, root)
-	ur.add_do_method(self, &"_attach", root, n, _view_ground() + Vector3.UP * FEET, root)
+	ur.add_do_method(self, &"_attach", root, n, _view_ground() + Vector3.UP * Npc.FEET, root)
 	ur.add_do_reference(n)
 	ur.add_undo_method(root, &"remove_child", n)
 	ur.commit_action()
@@ -338,7 +350,7 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		_refresh()
 		return AFTER_GUI_INPUT_PASS
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var at := pick_surface(camera.project_ray_origin(event.position), camera.project_ray_normal(event.position), _marking.global_position.y - FEET)
+		var at := pick_surface(camera.project_ray_origin(event.position), camera.project_ray_normal(event.position), _marking.global_position.y - Npc.FEET)
 		place_mark(_marking, at)
 		_marking = null
 		_refresh()
