@@ -122,7 +122,7 @@ moves on to the next beat.
 | `ANIM` | `anim`, `time` | sets `anim` until another step changes it | `time` (0: nothing) |
 | `FACE` | `face` | sets `face` until changed | nothing |
 | `LOOK` | `look` (player, mark, ahead), `mark` | what the head follows for the rest of the interaction | nothing |
-| `MOVE` | `mark`, `run`, `wait` | walks to the mark | arrival when `wait`; else nothing, so the next line plays while walking |
+| `MOVE` | `mark`, `run`, `wait`, `lines`, `room` | walks to the mark; with `lines`, only if the player isn't within `room` of its way: else says one and the interaction ends there, uncounted (a `once` talk plays again) | arrival when `wait`; else nothing, so the next line plays while walking |
 | `SOUND` | `sound`, `sound_wait` | plays on `Voice` | its end (or its length) when `sound_wait` |
 | `WAIT` | `time` | nothing | `time`; 0: interact (locked) or 1 s (unlocked) |
 | `FLAG` | `flag`, `value` | sets a story flag (0 clears) | nothing |
@@ -141,6 +141,14 @@ like a counter keeps it from getting close, where it stands once the walk times 
 avoided: a walk that hasn't arrived after `distance / speed * 2 + 1` seconds of walking (waiting
 doesn't count) snaps the NPC to its mark, never onto the player, so a blocked walk never strands
 the player. Don't put a mark where the player stands while talking to that NPC.
+
+**Needing room.** To have an NPC refuse instead of squeezing past (the Doorman in his doorway),
+give the walk `lines` and a `room`. When the step starts, a player ahead of the NPC within `room` m
+of the straight line to the mark (standing on the mark counts; behind or level with it doesn't)
+gets one of the lines, and the interaction stops
+there: the NPC stays put, steps before the walk stay done, and the run isn't counted, so a `once`
+talk plays again from the top. It is checked once, not during the walk. A routine that complains
+starts its loop over. No lines, no check.
 
 At the end of every interaction the NPC goes back to `idle`, `neutral`, its default look, hides the
 bubble, saves where it stands (if it walked) and releases the player.
@@ -282,7 +290,8 @@ line and a blip never overlap on the same NPC.
    higher-listed lines take over.
 3. **Performer**: one long talk walking between marks, talking while walking, pointing and
    looking at a mark, faces, sounds; he stays where he ends. **Doorman**: a once talk walks him out
-   of a gap in a wall, for good.
+   of a gap in a wall, for good; stand in his way (in front, a little right) and he grumbles and
+   stays (his walk needs 1.2 m of room).
 4. **Leaver**: Mara says goodbye and leaves behind a fade.
 5. **Dock**: Mara's copy, there once she has left.
 6. **Routine**: the Sweeper loops four corners on her own, sweeping and muttering. Stand in her
