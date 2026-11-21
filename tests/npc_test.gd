@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 2
+const SECTIONS := 3
 const PLAYER := preload("res://player/player.tscn")
 
 var fails := 0
@@ -23,7 +23,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_overlap]
+	var all: Array[Callable] = [_test_world, _test_overlap, _test_data]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -76,6 +76,41 @@ func _test_overlap() -> void:
 	sections += 1
 
 
+func _test_data() -> void:
+	var s := NpcStep.new()
+	s.lines = PackedStringArray(["Hello, stranger.", "Hi.", "Yo."])
+	_check(s.resource_name == 'say "Hello, stranger." (+2)', "say summary")
+	var shown := _editor_fields(s)
+	_check(shown.has("lines") and shown.has("time") and not shown.has("mark") and not shown.has("sound"), "SAY shows only its fields")
+	s.kind = NpcStep.Kind.MOVE
+	s.mark = &"Well"
+	s.run = true
+	shown = _editor_fields(s)
+	_check(shown.has("mark") and shown.has("wait") and not shown.has("lines"), "MOVE shows its fields")
+	_check(s.resource_name == "move → Well (run)", "move summary")
+	var say := NpcStep.new()
+	say.lines = PackedStringArray(["a", "b", "c"])
+	var last := -1
+	var seen := {}
+	for i in 30:
+		var n := say.pick_line(last)
+		if n == last:
+			_check(false, "line repeated back to back")
+		seen[n] = true
+		last = n
+	_check(seen.size() == 3, "versions: all three show up, never twice in a row")
+	_check(is_equal_approx(say.say_time("12345"), 1.2), "line time from length")
+	var inter := NpcInteraction.new()
+	inter.id = &"ch2"
+	inter.needs = PackedStringArray(["ch2"])
+	inter.once = true
+	inter.steps = [say, s]
+	_check(not inter.available({}, 0) and inter.available({"ch2": 1}, 0) and not inter.available({"ch2": 1}, 1), "needs and once")
+	_check(inter.resource_name == "ch2 · key · once · needs ch2 · 2 steps", "interaction summary")
+	_check(not _editor_fields(inter).has("distance"), "KEY hides distance")
+	sections += 1
+
+
 # --- course building ---------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -108,6 +143,11 @@ func _interactable(at: Vector3) -> Interactable:
 	s.radius = 2.0
 	z.add_shape(s)
 	return z
+
+
+## Names of the properties the inspector shows (after the object's _validate_property).
+func _editor_fields(o: Object) -> Array:
+	return o.get_property_list().filter(func(p: Dictionary) -> bool: return p.usage & PROPERTY_USAGE_EDITOR).map(func(p: Dictionary) -> String: return p.name)
 
 
 # --- driving, waiting and checking ---------------------------------------------------
