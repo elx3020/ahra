@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 15
+const SECTIONS := 18
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_routine, _test_review2, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -517,6 +517,200 @@ func _test_minors() -> void:
 	sections += 1
 
 
+func _test_avoid() -> void:
+	world.reset_story()
+	_course()
+	# around a standing player: no snap, never touches
+	var n := _npc(Vector3(-8, 1, 0), [], {}, "Around", {"T": Vector3(8, -0.8, 0)})
+	player.teleport(Vector3(-4, 1, 0))
+	await _wait(10)
+	var r := await _walk_watch(n, n.marks[&"T"], 400)
+	_check(r.arrived and r.frames < 5 * Engine.physics_ticks_per_second, "walks around a standing player (%d frames, no snap)" % r.frames)
+	_check(r.closest > 0.8, "keeps a gap from the player (closest %.2f m; touching is 0.75)" % r.closest)
+
+	# waits at a taken mark past the timeout; arrives once the player leaves
+	var w := _npc(Vector3(-8, 1, 8), [], {}, "Waiter", {"M": Vector3(6, -0.8, 0)})
+	await _wait(5)
+	player.teleport(w.marks[&"M"] + Vector3.UP)
+	var blocked := [0]
+	w.cue.connect(func(c: StringName) -> void:
+		if c == &"blocked":
+			blocked[0] += 1)
+	w.walk_to(w.marks[&"M"])
+	await _wait(int((6.0 / w.walk_speed * 2.0 + 1.0) * Engine.physics_ticks_per_second) + 120)
+	var d := _flat(w.global_position).distance_to(_flat(w.marks[&"M"]))
+	_check(w.waiting and w.walking() and w.anim == &"wait" and d <= 1.4 and d >= 0.7 and blocked[0] == 1, "waits beside a taken mark past the timeout (%.2f m, %d blocked cues)" % [d, blocked[0]])
+	player.teleport(Vector3(-20, 1, 8))
+	var got := [false]
+	w.arrived.connect(func() -> void: got[0] = true)
+	_check(await _wait_until(func() -> bool: return got[0], 120) and not w.waiting and w.anim != &"wait", "arrives once the mark is free")
+
+	# two NPCs swapping places: both arrive
+	var p1 := _npc(Vector3(-6, 1, -8), [], {}, "P1", {"G": Vector3(12, -0.8, 0)})
+	var p2 := _npc(Vector3(6, 1, -8), [], {}, "P2", {"G": Vector3(-12, -0.8, 0)})
+	await _wait(5)
+	var both := [0]
+	for q: Node3D in [p1, p2]:
+		q.arrived.connect(func() -> void: both[0] += 1)
+		q.walk_to(q.marks[&"G"])
+	_check(await _wait_until(func() -> bool: return both[0] == 2, 360), "two NPCs walking at each other both arrive")
+
+	# locked talk, the held player on the mark: arrives beside it and the talk goes on
+	var h := _npc(Vector3(10, 1, 6), [_talk(&"t", [_say(["Go"]), _step(NpcStep.Kind.MOVE, {mark = &"M"}), _say(["Here"])])], {}, "Holder", {"M": Vector3(1.5, -0.8, 0)})
+	await _wait(5)
+	await _start_key(h) # the player stands at the NPC + (1.5, 0, 0): on the mark
+	await _press(&"interact")
+	_check(await _wait_until(func() -> bool: return h.line == "Here", 180), "held player on the mark: arrives beside it")
+	await _press(&"interact")
+	await _wait(3)
+
+	# the Performer case: the held player between the NPC and its mark
+	var perf := _npc(Vector3(20, 1, -6), [_talk(&"show", [_say(["Watch"]), _step(NpcStep.Kind.MOVE, {mark = &"Far"}), _say(["Done"])])], {}, "Perf", {"Far": Vector3(8, -0.8, 0)})
+	await _wait(5)
+	await _start_key(perf)
+	await _press(&"interact")
+	var t0 := Engine.get_physics_frames()
+	_check(await _wait_until(func() -> bool: return perf.line == "Done", 400) and Engine.get_physics_frames() - t0 < 5 * Engine.physics_ticks_per_second, "walks around the held player to its mark (no snap)")
+	await _press(&"interact")
+	sections += 1
+
+
+func _test_routine() -> void:
+	world.reset_story()
+	_course()
+	var loop := _talk(&"loop", [_step(NpcStep.Kind.MOVE, {mark = &"A"}), _step(NpcStep.Kind.WAIT, {time = 0.2}),
+		_step(NpcStep.Kind.MOVE, {mark = &"B"}), _step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var make := func() -> Node3D: return _npc(Vector3(0, 1, -8), [loop, _talk(&"talk", [_say(["Busy!"])])], {}, "Sweeper",
+		{"A": Vector3(4, -0.8, 0), "B": Vector3(-4, -0.8, 0)})
+	var s: Node3D = make.call()
+	var arrivals := [0]
+	s.arrived.connect(func() -> void: arrivals[0] += 1)
+	await _wait(10)
+	_check(s.playing == loop and s.walking() and player.state_name != &"puppet", "the routine starts on its own and doesn't hold the player")
+	_check(await _wait_until(func() -> bool: return arrivals[0] >= 3, 600), "it loops: A, B, A...")
+
+	# a talk cuts it; afterwards it resumes at the step it was on
+	await _wait_until(func() -> bool: return s.step_at == 2 and s.walking(), 400)
+	await _start_key(s)
+	_check(s.line == "Busy!" and player.state_name == &"puppet" and not s.walking(), "a talk cuts the routine")
+	await _press(&"interact")
+	await _wait(5)
+	_check(s.playing == loop and s.step_at == 2 and s.walking(), "resumes at the step it was on (walking to B)")
+
+	# waiting at a taken mark, then talked to: the wait is cleared, the routine resumes after
+	await _wait_until(func() -> bool: return s.step_at == 0 and s.walking(), 400)
+	player.teleport(s.marks[&"A"] + Vector3.UP)
+	await _wait_until(func() -> bool: return s.waiting, 400)
+	player.teleport(s.global_position + Vector3(1.0, 0, 0)) # into its Talk zone, off the mark
+	await _wait(3)
+	await _press(&"interact")
+	await _wait(3)
+	_check(s.line == "Busy!" and not s.waiting and s.anim != &"wait", "talking to a waiting routine NPC")
+	await _press(&"interact")
+	await _wait(5)
+	_check(s.playing == loop and s.step_at == 0, "back to its routine")
+
+	# absent mid-routine: stops; present again: restarts
+	var ghost := _npc(Vector3(0, 1, 8), [_talk(&"g", [_step(NpcStep.Kind.WAIT, {time = 0.5})], {trigger = NpcInteraction.Trigger.ROUTINE})], {appears_if = PackedStringArray(["haunt"])}, "Ghost")
+	await _wait(5)
+	_check(ghost.playing == null, "absent: no routine")
+	world.set_flag(&"haunt")
+	await _wait(5)
+	_check(ghost.playing != null, "present: the routine starts")
+	world.set_flag(&"haunt", 0)
+	await _wait(5)
+	_check(ghost.playing == null and not ghost.present, "absent again: it stops")
+
+	# progression picks the routine (list order), at its next loop
+	var late := _talk(&"late", [_step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE, needs = PackedStringArray(["late"])})
+	var early := _talk(&"early", [_step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var prog := _npc(Vector3(10, 1, 8), [late, early], {}, "Prog")
+	await _wait(5)
+	_check(prog.playing == early, "early routine first")
+	world.set_flag(&"late")
+	_check(await _wait_until(func() -> bool: return prog.playing == late, 60), "the late routine takes over")
+
+	# a near bark fires during a routine, then the routine resumes
+	var bark := _talk(&"bark", [_say(["Hi!"], {time = 0.3})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false})
+	var chatty := _npc(Vector3(-20, 1, 8), [bark, _talk(&"r", [_step(NpcStep.Kind.WAIT, {time = 1.0})], {trigger = NpcInteraction.Trigger.ROUTINE})], {}, "Chatty")
+	await _wait(5)
+	player.teleport(Vector3(-17, 1, 8))
+	await _wait(5)
+	_check(chatty.playing == bark, "a bark cuts the routine")
+	_check(await _wait_until(func() -> bool: return chatty.playing != null and chatty.playing.trigger == NpcInteraction.Trigger.ROUTINE, 60), "the routine resumes after the bark")
+
+	# instant routine: no freeze, a warning
+	var quick := _npc(Vector3(-20, 1, -8), [_talk(&"q", [_step(NpcStep.Kind.FACE, {face = &"happy"})], {trigger = NpcInteraction.Trigger.ROUTINE})], {}, "Quick")
+	await _wait(30)
+	var loops: int = world.npcs[quick.memory_id()].plays["q"]
+	_check(loops > 0 and loops <= 31, "an instant routine loops at most once a frame (%d)" % loops)
+	_check(" ".join(quick._get_configuration_warnings()).contains("takes time"), "and warns")
+
+	# reload: back at its saved spot (its last arrival), running its routine
+	var spot: Vector3 = world.npcs[s.memory_id()].pos
+	course.remove_child(s)
+	s.free()
+	s = make.call()
+	await _wait(5)
+	_check(s.playing == loop and _flat(s.global_position).distance_to(_flat(spot)) < 0.3, "reloaded: its routine runs again from its saved spot")
+	sections += 1
+
+
+## Regression tests for the avoidance/routine review's findings.
+func _test_review2() -> void:
+	world.reset_story()
+	_course()
+	# a locked talk, the held player on the mark, a counter between: arrives where it stands at the timeout
+	var counter := _npc(Vector3(-30, 1, 8), [_talk(&"t", [_say(["Wait"]), _step(NpcStep.Kind.MOVE, {mark = &"M"}), _say(["Fine"])])], {}, "Counter", {"M": Vector3(1.8, -0.8, 0)})
+	_box(Vector3(-29.1, 1, 8), Vector3(0.2, 3, 4))
+	await _wait(5)
+	player.teleport(Vector3(-28.2, 1, 8))
+	await _wait(5)
+	await _press(&"interact")
+	await _wait(3)
+	_check(counter.line == "Wait", "talking across a counter")
+	await _press(&"interact")
+	_check(await _wait_until(func() -> bool: return counter.line == "Fine", 300), "a counter between: arrives where it stands at the timeout, the talk goes on")
+	await _press(&"interact")
+	await _wait(3)
+	_check(player.state_name != &"puppet", "player released")
+
+	# a routine that leaves: no fade, the player is never held, the NPC goes, its flag is set
+	player.teleport(Vector3(-10, 1, -10))
+	await _wait(3)
+	var walker := _npc(Vector3(30, 1, 8), [_talk(&"out", [_step(NpcStep.Kind.WAIT, {time = 0.3}), _step(NpcStep.Kind.LEAVE, {flag = &"walked_out", fade = 0.1})], {trigger = NpcInteraction.Trigger.ROUTINE})], {}, "Walker")
+	var held := false
+	var dark := 0.0
+	for k in 60:
+		await physics_frame
+		held = held or player.state_name == &"puppet"
+		dark = maxf(dark, world.fade_rect.color.a)
+	_check(not held and is_zero_approx(dark) and not walker.present and world.flag(&"walked_out") == 1, "a routine that leaves: no fade, the player never held (held %s, dark %.2f)" % [held, dark])
+
+	# a once routine cut by a talk resumes and finishes
+	var chore := _talk(&"chore", [_step(NpcStep.Kind.MOVE, {mark = &"A"}), _step(NpcStep.Kind.WAIT, {time = 0.2}), _step(NpcStep.Kind.FLAG, {flag = &"chore_done"})], {trigger = NpcInteraction.Trigger.ROUTINE, once = true})
+	var worker := _npc(Vector3(0, 1, -10), [chore, _talk(&"t", [_say(["Later"])])], {}, "Worker", {"A": Vector3(8, -0.8, 0)})
+	await _wait(10)
+	await _start_key(worker)
+	_check(worker.line == "Later", "a talk cuts the once routine")
+	await _press(&"interact")
+	await _wait(3)
+	_check(await _wait_until(func() -> bool: return world.flag(&"chore_done") == 1, 400), "a once routine cut by a talk resumes and finishes")
+	sections += 1
+
+
+## Walks `n` to `to`, returning {arrived, frames, closest (planar m to the player)}.
+func _walk_watch(n: Node3D, to: Vector3, frames: int) -> Dictionary:
+	var r := {arrived = false, frames = 0, closest = INF}
+	n.arrived.connect(func() -> void: r.arrived = true, CONNECT_ONE_SHOT)
+	n.walk_to(to)
+	while not r.arrived and r.frames < frames:
+		await physics_frame
+		r.frames += 1
+		r.closest = minf(r.closest, _flat(n.global_position).distance_to(_flat(player.global_position)))
+	return r
+
+
 func _test_demo() -> void:
 	world.reset_story()
 	if course:
@@ -530,8 +724,9 @@ func _test_demo() -> void:
 	var by_name := {}
 	for n: Node in npcs:
 		by_name[String(n.name)] = n
-	_check(["Greeter", "Smith", "Ringer", "Performer", "Doorman", "Mara", "MaraDock"].all(func(k: String) -> bool: return by_name.has(k)), "demo: the seven NPCs")
-	_check(by_name.has("MaraDock") and not by_name.MaraDock.present and npcs.filter(func(n: Node) -> bool: return n.present).size() == 6, "only MaraDock absent at the start")
+	_check(["Greeter", "Smith", "Ringer", "Performer", "Doorman", "Mara", "MaraDock", "Sweeper"].all(func(k: String) -> bool: return by_name.has(k)), "demo: the eight NPCs")
+	_check(by_name.has("MaraDock") and not by_name.MaraDock.present and npcs.filter(func(n: Node) -> bool: return n.present).size() == 7, "only MaraDock absent at the start")
+	_check(by_name.has("Sweeper") and by_name.Sweeper.playing != null and by_name.Sweeper.playing.trigger == NpcInteraction.Trigger.ROUTINE, "the Sweeper is busy with her routine")
 	_check(npcs.all(func(n: Node) -> bool: return n._get_configuration_warnings().is_empty()), "no config warnings")
 	_check(npcs.all(func(n: Node) -> bool: return not n.present or n.is_on_floor()), "every present NPC stands on the floor")
 	_check(load("res://demo/npcs/blip.tres") is AudioStreamWAV, "blip sound")

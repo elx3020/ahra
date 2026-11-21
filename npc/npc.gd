@@ -17,6 +17,9 @@ signal finished ## an interaction ended
 signal _advanced ## the interact key, during a locked interaction
 
 const ARRIVE := 0.3 ## m from the walk target that counts as there
+const CLEARANCE := 1.0 ## m kept from people while walking (NPC 0.35 + player 0.4 + a margin)
+const LOOK_AHEAD := 2.0 ## m ahead a walk looks for someone in its way
+const STOP_SHORT := 0.3 ## a taken destination: wait this much farther than CLEARANCE from it
 const FEET := 0.8 ## the NPC's origin above its feet; marks are floor points, so a snap lands this high
 const HEAD_YAW := 75.0 ## degrees the head turns either way
 const HEAD_PITCH := 35.0
@@ -44,9 +47,11 @@ var look_target: Variant = null ## global point the head turns to, or null (stra
 var speaking := false ## a line is showing (the mouth moves)
 var facing := Vector3.FORWARD
 var present := true ## false while absent (appears_if unmet, or it left)
+var waiting := false ## a walk paused beside its destination because the player stands on it
 var marks := {} ## mark name (StringName) -> global position, cached before the NPC ever moves
 var playing: NpcInteraction ## the interaction running, or null
 var line := "" ## the line showing in the bubble (without the key mark), or ""
+var step_at := 0 ## index of the step the running interaction is on
 
 var _run := 0 ## bumped when an interaction starts or is cut: a stale coroutine stops at its next step
 var _locked := false ## the running interaction holds the player
@@ -57,6 +62,8 @@ var _ended_frame := -1 ## physics frame the last one ended on (its closing press
 var _look_mode := -1 ## -1: default look; else the NpcStep.Look a step set
 var _look_mark: StringName
 var _last_line := {} ## NpcStep -> index of the version shown last
+var _routine: NpcInteraction ## the routine a talk or a bark cut, to resume at _routine_from
+var _routine_from := 0
 var _armed := {} ## NEAR NpcInteraction -> false once fired, until the player is beyond distance + 1 m
 var _target: Variant = null ## walk target (global), or null
 var _running := false
@@ -174,32 +181,65 @@ func start_talk() -> void:
 	if not can_talk():
 		return
 	var i := choose(NpcInteraction.Trigger.KEY)
-	if playing: # cut the bark the normal way: its face and look don't carry over, `finished` fires
-		stop_walk()
-		_run += 1
-		_end()
+	if playing: # a bark or the routine
+		_cut()
 	play(i)
 
 
-## Runs `i` step by step (a coroutine). Steps run back to back until one waits. Starting another
-## interaction cuts this one: it stops at its next step.
-func play(i: NpcInteraction) -> void:
+## Ends the running interaction early, the normal way (face and look reset, `finished` fires).
+## A cut routine remembers its step, to resume there.
+func _cut() -> void:
+	if playing and playing.trigger == NpcInteraction.Trigger.ROUTINE:
+		_routine = playing
+		_routine_from = step_at
+	stop_walk()
+	_run += 1
+	_end()
+
+
+## One physics frame after an interaction ends (so a routine of instant steps loops at most once a
+## frame), the first available routine plays: from the step it was cut on, else from the start.
+func _resume_routine() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().physics_frame
+	if not is_inside_tree() or not present or playing != null:
+		return
+	var r: NpcInteraction
+	var from := 0
+	if _routine and _routine in interactions and _routine.available(World.flags, 0): # its needs still hold
+		r = _routine # (a cut `once` routine too: it finishes)
+		from = _routine_from if _routine_from < r.steps.size() else 0
+	else:
+		r = choose(NpcInteraction.Trigger.ROUTINE)
+	if r == null:
+		return
+	_routine = null
+	_routine_from = 0
+	play(r, from)
+
+
+## Runs `i` step by step from `from_step` (a coroutine). Steps run back to back until one waits.
+## Starting another interaction cuts this one: it stops at its next step. Routines never lock.
+func play(i: NpcInteraction, from_step := 0) -> void:
 	_run += 1
 	var run := _run
 	_hush()
 	playing = i
 	_started_frame = Engine.get_physics_frames()
-	var plays: Dictionary = memory().plays
-	plays[key_of(i)] = plays.get(key_of(i), 0) + 1 # counted at the start: a cut `once` doesn't replay
-	_locked = i.locks_player
+	if from_step == 0: # counted at the start (a cut `once` bark doesn't replay); a resumed routine isn't a new play
+		var plays: Dictionary = memory().plays
+		plays[key_of(i)] = plays.get(key_of(i), 0) + 1
+	_locked = i.locks_player and i.trigger != NpcInteraction.Trigger.ROUTINE
 	var p := player()
 	if _locked and p:
 		p.start_puppet()
 		_face(p.global_position)
-	for s in i.steps:
-		if s == null:
+	for k in range(from_step, i.steps.size()):
+		step_at = k
+		if i.steps[k] == null:
 			continue
-		await _do(s, run)
+		await _do(i.steps[k], run)
 		if run != _run:
 			return
 	_end()
@@ -265,26 +305,31 @@ func _do(s: NpcStep, run: int) -> void:
 			if s.flag:
 				World.set_flag(s.flag, s.value)
 		NpcStep.Kind.LEAVE: # fade out, gone for good (memory), flag set, fade in; the interaction ends
+			# a routine runs wherever the player is and never holds them: it just goes (walk it out
+			# of sight first). Anything else holds the player and fades.
+			var quiet := playing != null and playing.trigger == NpcInteraction.Trigger.ROUTINE
 			var p := player()
-			if not _locked and p:
+			if not quiet and not _locked and p:
 				_locked = true # a bark that leaves still holds the player through the fade
 				p.start_puppet()
-			_leaving = true # freed or unloaded meanwhile: _exit_tree clears the screen
-			await World.fade(1.0, s.fade)
-			if run != _run:
-				return
+			if not quiet:
+				_leaving = true # freed or unloaded meanwhile: _exit_tree clears the screen
+				await World.fade(1.0, s.fade)
+				if run != _run:
+					return
 			memory().gone = true
 			if s.flag:
 				World.set_flag(s.flag) # flags_changed: this NPC goes, copies waiting on the flag come
 			refresh_presence()
 			cue.emit(&"leave")
-			await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
-			if run != _run:
-				return
-			await World.fade(0.0, s.fade)
-			if run != _run:
-				return
-			_leaving = false
+			if not quiet:
+				await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
+				if run != _run:
+					return
+				await World.fade(0.0, s.fade)
+				if run != _run:
+					return
+				_leaving = false
 			_run += 1 # steps after a leave never run (bumped first: a `finished` listener may play again)
 			_end()
 
@@ -304,11 +349,14 @@ func _check_near(p: Player) -> void:
 		elif fire == null and d <= i.distance and _armed.get(i, true) \
 				and i.available(World.flags, memory().plays.get(key_of(i), 0)):
 			fire = i
-	if fire == null or playing != null or p.state_name == &"puppet":
+	if fire == null or (playing != null and playing.trigger != NpcInteraction.Trigger.ROUTINE) \
+			or p.state_name == &"puppet":
 		return
 	for i in interactions:
 		if i and i.trigger == NpcInteraction.Trigger.NEAR and d <= i.distance:
 			_armed[i] = false
+	if playing: # a bark cuts the routine
+		_cut()
 	play(fire)
 
 
@@ -327,6 +375,7 @@ func _end() -> void:
 	if was_locked and is_instance_valid(player()):
 		player().end_puppet()
 	finished.emit()
+	_resume_routine() # a routine loops through here; after anything else, it resumes
 
 
 func _hush() -> void:
@@ -359,6 +408,18 @@ func _exit_tree() -> void:
 	playing = null
 
 
+## Whether step `s` waits for something (time, a walk, the key) rather than going on at once.
+static func _takes_time(s: NpcStep) -> bool:
+	if s == null:
+		return false
+	match s.kind:
+		NpcStep.Kind.SAY, NpcStep.Kind.WAIT: return true
+		NpcStep.Kind.ANIM: return s.time > 0.0
+		NpcStep.Kind.MOVE: return s.wait
+		NpcStep.Kind.SOUND: return s.sound_wait
+	return false
+
+
 func _get_configuration_warnings() -> PackedStringArray:
 	var out := PackedStringArray()
 	var mark_names := get_children().filter(func(m: Node) -> bool: return m is Marker3D).map(func(m: Node) -> StringName: return StringName(m.name))
@@ -375,6 +436,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		ids[i.id] = true
 		if i.steps.is_empty():
 			out.append("%s has no steps." % label)
+		elif i.trigger == NpcInteraction.Trigger.ROUTINE and not i.steps.any(_takes_time):
+			out.append("%s: a routine with no step that takes time loops every frame; add a walk, a wait or a line." % label)
 		var left := false
 		for s in i.steps:
 			if s == null:
@@ -414,6 +477,8 @@ func refresh_presence() -> void:
 	if not on:
 		stop_walk()
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if on and playing == null:
+		_resume_routine()
 
 
 # --- walking ------------------------------------------------------------------------------
@@ -424,18 +489,30 @@ func _cache_marks() -> void:
 			marks[StringName(m.name)] = m.global_position
 
 
-## Walks (or runs) to `point`. Emits `arrived` within ARRIVE m, or after distance / speed * 2 + 1
-## seconds by snapping there, so a blocked walk never strands an interaction.
+## Walks (or runs) to `point`, a floor point. On the way it steers around the player and other
+## NPCs (_steer). If the player stands on `point` it walks up close and waits (`waiting`, anim
+## `wait`, cue `blocked`) until the spot is free; but when its own locked interaction holds the
+## player (who can't move), it stops beside the spot and counts as arrived. Emits `arrived` within
+## ARRIVE m, or after distance / speed * 2 + 1 seconds of walking (waiting doesn't count) by
+## snapping there, never onto the player, so a blocked walk never strands an interaction.
 func walk_to(point: Vector3, running := false) -> void:
 	_target = point
 	_running = running
 	_moved = true
+	waiting = false
 	var d := (point - global_position).slide(up_direction).length()
 	_walk_left = d / (run_speed if running else walk_speed) * 2.0 + 1.0
 
 
 func stop_walk() -> void:
 	_target = null
+	waiting = false
+
+
+## Whether the player stands on `point` (within CLEARANCE, planar).
+func taken(point: Vector3) -> bool:
+	var p := player()
+	return p != null and (p.global_position - point).slide(up_direction).length() < CLEARANCE
 
 
 func walking() -> bool:
@@ -468,14 +545,35 @@ func _physics_process(delta: float) -> void:
 func _move(delta: float) -> void:
 	var dir := Vector3.ZERO
 	var snap := false
+	var beside := false
 	if _target != null:
-		var to: Vector3 = (_target - global_position).slide(up_direction)
-		_walk_left -= delta
-		if _walk_left <= 0.0:
-			snap = true
-		elif to.length() > 0.01:
-			dir = to.normalized()
-			facing = dir
+		var target: Vector3 = _target
+		var to := (target - global_position).slide(up_direction)
+		var p := player()
+		var close := to.length() <= CLEARANCE + STOP_SHORT \
+			or (p != null and (p.global_position - global_position).slide(up_direction).length() < CLEARANCE + 0.05)
+		if taken(target) and close:
+			if _locked:
+				beside = true # the player it holds can't step aside: beside the spot will do
+			else:
+				if not waiting:
+					waiting = true
+					cue.emit(&"blocked")
+				if to.length() > 0.01:
+					facing = to.normalized()
+		else:
+			waiting = false
+			_walk_left -= delta
+			if _walk_left <= 0.0:
+				if taken(target) and _locked:
+					beside = true # the held player is on it, something is in the way: here will do
+				elif taken(target):
+					_walk_left = 1.0 # never snap onto the player
+				else:
+					snap = true
+			elif to.length() > 0.01:
+				dir = _steer(to.normalized(), target)
+				facing = dir
 	var speed := run_speed if _running else walk_speed
 	var vert := velocity.project(up_direction)
 	if not is_on_floor():
@@ -485,16 +583,52 @@ func _move(delta: float) -> void:
 	if snap:
 		global_position = (_target as Vector3) + up_direction * FEET
 		reset_physics_interpolation()
-	if _target != null and (snap or (_target - global_position).slide(up_direction).length() < ARRIVE):
+	if _target != null and (beside or snap or (_target - global_position).slide(up_direction).length() < ARRIVE):
 		_target = null
+		waiting = false
 		velocity = velocity.project(up_direction)
 		save_position()
 		cue.emit(&"arrive")
 		arrived.emit()
 	if _target != null: # walking overrides a step's anim; it ends back on idle
-		anim = &"run" if _running else &"walk"
-	elif anim in [&"walk", &"run"]:
+		anim = &"wait" if waiting else (&"run" if _running else &"walk")
+	elif anim in [&"walk", &"run", &"wait"]:
 		anim = &"idle"
+
+
+## The way to walk: straight at the target, or toward a point beside the nearest obstacle ahead
+## (the player or another present NPC) whose centre is within CLEARANCE of the walk line and
+## LOOK_AHEAD of the NPC. The detour is on the side the NPC is already on; dead ahead, its right
+## (two NPCs meeting head-on both keep right and pass). Someone standing on the target itself is
+## left to the waiting rule (walk_to).
+## ponytail: every walking NPC checks every NPC each frame (O(n^2)); a spatial query if crowds walk.
+func _steer(dir: Vector3, target: Vector3) -> Vector3:
+	var nearest := INF
+	var detour := Vector3.ZERO
+	for o in _obstacles():
+		var at := (o.global_position - global_position).slide(up_direction)
+		var ahead := at.dot(dir)
+		if ahead <= 0.0 or ahead > LOOK_AHEAD or ahead >= nearest:
+			continue
+		var side := at - dir * ahead # from the walk line to the obstacle
+		if side.length() >= CLEARANCE or (o.global_position - target).slide(up_direction).length() < CLEARANCE:
+			continue
+		var away := -side.normalized() if side.length() > 0.05 else dir.cross(up_direction).normalized()
+		nearest = ahead
+		detour = at + away * CLEARANCE
+	return detour.normalized() if nearest < INF else dir
+
+
+## What walks steer around: the player and every other present NPC.
+func _obstacles() -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	var p := player()
+	if p:
+		out.append(p)
+	for n in get_tree().get_nodes_in_group(&"npc"):
+		if n != self and n.present:
+			out.append(n)
+	return out
 
 
 func _orient(delta: float) -> void:
@@ -511,6 +645,8 @@ func _orient(delta: float) -> void:
 ## within notice_distance, else straight ahead.
 func _look_point() -> Variant:
 	var p := player()
+	if waiting and p: # someone is standing on its spot
+		return p.global_position + p.up_direction * Player.HEAD
 	match _look_mode:
 		NpcStep.Look.PLAYER:
 			return p.global_position + p.up_direction * Player.HEAD if p else null
@@ -559,6 +695,8 @@ func _animate(delta: float) -> void:
 		&"jump": off = absf(sin(t * 6.0)) * 0.35; sc = Vector3(0.9, 1.1, 0.9)
 		&"point": tilt = -0.15; sc = Vector3(1.05, 1.0, 1.05)
 		&"shrug": sc = Vector3(1.12, 0.92, 1.12)
+		&"wait": off = absf(sin(t * 5.0)) * 0.03; roll = sin(t * 1.5) * 0.05 # foot tapping, swaying
+		&"sweep": tilt = -0.35; roll = sin(t * 6.0) * 0.15
 		_: off = sin(t * 2.0) * 0.01 # idle breathing; nod and shake move the head (_look)
 	var k := 1.0 - exp(-15.0 * delta)
 	_visual.position = _visual_base + Vector3.UP * off

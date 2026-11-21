@@ -495,28 +495,116 @@ script = ExtResource("6_53q5i")
 id = &"dock"
 steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_vx1jo")])
 
-[node name="Npcs" type="Node3D" unique_id=1638703754]
+[sub_resource type="Resource" id="Resource_0riof"]
+resource_name = "face happy"
+script = ExtResource("7_qe6st")
+kind = 2
+face = &"happy"
+
+[sub_resource type="Resource" id="Resource_heljl"]
+resource_name = "say \"Busy, busy!\" (+2)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Busy, busy!", "Mind the broom.", "Can\'t stop, sorry!")
+
+[sub_resource type="Resource" id="Resource_jfpxw"]
+resource_name = "talk · key · 0 steps"
+script = ExtResource("6_53q5i")
+id = &"talk"
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_0riof"), SubResource("Resource_heljl")])
+
+[sub_resource type="Resource" id="Resource_dbtos"]
+resource_name = "move → C2"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"C2"
+
+[sub_resource type="Resource" id="Resource_iwux0"]
+resource_name = "anim sweep 1.5s"
+script = ExtResource("7_qe6st")
+kind = 1
+time = 1.5
+anim = &"sweep"
+
+[sub_resource type="Resource" id="Resource_wvkic"]
+resource_name = "say \"Sweep, sweep.\" (+1)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Sweep, sweep.", "So much dust.")
+time = 1.5
+
+[sub_resource type="Resource" id="Resource_631r7"]
+resource_name = "move → C3"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"C3"
+
+[sub_resource type="Resource" id="Resource_sp1mh"]
+resource_name = "anim sweep 1.5s"
+script = ExtResource("7_qe6st")
+kind = 1
+time = 1.5
+anim = &"sweep"
+
+[sub_resource type="Resource" id="Resource_fm5n6"]
+resource_name = "move → C4"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"C4"
+
+[sub_resource type="Resource" id="Resource_gs8hy"]
+resource_name = "anim sweep 1.5s"
+script = ExtResource("7_qe6st")
+kind = 1
+time = 1.5
+anim = &"sweep"
+
+[sub_resource type="Resource" id="Resource_qv016"]
+resource_name = "say \"Hm hm hm.\" (+1)"
+script = ExtResource("7_qe6st")
+lines = PackedStringArray("Hm hm hm.", "Almost done...")
+time = 1.5
+
+[sub_resource type="Resource" id="Resource_dahfi"]
+resource_name = "move → C1"
+script = ExtResource("7_qe6st")
+kind = 4
+mark = &"C1"
+
+[sub_resource type="Resource" id="Resource_3ruay"]
+resource_name = "anim sweep 1.5s"
+script = ExtResource("7_qe6st")
+kind = 1
+time = 1.5
+anim = &"sweep"
+
+[sub_resource type="Resource" id="Resource_secyq"]
+resource_name = "sweep · routine · 10 steps"
+script = ExtResource("6_53q5i")
+id = &"sweep"
+trigger = 2
+steps = Array[ExtResource("7_qe6st")]([SubResource("Resource_dbtos"), SubResource("Resource_iwux0"), SubResource("Resource_wvkic"), SubResource("Resource_631r7"), SubResource("Resource_sp1mh"), SubResource("Resource_fm5n6"), SubResource("Resource_gs8hy"), SubResource("Resource_qv016"), SubResource("Resource_dahfi"), SubResource("Resource_3ruay")])
+
+[node name="Npcs" type="Node3D" unique_id=2011103769]
 script = ExtResource("1_ruaq3")
-bounds_center = Vector3(60, 0, 0)
+bounds_center = Vector3(75, 0, 0)
 bounds_radius = 160.0
 area_id = &"npcs"
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2063033313]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=122661899]
 environment = SubResource("Environment_0v1oj")
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2104039184]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=5577940]
 transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
 shadow_enabled = true
 
-[node name="Camera" type="Camera3D" parent="." unique_id=1668616782]
+[node name="Camera" type="Camera3D" parent="." unique_id=416763870]
 projection = 1
 current = true
 size = 20.0
 far = 500.0
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=217801220]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=594988997]
 
-[node name="Label" type="Label" parent="HUD" unique_id=2001518606]
+[node name="Label" type="Label" parent="HUD" unique_id=448099543]
 offset_left = 12.0
 offset_top = 8.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -526,25 +614,25 @@ theme_override_constants/outline_size = 6
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
 progression = SubResource("Resource_0tnh6")
 
-[node name="Void" type="Area3D" parent="." unique_id=1289680561]
+[node name="Void" type="Area3D" parent="." unique_id=347560654]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, -14, 0)
 script = ExtResource("4_yu15y")
 color = Color(1, 0, 0, 0.06)
 
-[node name="Box" type="CollisionShape3D" parent="Void" unique_id=1784903266]
+[node name="Box" type="CollisionShape3D" parent="Void" unique_id=765110784]
 shape = SubResource("BoxShape3D_jannu")
 
-[node name="Floor" type="CSGBox3D" parent="." unique_id=1422130954]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, -0.5, 0)
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1313804118]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75, -0.5, 0)
 use_collision = true
-size = Vector3(150, 1, 30)
+size = Vector3(180, 1, 30)
 material = SubResource("StandardMaterial3D_jmxdr")
 
-[node name="Bays" type="Node3D" parent="." unique_id=131852754]
+[node name="Bays" type="Node3D" parent="." unique_id=2094956313]
 
-[node name="Greeter" type="Node3D" parent="Bays" unique_id=465527333]
+[node name="Greeter" type="Node3D" parent="Bays" unique_id=846780399]
 
-[node name="Label" type="Label3D" parent="Bays/Greeter" unique_id=1951135600]
+[node name="Label" type="Label3D" parent="Bays/Greeter" unique_id=1962719833]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
 pixel_size = 0.01
 billboard = 1
@@ -556,16 +644,16 @@ his head follows you within 6 m"
 font_size = 48
 outline_size = 14
 
-[node name="Start" type="Marker3D" parent="Bays/Greeter" unique_id=1315587831]
+[node name="Start" type="Marker3D" parent="Bays/Greeter" unique_id=1389874077]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
 
-[node name="Greeter" parent="Bays/Greeter" unique_id=2145119813 instance=ExtResource("5_qg12c")]
+[node name="Greeter" parent="Bays/Greeter" unique_id=1187692753 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0.8, -3)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_ypyc1"), SubResource("Resource_p5c81"), SubResource("Resource_llgwd")])
 
-[node name="Progression" type="Node3D" parent="Bays" unique_id=383264382]
+[node name="Progression" type="Node3D" parent="Bays" unique_id=329413152]
 
-[node name="Label" type="Label3D" parent="Bays/Progression" unique_id=633745943]
+[node name="Label" type="Label3D" parent="Bays/Progression" unique_id=1061023135]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 6, -9)
 pixel_size = 0.01
 billboard = 1
@@ -577,32 +665,32 @@ talk to the Ringer, then to Smith again
 font_size = 48
 outline_size = 14
 
-[node name="Start" type="Marker3D" parent="Bays/Progression" unique_id=764834531]
+[node name="Start" type="Marker3D" parent="Bays/Progression" unique_id=1016007001]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 7)
 
-[node name="Smith" parent="Bays/Progression" unique_id=1880329960 instance=ExtResource("5_qg12c")]
+[node name="Smith" parent="Bays/Progression" unique_id=916114892 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 27, 0.8, -3)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_r121t"), SubResource("Resource_xvgf5"), SubResource("Resource_xctvu")])
 color = Color(0.55, 0.4, 0.3, 1)
 
-[node name="Ringer" parent="Bays/Progression" unique_id=555718328 instance=ExtResource("5_qg12c")]
+[node name="Ringer" parent="Bays/Progression" unique_id=1111195348 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 34, 0.8, -3)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_l57l8"), SubResource("Resource_f3mv0")])
 color = Color(0.35, 0.45, 0.8, 1)
 
-[node name="Bell" type="Marker3D" parent="Bays/Progression/Ringer" unique_id=958188130]
+[node name="Bell" type="Marker3D" parent="Bays/Progression/Ringer" unique_id=1867694177]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5000001, -0.8, 0.9999999)
 
-[node name="Bell" type="CSGCylinder3D" parent="Bays/Progression" unique_id=686147317]
+[node name="Bell" type="CSGCylinder3D" parent="Bays/Progression" unique_id=1732984425]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.5, 0.6, -4)
 use_collision = true
 radius = 0.4
 height = 1.2
 material = SubResource("StandardMaterial3D_f1b0n")
 
-[node name="Performer" type="Node3D" parent="Bays" unique_id=1002074465]
+[node name="Performer" type="Node3D" parent="Bays" unique_id=1124773450]
 
-[node name="Label" type="Label3D" parent="Bays/Performer" unique_id=768983267]
+[node name="Label" type="Label3D" parent="Bays/Performer" unique_id=1639896212]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 6, -9)
 pixel_size = 0.01
 billboard = 1
@@ -613,71 +701,71 @@ DOORMAN (E, right): steps aside for good (8 reloads: still aside)"
 font_size = 48
 outline_size = 14
 
-[node name="Start" type="Marker3D" parent="Bays/Performer" unique_id=82376929]
+[node name="Start" type="Marker3D" parent="Bays/Performer" unique_id=107407431]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 1, 7)
 
-[node name="Performer" parent="Bays/Performer" unique_id=1498275717 instance=ExtResource("5_qg12c")]
+[node name="Performer" parent="Bays/Performer" unique_id=1416899739 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 56, 0.8, -2)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_4omxn")])
 color = Color(0.75, 0.35, 0.55, 1)
 
-[node name="Left" type="Marker3D" parent="Bays/Performer/Performer" unique_id=1232338252]
+[node name="Left" type="Marker3D" parent="Bays/Performer/Performer" unique_id=76279594]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, -0.8, 3.496911e-07)
 
-[node name="Right" type="Marker3D" parent="Bays/Performer/Performer" unique_id=325790960]
+[node name="Right" type="Marker3D" parent="Bays/Performer/Performer" unique_id=775410297]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, -0.8, -4.371139e-07)
 
-[node name="Stage" type="Marker3D" parent="Bays/Performer/Performer" unique_id=1226284625]
+[node name="Stage" type="Marker3D" parent="Bays/Performer/Performer" unique_id=1648620120]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0000004, -0.8, 4)
 
-[node name="WallWest" type="CSGBox3D" parent="Bays/Performer" unique_id=1425976602]
+[node name="WallWest" type="CSGBox3D" parent="Bays/Performer" unique_id=1444786623]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65, 1.5, 3)
 use_collision = true
 size = Vector3(6, 3, 1)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="WallEast" type="CSGBox3D" parent="Bays/Performer" unique_id=688733459]
+[node name="WallEast" type="CSGBox3D" parent="Bays/Performer" unique_id=1615765431]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 72, 1.5, 3)
 use_collision = true
 size = Vector3(4, 3, 1)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="SideWest" type="CSGBox3D" parent="Bays/Performer" unique_id=366437728]
+[node name="SideWest" type="CSGBox3D" parent="Bays/Performer" unique_id=565648379]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62.5, 1.5, -1.5)
 use_collision = true
 size = Vector3(1, 3, 10)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="SideEast" type="CSGBox3D" parent="Bays/Performer" unique_id=1999971646]
+[node name="SideEast" type="CSGBox3D" parent="Bays/Performer" unique_id=562012561]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 73.5, 1.5, -1.5)
 use_collision = true
 size = Vector3(1, 3, 10)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="Back" type="CSGBox3D" parent="Bays/Performer" unique_id=1829720383]
+[node name="Back" type="CSGBox3D" parent="Bays/Performer" unique_id=214366526]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 68, 1.5, -6)
 use_collision = true
 size = Vector3(12, 3, 1)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="Doorman" parent="Bays/Performer" unique_id=915296477 instance=ExtResource("5_qg12c")]
+[node name="Doorman" parent="Bays/Performer" unique_id=28787950 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 69, 0.8, 3)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_i32au"), SubResource("Resource_jhcrc")])
 color = Color(0.45, 0.45, 0.5, 1)
 
-[node name="Aside" type="Marker3D" parent="Bays/Performer/Doorman" unique_id=960288781]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7484555e-07, -0.8, -2)
+[node name="Aside" type="Marker3D" parent="Bays/Performer/Doorman" unique_id=1985333802]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4999998, -0.8, -1.5000002)
 
-[node name="Beyond" type="Label3D" parent="Bays/Performer" unique_id=323158037]
+[node name="Beyond" type="Label3D" parent="Bays/Performer" unique_id=76475187]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69, 1.5, -1)
 pixel_size = 0.01
 billboard = 1
 text = "you got through!"
 font_size = 40
 
-[node name="Leaver" type="Node3D" parent="Bays" unique_id=710680259]
+[node name="Leaver" type="Node3D" parent="Bays" unique_id=1055633093]
 
-[node name="Label" type="Label3D" parent="Bays/Leaver" unique_id=1353769087]
+[node name="Label" type="Label3D" parent="Bays/Leaver" unique_id=1112123773]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 6, -9)
 pixel_size = 0.01
 billboard = 1
@@ -688,17 +776,17 @@ find her at the dock, next bay ( ] )"
 font_size = 48
 outline_size = 14
 
-[node name="Start" type="Marker3D" parent="Bays/Leaver" unique_id=15679183]
+[node name="Start" type="Marker3D" parent="Bays/Leaver" unique_id=1210575824]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 1, 7)
 
-[node name="Mara" parent="Bays/Leaver" unique_id=670125285 instance=ExtResource("5_qg12c")]
+[node name="Mara" parent="Bays/Leaver" unique_id=928405952 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 90, 0.8, -3)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_cfx6c")])
 color = Color(0.8, 0.55, 0.25, 1)
 
-[node name="Dock" type="Node3D" parent="Bays" unique_id=1095523358]
+[node name="Dock" type="Node3D" parent="Bays" unique_id=1241040797]
 
-[node name="Label" type="Label3D" parent="Bays/Dock" unique_id=334411574]
+[node name="Label" type="Label3D" parent="Bays/Dock" unique_id=1668503403]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 6, -9)
 pixel_size = 0.01
 billboard = 1
@@ -708,23 +796,56 @@ Mara appears here once she has left the Leaver bay"
 font_size = 48
 outline_size = 14
 
-[node name="Start" type="Marker3D" parent="Bays/Dock" unique_id=1723211494]
+[node name="Start" type="Marker3D" parent="Bays/Dock" unique_id=1061666847]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 1, 7)
 
-[node name="Water" type="CSGBox3D" parent="Bays/Dock" unique_id=1117440616]
+[node name="Water" type="CSGBox3D" parent="Bays/Dock" unique_id=2059743611]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -0.45, -8)
 use_collision = true
 size = Vector3(14, 1, 6)
 material = SubResource("StandardMaterial3D_r4608")
 
-[node name="Pier" type="CSGBox3D" parent="Bays/Dock" unique_id=778029718]
+[node name="Pier" type="CSGBox3D" parent="Bays/Dock" unique_id=982995447]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0.15, -5)
 use_collision = true
 size = Vector3(3, 0.3, 4)
 material = SubResource("StandardMaterial3D_v11j7")
 
-[node name="MaraDock" parent="Bays/Dock" unique_id=2112794951 instance=ExtResource("5_qg12c")]
+[node name="MaraDock" parent="Bays/Dock" unique_id=1825245904 instance=ExtResource("5_qg12c")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 120, 1.1, -5)
 interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_omt3t"), SubResource("Resource_aspev")])
 appears_if = PackedStringArray("mara_at_dock")
 color = Color(0.8, 0.55, 0.25, 1)
+
+[node name="Routine" type="Node3D" parent="Bays" unique_id=1944553798]
+
+[node name="Label" type="Label3D" parent="Bays/Routine" unique_id=1584666698]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "SWEEPER: a routine, she keeps busy on her own
+stand in her way: she walks around you
+stand on a corner: she waits | E: she stops to talk, then goes on"
+font_size = 48
+outline_size = 14
+
+[node name="Start" type="Marker3D" parent="Bays/Routine" unique_id=1719910139]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 1, 7)
+
+[node name="Sweeper" parent="Bays/Routine" unique_id=571234182 instance=ExtResource("5_qg12c")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 147, 0.8, -5)
+interactions = Array[ExtResource("6_53q5i")]([SubResource("Resource_jfpxw"), SubResource("Resource_secyq")])
+color = Color(0.6, 0.5, 0.85, 1)
+
+[node name="C1" type="Marker3D" parent="Bays/Routine/Sweeper" unique_id=117857559]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.8, 0)
+
+[node name="C2" type="Marker3D" parent="Bays/Routine/Sweeper" unique_id=238359663]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, -0.8, -5.2453663e-07)
+
+[node name="C3" type="Marker3D" parent="Bays/Routine/Sweeper" unique_id=246031620]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.9999995, -0.8, -6.0000005)
+
+[node name="C4" type="Marker3D" parent="Bays/Routine/Sweeper" unique_id=1109325946]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2453663e-07, -0.8, -6)
