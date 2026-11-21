@@ -38,7 +38,7 @@ const ALL := ["lines", "time", "anim", "face", "look", "mark", "run", "wait", "s
 	set(v): face = v; _named()
 @export var look := Look.PLAYER: ## LOOK: what the head follows for the rest of the interaction
 	set(v): look = v; _named()
-@export var mark: StringName: ## MOVE / LOOK: a Marker3D under the NPC's Marks, by name
+@export var mark: StringName: ## MOVE / LOOK: one of the NPC's Marker3D children (a floor point), by name
 	set(v): mark = v; _named()
 @export var run := false: ## MOVE: run instead of walk
 	set(v): run = v; _named()

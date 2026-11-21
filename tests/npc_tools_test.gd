@@ -2,7 +2,7 @@
 extends "res://tests/editor_test.gd"
 ## Editor-side test of the NPC Tools plugin: the builder icon, New NPC Type (an inherited scene),
 ## New NPC (instanced, selected, undoable), the selected-NPC menu, the Add Interaction templates,
-## Add Mark and the surface pick under the cursor.
+## Add Mark (saved with the scene) and the surface pick under the cursor.
 ## Godot_console.exe --headless --path . -e res://tests/npc_tools_test.tscn -- --npc-tools-test
 
 
@@ -32,7 +32,7 @@ func run() -> void:
 	var hist := ur.get_history_undo_redo(ur.get_object_history_id(self))
 	var n: Node3D = nt.add_npc("res://npc/npc.tscn")
 	check(n is Npc and n.get_parent() == self and n.owner == self and n.scene_file_path == "res://npc/npc.tscn", "NPC instanced into the scene, saved as an instance")
-	check(n.get_node("Marks").owner != self, "the instance's own nodes stay the instance's")
+	check(n.get_node("Visual").owner != self, "the instance's own nodes stay the instance's")
 	check(nt.all_npcs() == [n] and EditorInterface.get_selection().get_selected_nodes() == [n], "listed and selected")
 	await frames(1)
 	check(nt._npc_menu.visible, "selected-NPC menu shows")
@@ -51,8 +51,14 @@ func run() -> void:
 
 	var m1: Marker3D = nt.place_mark(n, Vector3(3, 0, 0))
 	var m2: Marker3D = nt.place_mark(n, Vector3(0, 0, 3))
-	check(m1.get_parent() == n.get_node("Marks") and m1.name == &"Mark" and m2.name == &"Mark2" and m1.owner == self and m1.global_position.is_equal_approx(Vector3(3, 0, 0)), "marks placed")
+	check(m1.get_parent() == n and m1.name == &"Mark" and m2.name == &"Mark2" and m1.owner == self and m1.global_position.is_equal_approx(Vector3(3, 0, 0)), "marks placed")
 	check(EditorInterface.get_selection().get_selected_nodes() == [n], "the NPC stays selected while placing marks")
+	var saved := PackedScene.new()
+	saved.pack(self)
+	var names := []
+	for k in saved.get_state().get_node_count():
+		names.append(saved.get_state().get_node_name(k))
+	check(names.has(&"Mark") and names.has(&"Mark2"), "marks are saved with the scene")
 	check(nt.pick_surface(Vector3(50, 10, 50), Vector3.DOWN, -0.8).is_equal_approx(Vector3(50, -0.8, 50)), "no collider: plane at the feet")
 	var body := StaticBody3D.new() # box top at y 1
 	var cs := CollisionShape3D.new()
@@ -75,7 +81,7 @@ func run() -> void:
 
 	hist.undo() # mark 2
 	hist.undo() # mark 1
-	check(n.get_node("Marks").get_child_count() == 0, "undo marks")
+	check(n.get_children().all(func(c: Node) -> bool: return not c is Marker3D), "undo marks")
 	for k in 4: # the four interactions...
 		hist.undo()
 	hist.undo() # ...then the NPC itself

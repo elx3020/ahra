@@ -9,8 +9,10 @@ extends EditorPlugin
 ## While an NPC is selected a second icon menu configures it:
 ## - Add Interaction: Talk once, Talk (versions), Bark (near, doesn't hold the player), Leave;
 ##   each gets a unique id and placeholder lines to edit in the inspector;
-## - Add Mark: the next click in the viewport puts a Marker3D under the NPC's Marks, on the
-##   surface under the cursor (Esc cancels). Marks are floor points the NPC walks to and looks at.
+## - Add Mark: the next click in the viewport puts a Marker3D child on the NPC, on the surface
+##   under the cursor (Esc cancels). Marks are floor points the NPC walks to and looks at; they
+##   are children of the NPC's root, which an instanced scene saves (nodes added under the
+##   instance's own nodes would need Editable Children).
 ## The inspector does the rest (summaries on each row, fields per step kind, config warnings).
 ## Every change is undoable.
 
@@ -309,21 +311,21 @@ func start_mark(npc: Npc) -> void:
 	_refresh()
 
 
-## Undoable: a Marker3D under `npc`'s Marks at global `at` (Mark, Mark2...).
+## Undoable: a Marker3D child of `npc` at global `at` (Mark, Mark2...).
 func place_mark(npc: Npc, at: Vector3) -> Marker3D:
 	var m := Marker3D.new()
 	m.name = "Mark"
 	var ur := EditorInterface.get_editor_undo_redo()
 	ur.create_action("Add NPC mark", UndoRedo.MERGE_DISABLE, npc)
-	ur.add_do_method(self, &"_add_mark", npc.get_node(^"Marks"), m, at, EditorInterface.get_edited_scene_root())
+	ur.add_do_method(self, &"_add_mark", npc, m, at, EditorInterface.get_edited_scene_root())
 	ur.add_do_reference(m)
-	ur.add_undo_method(npc.get_node(^"Marks"), &"remove_child", m)
+	ur.add_undo_method(npc, &"remove_child", m)
 	ur.commit_action()
 	return m
 
 
-func _add_mark(marks: Node, m: Marker3D, at: Vector3, root: Node) -> void:
-	marks.add_child(m, true)
+func _add_mark(npc: Node, m: Marker3D, at: Vector3, root: Node) -> void:
+	npc.add_child(m, true)
 	m.owner = root
 	m.global_position = at
 

@@ -4,7 +4,7 @@ extends CharacterBody3D
 ## A non-player character the player talks to. It holds an ordered list of NpcInteractions,
 ## started by the interact key in its Talk zone (KEY) or by the player coming close (NEAR).
 ## No state machine: it is either idle (the head follows the player when close) or running one
-## interaction. Marks (Marker3D children of Marks) are floor points its steps walk to and look at
+## interaction. Marks (its Marker3D children) are floor points its steps walk to and look at
 ## (the head looks 1.5 m above a mark: someone standing there).
 ## Memory lives in World.npcs under this placement's Channels.id: plays per interaction, whether
 ## it left, and where it stands, so a moved NPC stays moved and a departed one stays gone.
@@ -316,7 +316,7 @@ func _exit_tree() -> void:
 
 func _get_configuration_warnings() -> PackedStringArray:
 	var out := PackedStringArray()
-	var mark_names := get_node(^"Marks").get_children().map(func(m: Node) -> StringName: return StringName(m.name))
+	var mark_names := get_children().filter(func(m: Node) -> bool: return m is Marker3D).map(func(m: Node) -> StringName: return StringName(m.name))
 	var ids := {}
 	for at in interactions.size():
 		var i := interactions[at]
@@ -343,7 +343,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 						out.append("%s: a say step has no lines." % label)
 				NpcStep.Kind.MOVE, NpcStep.Kind.LOOK:
 					if (s.kind == NpcStep.Kind.MOVE or s.look == NpcStep.Look.MARK) and s.mark not in mark_names:
-						out.append("%s: mark \"%s\" isn't a child of Marks." % [label, s.mark])
+						out.append("%s: mark \"%s\" isn't one of its Marker3D children." % [label, s.mark])
 				NpcStep.Kind.LEAVE:
 					left = true
 	return out
@@ -370,8 +370,8 @@ func refresh_presence() -> void:
 # --- walking ------------------------------------------------------------------------------
 
 func _cache_marks() -> void:
-	for m in $Marks.get_children():
-		if m is Node3D:
+	for m in get_children():
+		if m is Marker3D:
 			marks[StringName(m.name)] = m.global_position
 
 
