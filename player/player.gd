@@ -455,6 +455,15 @@ func aim_dir() -> Vector3:
 				and e.cast(from, e.global_position).is_empty(): # cast skips bodies: terrain in the way
 			best = to.normalized()
 			best_d = to.length()
+	var space := get_world_3d().direct_space_state
+	for n: Node in get_tree().get_nodes_in_group(&"aim_target"): # energy switches
+		var t := n as Node3D
+		var to := t.global_position - from
+		if to.length() < best_d and facing.angle_to(to.slide(up_direction)) <= deg_to_rad(25.0):
+			var ray := PhysicsRayQueryParameters3D.create(from, t.global_position, 0xFFFFFFFF, [get_rid()])
+			if space.intersect_ray(ray).get("collider") == t: # in sight
+				best = to.normalized()
+				best_d = to.length()
 	return best
 
 

@@ -7,7 +7,7 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 6
+const SECTIONS := 7
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
@@ -30,7 +30,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -342,6 +342,32 @@ func _test_door() -> void:
 	sections += 1
 
 
+func _test_energy() -> void:
+	_course(Vector3(0, 1, 0))
+	var sw := _energy(Vector3(0.8, 1.3, -8), &"e_ch") # slightly off the facing line
+	var door := _door(Vector3(6, 1.5, 0), &"e_ch")
+	player.facing = Vector3.FORWARD
+	await _wait(10)
+	var to: Vector3 = (sw.global_position - (player.global_position + player.up_direction * 0.3)).normalized()
+	_check(player.aim_dir().dot(to) > 0.99 and sw.kind() == "energy", "aim assist finds the switch")
+	await _press(&"shoot")
+	await _wait(45) # the shot's flight, then open_time
+	_check(door.amount > 0.8 and absf(door.amount - sw.fraction()) < 0.02, "a shot opens the door at once; it then follows the energy")
+	await _wait_until(func() -> bool: return sw.fraction() <= 0.5, 240)
+	_check(absf(door.amount - 0.5) < 0.05, "half the energy gone: half shut")
+	for i in 3:
+		await _press(&"shoot")
+		await _wait(25)
+	var e: Dictionary = world.switches[sw.switch_id()]
+	_check(is_equal_approx(e.end - e.shot_at, 12.0), "more shots stack, capped at time_to_close x max_shots")
+	var end_before: float = e.end
+	player.teleport(Vector3(0.8, 1, -7)) # melee range of the switch
+	await _press(&"attack")
+	await _wait(30)
+	_check(world.switches[sw.switch_id()].end == end_before, "melee doesn't charge it")
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -432,6 +458,20 @@ func _door(at: Vector3, ch: StringName) -> AnimatableBody3D:
 	d.add_child(cs)
 	course.add_child(d)
 	return d
+
+
+## An energy switch (a 0.6 m box) on channel `ch`.
+func _energy(at: Vector3, ch: StringName) -> AnimatableBody3D:
+	var e: AnimatableBody3D = load("res://puzzle/energy_switch.gd").new()
+	e.channel = ch
+	e.position = at
+	var cs := CollisionShape3D.new()
+	var s := BoxShape3D.new()
+	s.size = Vector3(0.6, 0.6, 0.6)
+	cs.shape = s
+	e.add_child(cs)
+	course.add_child(e)
+	return e
 
 
 func _flat(v: Vector3) -> Vector3:

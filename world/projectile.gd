@@ -2,8 +2,9 @@ class_name Projectile
 extends Node3D
 ## A straight shot. Each physics frame it ray-casts from where it is to where it goes next, so it
 ## never tunnels. Hitting an Enemy calls Enemy.hit, hitting the Player calls Player.damage (ready
-## for enemy shooters), anything else just ends it. The shooter (`source`) is ignored; a Player
-## source registers the hit or miss for its mood. The scene's mesh is the slot for shot VFX.
+## for enemy shooters), anything with shot() (an EnergySwitch) charges it, anything else just
+## ends it. The shooter (`source`) is ignored; a Player source registers the hit or miss for its
+## mood. The scene's mesh is the slot for shot VFX.
 
 @export var speed := 30.0
 @export var life := 1.5 ## seconds before it fizzles out (a miss)
@@ -47,6 +48,9 @@ func _finish(target: Object) -> void:
 		landed = (target as Enemy).hit(damage, push, global_position)
 	elif target is Player:
 		(target as Player).damage(damage, global_position)
+	elif target and target.has_method(&"shot"): # an EnergySwitch (by method: it reaches World)
+		target.shot()
+		landed = true
 	if is_instance_valid(source) and source is Player:
 		(source as Player).register_attack(landed) # a hit the enemy ignored (puppet, i-frames) is a miss
 	queue_free()
