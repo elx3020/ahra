@@ -99,6 +99,8 @@ func _start() -> void:
 
 
 ## This placement's key in World.npcs: area and path (Channels.id).
+## ponytail: keyed by node path, so renaming or moving the NPC node forgets its memory; add a
+## stable key export if saves must survive scene edits.
 func memory_id() -> String:
 	return Channels.id(self)
 
