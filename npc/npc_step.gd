@@ -15,17 +15,18 @@ const FIELDS := {
 	Kind.ANIM: ["anim", "time"],
 	Kind.FACE: ["face"],
 	Kind.LOOK: ["look", "mark"],
-	Kind.MOVE: ["mark", "run", "wait"],
+	Kind.MOVE: ["mark", "run", "wait", "lines", "room"],
 	Kind.SOUND: ["sound", "sound_wait"],
 	Kind.WAIT: ["time"],
 	Kind.FLAG: ["flag", "value"],
 	Kind.LEAVE: ["flag", "fade"],
 }
-const ALL := ["lines", "time", "anim", "face", "look", "mark", "run", "wait", "sound", "sound_wait", "flag", "value", "fade"]
+const ALL := ["lines", "time", "anim", "face", "look", "mark", "run", "wait", "room", "sound", "sound_wait", "flag", "value", "fade"]
 
 @export var kind := Kind.SAY:
 	set(v): kind = v; notify_property_list_changed(); _named()
 ## SAY: versions of the line; one is picked at random, never the one shown last time.
+## MOVE: said instead of walking while the player is within `room` of the way (none: no check).
 @export var lines: PackedStringArray:
 	set(v): lines = v; _named()
 ## SAY: seconds a line shows when the interaction doesn't lock the player (0: from its length).
@@ -44,6 +45,9 @@ const ALL := ["lines", "time", "anim", "face", "look", "mark", "run", "wait", "s
 	set(v): run = v; _named()
 @export var wait := true: ## MOVE: wait for the arrival; off: the next step starts while walking
 	set(v): wait = v; _named()
+## MOVE with lines: metres the player must keep from the way (the line from the NPC to the mark).
+@export var room := 1.0:
+	set(v): room = v; _named()
 @export var sound: AudioStream: ## SOUND: played on the NPC's Voice
 	set(v): sound = v; _named()
 @export var sound_wait := false: ## SOUND: wait until it ends
@@ -76,7 +80,8 @@ func summary() -> String:
 		Kind.LOOK:
 			return "look " + ["player", "mark %s" % mark, "ahead"][look]
 		Kind.MOVE:
-			return "move → %s" % mark + (" (run)" if run else "") + ("" if wait else " (no wait)")
+			return "move → %s" % mark + (" (run)" if run else "") + ("" if wait else " (no wait)") \
+				+ (" (room %.1f m)" % room if not lines.is_empty() else "")
 		Kind.SOUND:
 			if sound == null:
 				return "sound none"

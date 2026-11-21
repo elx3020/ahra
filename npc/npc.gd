@@ -245,25 +245,30 @@ func play(i: NpcInteraction, from_step := 0) -> void:
 	_end()
 
 
+## Shows one of `s.lines` in the bubble until interact (locked) or its time (unlocked).
+func _say(s: NpcStep, run: int) -> void:
+	var at := s.pick_line(_last_line.get(s, -1))
+	_last_line[s] = at
+	line = s.lines[at]
+	speaking = true
+	bubble.text = line + (" ▸" if _locked else "")
+	bubble.visible = true
+	cue.emit(&"say")
+	if _locked:
+		await _advanced
+	else:
+		await _sleep(s.say_time(line))
+	if run == _run:
+		_hush()
+
+
 func _do(s: NpcStep, run: int) -> void:
 	match s.kind:
 		NpcStep.Kind.SAY:
 			if s.lines.is_empty():
 				push_warning("%s: a say step has no lines" % name)
 				return
-			var at := s.pick_line(_last_line.get(s, -1))
-			_last_line[s] = at
-			line = s.lines[at]
-			speaking = true
-			bubble.text = line + (" ▸" if _locked else "")
-			bubble.visible = true
-			cue.emit(&"say")
-			if _locked:
-				await _advanced
-			else:
-				await _sleep(s.say_time(line))
-			if run == _run:
-				_hush()
+			await _say(s, run)
 		NpcStep.Kind.ANIM:
 			anim = s.anim
 			if s.time > 0.0:
@@ -279,6 +284,15 @@ func _do(s: NpcStep, run: int) -> void:
 		NpcStep.Kind.MOVE:
 			if not marks.has(s.mark):
 				push_warning("%s: no mark %s to walk to" % [name, s.mark])
+				return
+			if not s.lines.is_empty() and in_way(marks[s.mark], s.room): # not with the player there: say so, stop here
+				await _say(s, run)
+				if run != _run:
+					return
+				var plays: Dictionary = memory().plays
+				plays[key_of(playing)] = maxi(plays.get(key_of(playing), 0) - 1, 0) # not counted: tried again next time
+				_run += 1
+				_end()
 				return
 			walk_to(marks[s.mark], s.run)
 			if s.wait:
@@ -513,6 +527,17 @@ func stop_walk() -> void:
 func taken(point: Vector3) -> bool:
 	var p := player()
 	return p != null and (p.global_position - point).slide(up_direction).length() < CLEARANCE
+
+
+## Whether the player stands within `room` (planar) of the way from here to `point`: the
+## straight segment, so standing on `point` counts and standing past it doesn't.
+func in_way(point: Vector3, room: float) -> bool:
+	var p := player()
+	if p == null:
+		return false
+	var to := (point - global_position).slide(up_direction)
+	var at := (p.global_position - global_position).slide(up_direction)
+	return Geometry3D.get_closest_point_to_segment(at, Vector3.ZERO, to).distance_to(at) < room
 
 
 func walking() -> bool:

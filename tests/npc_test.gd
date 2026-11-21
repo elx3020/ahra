@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 18
+const SECTIONS := 19
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_routine, _test_review2, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_routine, _test_review2, _test_room, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -696,6 +696,78 @@ func _test_review2() -> void:
 	await _press(&"interact")
 	await _wait(3)
 	_check(await _wait_until(func() -> bool: return world.flag(&"chore_done") == 1, 400), "a once routine cut by a talk resumes and finishes")
+	sections += 1
+
+
+## A MOVE with lines refuses to walk while the player is within `room` of its way.
+func _test_room() -> void:
+	world.reset_story()
+	_course()
+	var mv := _step(NpcStep.Kind.MOVE, {mark = &"M", lines = PackedStringArray(["You're in my way."]), room = 1.2})
+	_check(mv.resource_name == "move → M (room 1.2 m)", "summary: " + mv.resource_name)
+	_check(_editor_fields(mv).has("lines") and _editor_fields(mv).has("room") and not _editor_fields(_say(["x"])).has("room"), "MOVE shows lines and room")
+	var t := _talk(&"t", [_say(["Want me to move?"]), mv, _say(["Done"])], {once = true})
+	var n := _npc(Vector3(0, 1, 8), [t], {}, "Mover", {"M": Vector3(4, -0.8, 0)})
+	await _wait(5)
+	var start := _flat(n.global_position)
+	# in_way: the segment, the mark end counts, beyond the mark doesn't
+	player.teleport(n.marks[&"M"] + Vector3(0, 0.8, 0))
+	await _wait(3)
+	_check(n.in_way(n.marks[&"M"], 1.0), "standing on the mark is in the way")
+	player.teleport(n.marks[&"M"] + Vector3(2.5, 0.8, 0))
+	await _wait(3)
+	_check(not n.in_way(n.marks[&"M"], 1.0), "beyond the mark isn't")
+	# on the line: complains, stays, the once talk isn't spent
+	await _start_key(n) # player at +1.5 x: on the line
+	_check(n.line == "Want me to move?", "talk starts")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.line == "You're in my way." and not n.walking(), "complains instead of walking")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.playing == null and player.state_name != &"puppet" and _flat(n.global_position).distance_to(start) < 0.1, "the talk ends there, the NPC stays, the player is free")
+	_check(n.choose(NpcInteraction.Trigger.KEY) == t, "the once talk isn't spent")
+	# clear of the way: walks, finishes, the once talk is spent
+	player.teleport(n.global_position + Vector3(0, 0, 1.5))
+	await _wait(5)
+	await _press(&"interact")
+	await _wait(3)
+	await _press(&"interact")
+	_check(await _wait_until(func() -> bool: return n.line == "Done", 300), "clear: walks and goes on")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.choose(NpcInteraction.Trigger.KEY) == null, "finished: the once talk is spent")
+	# no lines: no check
+	var plain := _npc(Vector3(20, 1, 8), [_talk(&"p", [_say(["Hi"]), _step(NpcStep.Kind.MOVE, {mark = &"M"})])], {}, "Plain", {"M": Vector3(4, -0.8, 0)})
+	await _start_key(plain)
+	await _press(&"interact")
+	await _wait(3)
+	_check(plain.walking() or plain.playing == null, "no lines: walks as before")
+	await _wait_until(func() -> bool: return plain.playing == null, 400)
+	# lines but a missing mark: warns and skips, no complaint
+	var lost := _npc(Vector3(-20, 1, 8), [_talk(&"l", [_step(NpcStep.Kind.MOVE, {mark = &"Nope", lines = PackedStringArray(["Hey"])}), _say(["After"])])], {}, "Lost")
+	await _start_key(lost)
+	_check(lost.line == "After", "a missing mark is skipped, no complaint")
+	await _press(&"interact")
+	await _wait(3)
+	# a routine that complains restarts its loop, one complaint per say_time; a talk cuts it mid-complaint
+	var chore := _talk(&"c", [_step(NpcStep.Kind.MOVE, {mark = &"M", lines = PackedStringArray(["Excuse me!"])}), _step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var busy := _npc(Vector3(0, 1, -8), [chore, _talk(&"k", [_say(["Yes?"])])], {}, "Busy", {"M": Vector3(4, -0.8, 0)})
+	player.teleport(busy.global_position + Vector3(1.5, 0, 0))
+	var says := 0
+	var was := ""
+	for k in 180: # 3 s: "Excuse me!" shows 1.4 s each time
+		await physics_frame
+		if busy.line == "Excuse me!" and was != "Excuse me!":
+			says += 1
+		was = busy.line
+	_check(says >= 2 and says <= 3 and busy.playing == chore, "a routine complains, then starts over (%d complaints in 3 s)" % says)
+	await _press(&"interact")
+	await _wait(3)
+	_check(busy.line == "Yes?", "a talk cuts the routine mid-complaint")
+	await _press(&"interact")
+	await _wait(5)
+	_check(busy.playing == chore and busy.step_at == 0, "after the talk the routine is back at its walk")
 	sections += 1
 
 
