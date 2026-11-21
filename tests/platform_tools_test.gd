@@ -497,6 +497,11 @@ func run() -> void:
 	reg_script.bake()
 	check(load(SwitchRegistry.PATH) is SwitchRegistry, "bake writes the switch registry")
 	check(not reg_script.bake(), "an unchanged bake doesn't rewrite the file")
+	var held_reg := load(SwitchRegistry.PATH) as SwitchRegistry # like the inspector holding it: the cached copy goes stale
+	held_reg.channels["zz:stale"] = []
+	reg_script.bake()
+	check(not reg_script.bake(), "a stale cached copy held elsewhere doesn't make every bake rewrite the file (no loop)")
+	held_reg.channels.erase("zz:stale")
 	var plate: Node = load("res://puzzle/weight_plate.gd").new()
 	check(pt._channel_inspector._can_handle(plate), "the channel picker handles weight plates")
 	plate.free()

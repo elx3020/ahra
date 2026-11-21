@@ -339,6 +339,16 @@ func _test_door() -> void:
 	var orphan := _door(Vector3(20, 1.5, 5), &"nobody")
 	await _wait(10)
 	_check(lonely.amount == 0.0 and not lonely._get_configuration_warnings().is_empty() and orphan.amount == 0.0, "no channel / no switches: shut, warned, no errors")
+	_check(not orphan._get_configuration_warnings().is_empty(), "a channel no switch uses: warned (a typo would never open)")
+	# no lifting through a closed door: the player pressed against it, a box against its far side
+	player.teleport(Vector3(0, 1, 4.4)) # first: the push-out left the player where the weight goes
+	player.facing = Vector3.BACK
+	await _wait(10)
+	var past := _weight(Vector3(0, 0.55, 5.75)) # 5 cm clear of the door
+	await _wait(30)
+	_check(_flat(past.global_position - player.global_position).length() < 1.45, "(the weight is within reach, only the door is between)")
+	await _press(&"carry")
+	_check(door.amount == 0.0 and player.held == null and past.carrier == null, "a weight behind a closed door can't be lifted through it")
 	sections += 1
 
 

@@ -10,7 +10,10 @@ extends MovingPlatform
 
 signal cue(name: StringName) ## open, close, locked (open for good: its channel is solved)
 
-@export var channel: StringName
+@export var channel: StringName:
+	set(v):
+		channel = v
+		update_configuration_warnings()
 @export var open_offset := Vector3(0, 3, 0) ## slide when fully open, in the door's own axes
 @export var open_time := 0.4 ## seconds to open, and to close when plates release
 
@@ -115,4 +118,18 @@ func _push_out(next: float) -> void:
 func _get_configuration_warnings() -> PackedStringArray:
 	if channel == &"":
 		return PackedStringArray(["Set a channel: the door opens when every switch on it is on."])
+	if is_inside_tree() and not _has_switches():
+		return PackedStringArray(["No switch uses channel %s (in any saved scene or this one): the door would never open." % _key()])
 	return PackedStringArray()
+
+
+## Some switch uses the channel: the baked registry (every saved scene) or a loaded one. Not
+## through World: the autoload doesn't run in the editor.
+func _has_switches() -> bool:
+	var key := _key()
+	if ResourceLoader.exists(SwitchRegistry.PATH):
+		var reg := load(SwitchRegistry.PATH) as SwitchRegistry
+		if reg and reg.channels.has(String(key)):
+			return true
+	return get_tree().get_nodes_in_group(&"door_switch").any(func(n: Node) -> bool:
+		return Channels.key(n, n.channel) == key)

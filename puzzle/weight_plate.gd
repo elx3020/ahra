@@ -17,7 +17,10 @@ enum Mode { HOLD, LATCH }
 
 const WARMUP := 3 ## physics frames after loading before it reads what rests on it
 
-@export var channel: StringName
+@export var channel: StringName:
+	set(v):
+		channel = v
+		update_configuration_warnings()
 @export var mode := Mode.HOLD
 @export var on_color := Color(0.3, 1.0, 0.4, 0.5)
 @export var locked_color := Color(1.0, 0.8, 0.3, 0.5)

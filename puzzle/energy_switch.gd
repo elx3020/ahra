@@ -10,7 +10,10 @@ extends MovingPlatform
 
 signal cue(name: StringName) ## charge, empty
 
-@export var channel: StringName
+@export var channel: StringName:
+	set(v):
+		channel = v
+		update_configuration_warnings()
 @export var time_to_close := 4.0 ## seconds of energy per shot
 @export var max_shots := 3 ## the energy cap is time_to_close * max_shots
 @export var on_color := Color(0.4, 0.85, 1.0)

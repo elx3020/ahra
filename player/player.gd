@@ -470,7 +470,8 @@ func aim_dir() -> Vector3:
 # --- carrying weights ---------------------------------------------------------
 
 ## The weight `carry` would lift: the nearest one within reach and 60 degrees of facing, about
-## level with the player, not carried and not the one under the player's feet.
+## level with the player and in sight (not through a door), not carried and not the one under the
+## player's feet.
 func weight_in_reach() -> WeightBody:
 	var under := []
 	for i in get_slide_collision_count():
@@ -486,8 +487,10 @@ func weight_in_reach() -> WeightBody:
 		var to := w.global_position - global_position
 		var flat := to.slide(up_direction)
 		if flat.length() <= best_d and absf(to.dot(up_direction)) < 1.2 and flat.length() > 0.05 				and facing.angle_to(flat) <= deg_to_rad(60.0):
-			best = w
-			best_d = flat.length()
+			var sight := PhysicsRayQueryParameters3D.create(global_position + up_direction * 0.3, w.global_position, 0xFFFFFFFF, [get_rid()])
+			if get_world_3d().direct_space_state.intersect_ray(sight).get("collider") == w: # not through a door or a wall
+				best = w
+				best_d = flat.length()
 	return best
 
 

@@ -91,7 +91,9 @@ static func bake() -> bool:
 				data[sw[0]] = []
 			data[sw[0]].append([sw[1], sw[2]])
 	if ResourceLoader.exists(SwitchRegistry.PATH):
-		var old := load(SwitchRegistry.PATH) as SwitchRegistry
+		# the file, not the cache: a copy held elsewhere (the inspector) goes stale after a save, and
+		# comparing against it would re-save on every filesystem change
+		var old := ResourceLoader.load(SwitchRegistry.PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as SwitchRegistry
 		if old and old.channels == data:
 			return false
 	var reg := SwitchRegistry.new()
