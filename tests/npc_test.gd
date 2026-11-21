@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 10
+const SECTIONS := 12
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -321,6 +321,86 @@ func _test_edges() -> void:
 	_check(good._get_configuration_warnings().is_empty(), "no warnings when all is well")
 	bad.free()
 	good.free()
+	sections += 1
+
+
+func _test_near() -> void:
+	world.reset_story()
+	_course()
+	var bark := _talk(&"bark", [_say(["Hey"], {time = 0.3})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false})
+	var n := _npc(Vector3(0, 1, 0), [bark, _talk(&"talk", [_say(["Talk"])])])
+	var plays := func() -> int: return world.npcs.get(n.memory_id(), {}).get("plays", {}).get("bark", 0)
+	await _wait(10)
+	_check(plays.call() == 0, "far: nothing")
+	player.teleport(Vector3(3, 1, 0))
+	await _wait(5)
+	_check(n.playing == bark and n.line == "Hey" and player.state_name != &"puppet", "near: barks without locking")
+	await _wait(60)
+	_check(n.playing == null and plays.call() == 1, "bark ends on its timer, no refire while staying")
+	player.teleport(Vector3(4.5, 1, 0))
+	await _wait(5)
+	player.teleport(Vector3(3, 1, 0))
+	await _wait(5)
+	_check(plays.call() == 1, "inside distance + 1 m: still disarmed")
+	player.teleport(Vector3(6, 1, 0))
+	await _wait(5)
+	player.teleport(Vector3(3, 1, 0))
+	await _wait(5)
+	_check(plays.call() == 2, "re-armed after leaving distance + 1 m")
+	player.teleport(Vector3(12, 1, 0))
+	await _wait(60)
+	_check(n.playing == null, "walking away mid-bark: it still ends")
+	player.teleport(Vector3(1.5, 1, 0))
+	await _wait(5) # the bark fires on approach
+	_check(n.playing == bark, "barking when the player reaches the talk zone")
+	await _press(&"interact")
+	await _wait(3)
+	_check(n.line == "Talk" and player.state_name == &"puppet", "interact during a bark starts the key talk")
+	await _press(&"interact")
+	await _wait(3)
+	sections += 1
+
+
+func _test_leave() -> void:
+	world.reset_story()
+	_course()
+	var make := func() -> Node3D: return _npc(Vector3(0, 1, 0), [_talk(&"bye", [_say(["Bye"]), _step(NpcStep.Kind.LEAVE, {flag = &"mara_at_dock", fade = 0.1})])], {}, "Mara")
+	var mara: Node3D = make.call()
+	var copy := _npc(Vector3(10, 1, 0), [], {appears_if = PackedStringArray(["mara_at_dock"])}, "MaraDock")
+	await _wait(10)
+	_check(not copy.present, "copy absent at first")
+	await _start_key(mara)
+	await _press(&"interact")
+	var darkest := 0.0
+	var locked_at_black := false
+	for k in 30:
+		await physics_frame
+		darkest = maxf(darkest, world.fade_rect.color.a)
+		if world.fade_rect.color.a > 0.99:
+			locked_at_black = player.state_name == &"puppet"
+	await _wait(10)
+	_check(darkest > 0.99 and is_zero_approx(world.fade_rect.color.a) and locked_at_black, "fades to black and back, player held meanwhile (darkest %.2f, end %.2f, held %s)" % [darkest, world.fade_rect.color.a, locked_at_black])
+	_check(not mara.present and not mara.visible and mara.get_node("Collision").disabled and copy.present, "gone; the copy appears")
+	_check(world.flag(&"mara_at_dock") == 1 and player.state_name != &"puppet" and mara.playing == null, "flag set, player released")
+	course.remove_child(mara)
+	mara.free()
+	mara = make.call()
+	await _wait(3)
+	_check(not mara.present, "still gone after reload")
+	world.reset_story()
+	await _wait(3)
+	_check(mara.present and not copy.present, "reset_story: back, copy gone")
+
+	# an unlocked leave (a bark) still holds the player through the fade
+	var shy := _npc(Vector3(0, 1, 8), [_talk(&"shy", [_step(NpcStep.Kind.LEAVE, {fade = 0.1})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false})], {}, "Shy")
+	await _wait(5)
+	player.teleport(Vector3(2, 1, 8))
+	var held := false
+	for k in 20:
+		await physics_frame
+		held = held or player.state_name == &"puppet"
+	await _wait(10)
+	_check(held and not shy.present and player.state_name != &"puppet", "bark leave: player held during the fade, then released")
 	sections += 1
 
 

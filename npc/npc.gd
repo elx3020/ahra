@@ -18,6 +18,7 @@ signal _advanced ## the interact key, during a locked interaction
 const ARRIVE := 0.3 ## m from the walk target that counts as there
 const HEAD_YAW := 75.0 ## degrees the head turns either way
 const HEAD_PITCH := 35.0
+const LEAVE_HOLD := 0.15 ## seconds a leave holds the screen black between its two fades
 
 @export var interactions: Array[NpcInteraction] = []:
 	set(v):
@@ -52,6 +53,7 @@ var _ended_frame := -1 ## physics frame the last one ended on (its closing press
 var _look_mode := -1 ## -1: default look; else the NpcStep.Look a step set
 var _look_mark: StringName
 var _last_line := {} ## NpcStep -> index of the version shown last
+var _armed := {} ## NEAR NpcInteraction -> false once fired, until the player is beyond distance + 1 m
 var _target: Variant = null ## walk target (global), or null
 var _running := false
 var _walk_left := 0.0 ## seconds before a walk gives up and snaps to its target
@@ -226,8 +228,44 @@ func _do(s: NpcStep, run: int) -> void:
 		NpcStep.Kind.FLAG:
 			if s.flag:
 				World.set_flag(s.flag, s.value)
-		NpcStep.Kind.LEAVE:
-			push_warning("%s: leave isn't supported yet" % name)
+		NpcStep.Kind.LEAVE: # fade out, gone for good (memory), flag set, fade in; the interaction ends
+			var p := player()
+			if not _locked and p:
+				_locked = true # a bark that leaves still holds the player through the fade
+				p.start_puppet()
+			await World.fade(1.0, s.fade)
+			memory().gone = true
+			if s.flag:
+				World.set_flag(s.flag) # flags_changed: this NPC goes, copies waiting on the flag come
+			refresh_presence()
+			cue.emit(&"leave")
+			await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
+			await World.fade(0.0, s.fade)
+			_end()
+			_run += 1 # steps after a leave never run
+
+
+## NEAR interactions: the first available one (list order) whose distance holds the player fires
+## when it is armed and nothing plays. Firing disarms every NEAR interaction the player is within;
+## each re-arms once the player is beyond its distance + 1 m, so standing still never loops a bark.
+## Nothing fires while the player is held (talking to someone else).
+func _check_near(p: Player) -> void:
+	var d := p.global_position.distance_to(global_position)
+	var fire: NpcInteraction = null
+	for i in interactions:
+		if i == null or i.trigger != NpcInteraction.Trigger.NEAR:
+			continue
+		if d > i.distance + 1.0:
+			_armed[i] = true
+		elif fire == null and d <= i.distance and _armed.get(i, true) \
+				and i.available(World.flags, memory().plays.get(key_of(i), 0)):
+			fire = i
+	if fire == null or playing != null or p.state_name == &"puppet":
+		return
+	for i in interactions:
+		if i and i.trigger == NpcInteraction.Trigger.NEAR and d <= i.distance:
+			_armed[i] = false
+	play(fire)
 
 
 ## Back to idle: neutral face, default look, no bubble, position saved, player released.
@@ -366,6 +404,8 @@ func _physics_process(delta: float) -> void:
 		_advanced.emit()
 	var p := player()
 	prompt.visible = present and p != null and p.interactable == talk_zone and not _locked
+	if p:
+		_check_near(p)
 	_move(delta)
 	_look(delta)
 	_orient(delta)
