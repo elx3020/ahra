@@ -757,23 +757,27 @@ func _test_room() -> void:
 	await _press(&"interact")
 	await _wait(3)
 	# a routine that complains restarts its loop, one complaint per say_time; a talk cuts it mid-complaint
-	var chore := _talk(&"c", [_step(NpcStep.Kind.MOVE, {mark = &"M", lines = PackedStringArray(["Excuse me!"])}), _step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var chore := _talk(&"c", [_step(NpcStep.Kind.WAIT, {time = 0.5}), _step(NpcStep.Kind.MOVE, {mark = &"M", lines = PackedStringArray(["Excuse me!"])}), _step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
 	var busy := _npc(Vector3(0, 1, -8), [chore, _talk(&"k", [_say(["Yes?"])])], {}, "Busy", {"M": Vector3(4, -0.8, 0)})
 	player.teleport(busy.global_position + Vector3(1.5, 0, 0))
 	var says := 0
 	var was := ""
-	for k in 180: # 3 s: "Excuse me!" shows 1.4 s each time
+	for k in 180: # 3 s: a loop is 0.5 s of wait, then "Excuse me!" for 1.4 s
 		await physics_frame
 		if busy.line == "Excuse me!" and was != "Excuse me!":
 			says += 1
 		was = busy.line
 	_check(says >= 2 and says <= 3 and busy.playing == chore, "a routine complains, then starts over (%d complaints in 3 s)" % says)
+	await _wait_until(func() -> bool: return busy.line != "Excuse me!", 200)
+	await _wait_until(func() -> bool: return busy.line == "Excuse me!", 200) # a fresh complaint
 	await _press(&"interact")
 	await _wait(3)
 	_check(busy.line == "Yes?", "a talk cuts the routine mid-complaint")
+	await _wait(100) # past the cut complaint's own wait
+	_check(busy.line == "Yes?" and busy.playing != chore, "the cut complaint's leftover wait doesn't end the talk")
 	await _press(&"interact")
 	await _wait(5)
-	_check(busy.playing == chore and busy.step_at == 0, "after the talk the routine is back at its walk")
+	_check(busy.playing == chore and busy.step_at == 1 and busy.memory().plays.get("c", 0) == 1, "after the talk the routine resumes at its walk, counted once (step %d, plays %d)" % [busy.step_at, busy.memory().plays.get("c", 0)])
 	sections += 1
 
 
