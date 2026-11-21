@@ -383,10 +383,12 @@ script = ExtResource("7_qe6st")
 lines = PackedStringArray("Fine.")
 
 [sub_resource type="Resource" id="Resource_1hhkr"]
-resource_name = "move → Aside"
+resource_name = "move → Aside (room 1.2 m)"
 script = ExtResource("7_qe6st")
 kind = 4
+lines = PackedStringArray("You\'re in my way. Step back a bit.")
 mark = &"Aside"
+room = 1.2
 
 [sub_resource type="Resource" id="Resource_747s0"]
 resource_name = "face happy"
@@ -697,7 +699,8 @@ billboard = 1
 no_depth_test = true
 text = "PERFORMER (E): walks between marks, talks while walking,
 looks and points, faces, sounds; stays where he ends
-DOORMAN (E, right): steps aside for good (8 reloads: still aside)"
+DOORMAN (E, right): steps aside for good (8 reloads: still aside);
+stand in his way and he grumbles instead"
 font_size = 48
 outline_size = 14
 
