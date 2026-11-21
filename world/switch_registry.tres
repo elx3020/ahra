@@ -4,3 +4,13 @@
 
 [resource]
 script = ExtResource("1_3f1g8")
+channels = {
+"switches_a:ceil": [["switches_a:Bays/Gravity/CeilingPlate", "hold"]],
+"switches_a:cross": [["switches_a:Bays/CrossArea/Plate", "latch"], ["switches_b:Plate", "latch"]],
+"switches_a:hold": [["switches_a:Bays/Hold/Plate", "hold"]],
+"switches_a:lure": [["switches_a:Bays/Lure/Plate", "hold"]],
+"switches_a:sweep": [["switches_a:Bays/Lure/SweeperPlate", "hold"]],
+"switches_a:trio": [["switches_a:Bays/LatchTrio/PlateA", "latch"], ["switches_a:Bays/LatchTrio/PlateB", "latch"], ["switches_a:Bays/LatchTrio/PlateC", "latch"]],
+"switches_a:weight": [["switches_a:Bays/Weight/Plate", "hold"]],
+"switches_a:zap": [["switches_a:Bays/Energy/Switch", "energy"]]
+}

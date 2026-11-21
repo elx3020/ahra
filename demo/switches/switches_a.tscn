@@ -1,0 +1,707 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/switches/switches.gd" id="1_nattb"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_shl06"]
+[ext_resource type="Script" path="res://player/player.gd" id="3_3qwmi"]
+[ext_resource type="Script" path="res://player/stat_mods.gd" id="4_0e5ij"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="5_l8ivw"]
+[ext_resource type="Script" path="res://puzzle/weight_plate.gd" id="6_bjc8i"]
+[ext_resource type="Script" path="res://puzzle/door.gd" id="7_3jd44"]
+[ext_resource type="Script" path="res://puzzle/dispenser.gd" id="8_fvhsb"]
+[ext_resource type="PackedScene" path="res://puzzle/box.tscn" id="9_2wqcu"]
+[ext_resource type="Script" path="res://puzzle/weight_body.gd" id="10_mkv8t"]
+[ext_resource type="PackedScene" path="res://puzzle/ball.tscn" id="11_02nyc"]
+[ext_resource type="Script" path="res://puzzle/energy_switch.gd" id="12_blxvv"]
+[ext_resource type="Script" path="res://world/gravity_zone.gd" id="13_fpw1g"]
+[ext_resource type="PackedScene" path="res://npc/npc.tscn" id="14_r2of1"]
+[ext_resource type="Script" path="res://npc/npc.gd" id="15_arof4"]
+[ext_resource type="PackedScene" path="res://enemy/runner/runner.tscn" id="16_2ekdx"]
+[ext_resource type="Script" path="res://enemy/enemy.gd" id="17_mrbrx"]
+[ext_resource type="Script" path="res://npc/npc_interaction.gd" id="18_afaxc"]
+[ext_resource type="Script" path="res://npc/npc_step.gd" id="19_kwxcx"]
+[ext_resource type="Script" path="res://world/scene_door.gd" id="20_o4dig"]
+
+[sub_resource type="Environment" id="Environment_hk44w"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="Resource" id="Resource_g82e1"]
+script = ExtResource("4_0e5ij")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kl705"]
+albedo_color = Color(0.42, 0.44, 0.48, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_07vpe"]
+size = Vector3(420, 2, 220)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qn1vl"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vl1g4"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yr102"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_d3kuv"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0iuqr"]
+albedo_color = Color(0.3, 0.3, 0.35, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_dvwhb"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8xeoh"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_441xg"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nvf4r"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vxtqw"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_f8kwg"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vymeg"]
+albedo_color = Color(0.3, 0.3, 0.35, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0eukh"]
+size = Vector3(3, 0.5, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kmahe"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fyy81"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6w84j"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_464jb"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_l63wy"]
+size = Vector3(0.6, 0.6, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g3l5y"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4shq2"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_nytpq"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kjkbk"]
+albedo_color = Color(0.42, 0.44, 0.48, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qtfnp"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rxb2e"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g7fxq"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6b0il"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pqd3r"]
+size = Vector3(3, 4, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0oxxf"]
+size = Vector3(3, 2, 3)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rgvok"]
+albedo_color = Color(0.3, 0.3, 0.35, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_f70q7"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_im47y"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sernm"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hgkdh"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bejjj"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="Resource" id="Resource_lyjn4"]
+resource_name = "move → OnPlate"
+script = ExtResource("19_kwxcx")
+kind = 4
+mark = &"OnPlate"
+
+[sub_resource type="Resource" id="Resource_irfaq"]
+resource_name = "wait 2.0s"
+script = ExtResource("19_kwxcx")
+kind = 6
+time = 2.0
+
+[sub_resource type="Resource" id="Resource_ce4gv"]
+resource_name = "move → Away"
+script = ExtResource("19_kwxcx")
+kind = 4
+mark = &"Away"
+
+[sub_resource type="Resource" id="Resource_cbcj8"]
+resource_name = "wait 2.0s"
+script = ExtResource("19_kwxcx")
+kind = 6
+time = 2.0
+
+[sub_resource type="Resource" id="Resource_1e0ec"]
+resource_name = "rounds · routine · 4 steps"
+script = ExtResource("18_afaxc")
+id = &"rounds"
+trigger = 2
+locks_player = false
+steps = Array[ExtResource("19_kwxcx")]([SubResource("Resource_lyjn4"), SubResource("Resource_irfaq"), SubResource("Resource_ce4gv"), SubResource("Resource_cbcj8")])
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5b5rp"]
+size = Vector3(2, 0.3, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1kauc"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rgwaa"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jreo6"]
+size = Vector3(4, 3, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_i1vbj"]
+size = Vector3(2, 2, 2)
+
+[node name="SwitchesA" type="Node3D" unique_id=1690750798]
+script = ExtResource("1_nattb")
+bounds_center = Vector3(90, 0, 0)
+bounds_radius = 220.0
+area_id = &"switches_a"
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1677574318]
+environment = SubResource("Environment_hk44w")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=2021266071]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1111804186]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=206666438]
+
+[node name="Label" type="Label" parent="HUD" unique_id=1495315917]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1602617663 instance=ExtResource("2_shl06")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+script = ExtResource("3_3qwmi")
+progression = SubResource("Resource_g82e1")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=919355676]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -0.5, 0)
+use_collision = true
+size = Vector3(210, 1, 30)
+material = SubResource("StandardMaterial3D_kl705")
+
+[node name="Void" type="Area3D" parent="." unique_id=1583840207]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, -14, 0)
+script = ExtResource("5_l8ivw")
+color = Color(0, 0, 0, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="Void" unique_id=193028449]
+shape = SubResource("BoxShape3D_07vpe")
+
+[node name="Bays" type="Node3D" parent="." unique_id=767166347]
+
+[node name="Hold" type="Node3D" parent="Bays" unique_id=1324217669]
+
+[node name="Label" type="Label3D" parent="Bays/Hold" unique_id=1146073533]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "HOLD
+stand on the plate: the door is open while something rests on it
+R: carry the dispenser's box onto the plate, then walk through"
+
+[node name="Start" type="Marker3D" parent="Bays/Hold" unique_id=1360562465]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Plate" type="Area3D" parent="Bays/Hold" unique_id=953690736]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"hold"
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Hold/Plate" unique_id=674979161]
+shape = SubResource("BoxShape3D_qn1vl")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/Hold" unique_id=1885644066]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_vl1g4")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/Hold" unique_id=393619666]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_yr102")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/Hold" unique_id=113442762]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"hold"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Hold/Door" unique_id=1508739516]
+shape = SubResource("BoxShape3D_d3kuv")
+
+[node name="Dispenser" type="Node3D" parent="Bays/Hold" unique_id=418436332]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2, 1)
+script = ExtResource("8_fvhsb")
+channel = &"hold"
+
+[node name="Hatch" type="CSGBox3D" parent="Bays/Hold/Dispenser" unique_id=1650332932]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+size = Vector3(1.6, 0.2, 1.6)
+material = SubResource("StandardMaterial3D_0iuqr")
+
+[node name="LatchTrio" type="Node3D" parent="Bays" unique_id=1060348616]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/LatchTrio" unique_id=1754744631]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "LATCH TRIO
+all three plates down at once: they lock and the door stays open for good
+the dispenser keeps 2 boxes out: drop one in the lava and it makes a new one
+(until the door is locked)"
+
+[node name="Start" type="Marker3D" parent="Bays/LatchTrio" unique_id=637165563]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="PlateA" type="Area3D" parent="Bays/LatchTrio" unique_id=490388137]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"trio"
+mode = 1
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/LatchTrio/PlateA" unique_id=720938609]
+shape = SubResource("BoxShape3D_dvwhb")
+
+[node name="PlateB" type="Area3D" parent="Bays/LatchTrio" unique_id=1534991301]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"trio"
+mode = 1
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/LatchTrio/PlateB" unique_id=131256148]
+shape = SubResource("BoxShape3D_8xeoh")
+
+[node name="PlateC" type="Area3D" parent="Bays/LatchTrio" unique_id=838475678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"trio"
+mode = 1
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/LatchTrio/PlateC" unique_id=1882155012]
+shape = SubResource("BoxShape3D_441xg")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/LatchTrio" unique_id=1170126217]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_nvf4r")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/LatchTrio" unique_id=350674689]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_vxtqw")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/LatchTrio" unique_id=1342677780]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"trio"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/LatchTrio/Door" unique_id=582521487]
+shape = SubResource("BoxShape3D_f8kwg")
+
+[node name="Dispenser" type="Node3D" parent="Bays/LatchTrio" unique_id=634087573]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 2)
+script = ExtResource("8_fvhsb")
+channel = &"trio"
+count = 2
+
+[node name="Hatch" type="CSGBox3D" parent="Bays/LatchTrio/Dispenser" unique_id=205876739]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+size = Vector3(1.6, 0.2, 1.6)
+material = SubResource("StandardMaterial3D_vymeg")
+
+[node name="Lava" type="Area3D" parent="Bays/LatchTrio" unique_id=1171884796]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.25, 3)
+script = ExtResource("5_l8ivw")
+color = Color(1, 0.3, 0.1, 0.5)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/LatchTrio/Lava" unique_id=1889400620]
+shape = SubResource("BoxShape3D_0eukh")
+
+[node name="Weight" type="Node3D" parent="Bays" unique_id=1723675853]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Weight" unique_id=743340760]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "WEIGHT
+the dark box (weight 30) barely moves when pushed and drains stamina fast when carried
+the ball (weight 4) rolls away and throws far (T)
+either one holds the plate"
+
+[node name="Start" type="Marker3D" parent="Bays/Weight" unique_id=877408047]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Heavy" type="RigidBody3D" parent="Bays/Weight" unique_id=1072910906 instance=ExtResource("9_2wqcu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, 1)
+script = ExtResource("10_mkv8t")
+weight = 30.0
+color = Color(0.35, 0.28, 0.22, 1)
+
+[node name="Ball" type="RigidBody3D" parent="Bays/Weight" unique_id=1656847148 instance=ExtResource("11_02nyc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, 1)
+script = ExtResource("10_mkv8t")
+weight = 4.0
+color = Color(0.45, 0.6, 0.8, 1)
+
+[node name="Plate" type="Area3D" parent="Bays/Weight" unique_id=960822073]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"weight"
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Weight/Plate" unique_id=507620337]
+shape = SubResource("BoxShape3D_kmahe")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/Weight" unique_id=1440541332]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_fyy81")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/Weight" unique_id=1804713714]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_6w84j")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/Weight" unique_id=283596394]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"weight"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Weight/Door" unique_id=1035769910]
+shape = SubResource("BoxShape3D_464jb")
+
+[node name="Energy" type="Node3D" parent="Bays" unique_id=1006230773]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Energy" unique_id=173296993]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "ENERGY
+shoot the switch (K): the door opens at once, then slides shut
+each extra shot (up to 3) keeps it open longer"
+
+[node name="Start" type="Marker3D" parent="Bays/Energy" unique_id=857979222]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Switch" type="AnimatableBody3D" parent="Bays/Energy" unique_id=847839968]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1.5, -2)
+script = ExtResource("12_blxvv")
+channel = &"zap"
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Energy/Switch" unique_id=355043197]
+shape = SubResource("BoxShape3D_l63wy")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/Energy" unique_id=1995231298]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_g3l5y")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/Energy" unique_id=2126814308]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_4shq2")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/Energy" unique_id=1045759635]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"zap"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Energy/Door" unique_id=420444907]
+shape = SubResource("BoxShape3D_nytpq")
+
+[node name="Gravity" type="Node3D" parent="Bays" unique_id=2016693429]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Gravity" unique_id=709218095]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "GRAVITY
+throw a box (T) into the blue zone: it falls up onto the ceiling plate
+walk in yourself to walk on the ceiling; the orange zone brings you down
+the NPC and the runner standing in it flipped too"
+
+[node name="Start" type="Marker3D" parent="Bays/Gravity" unique_id=54981759]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Ceiling" type="CSGBox3D" parent="Bays/Gravity" unique_id=1745410287]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.5, -2)
+use_collision = true
+size = Vector3(12, 1, 8)
+material = SubResource("StandardMaterial3D_kjkbk")
+
+[node name="CeilingPlate" type="Area3D" parent="Bays/Gravity" unique_id=430011594]
+transform = Transform3D(1, 0, 0, 0, -1, 8.742278e-08, 0, -8.742278e-08, -1, 0, 7.85, -2)
+script = ExtResource("6_bjc8i")
+channel = &"ceil"
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Gravity/CeilingPlate" unique_id=1275033484]
+shape = SubResource("BoxShape3D_qtfnp")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/Gravity" unique_id=1675597126]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_rxb2e")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/Gravity" unique_id=2129792615]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_g7fxq")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/Gravity" unique_id=1916586710]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"ceil"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Gravity/Door" unique_id=1509273307]
+shape = SubResource("BoxShape3D_6b0il")
+
+[node name="Up" type="Area3D" parent="Bays/Gravity" unique_id=1585462261]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 2, 0)
+script = ExtResource("13_fpw1g")
+gravity_dir = Vector3(0, 1, 0)
+color = Color(0.3, 0.5, 1, 0.25)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Gravity/Up" unique_id=1338269855]
+shape = SubResource("BoxShape3D_pqd3r")
+
+[node name="Down" type="Area3D" parent="Bays/Gravity" unique_id=500709905]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 7, -2)
+script = ExtResource("13_fpw1g")
+color = Color(1, 0.6, 0.2, 0.25)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Gravity/Down" unique_id=622084265]
+shape = SubResource("BoxShape3D_0oxxf")
+
+[node name="Dispenser" type="Node3D" parent="Bays/Gravity" unique_id=1866740091]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2, 3)
+script = ExtResource("8_fvhsb")
+channel = &"ceil"
+
+[node name="Hatch" type="CSGBox3D" parent="Bays/Gravity/Dispenser" unique_id=841530522]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+size = Vector3(1.6, 0.2, 1.6)
+material = SubResource("StandardMaterial3D_rgvok")
+
+[node name="Flipper" type="CharacterBody3D" parent="Bays/Gravity" unique_id=843560734 instance=ExtResource("14_r2of1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1, -0.5)
+script = ExtResource("15_arof4")
+
+[node name="Runner" type="CharacterBody3D" parent="Bays/Gravity" unique_id=1573455847 instance=ExtResource("16_2ekdx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1, 0.5)
+script = ExtResource("17_mrbrx")
+abilities = 9
+max_health = 40.0
+weight = 3.0
+max_oxygen = 3.0
+walk_speed = 3.5
+run_speed = 6.5
+jump_height = 2.3
+jump_reach = 6.5
+
+[node name="Lure" type="Node3D" parent="Bays" unique_id=383385209]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/Lure" unique_id=1954793847]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "LURE
+let the runner chase you across the plate: enemies press plates too
+the sweeper's rounds press the small plate (it lights up)"
+
+[node name="Start" type="Marker3D" parent="Bays/Lure" unique_id=1161444512]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Plate" type="Area3D" parent="Bays/Lure" unique_id=1659617306]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"lure"
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Lure/Plate" unique_id=626160444]
+shape = SubResource("BoxShape3D_f70q7")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/Lure" unique_id=1005558542]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_im47y")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/Lure" unique_id=333908148]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_sernm")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/Lure" unique_id=920317455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"lure"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Lure/Door" unique_id=334651693]
+shape = SubResource("BoxShape3D_hgkdh")
+
+[node name="Runner" type="CharacterBody3D" parent="Bays/Lure" unique_id=1145332432 instance=ExtResource("16_2ekdx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1, 3)
+script = ExtResource("17_mrbrx")
+abilities = 9
+max_health = 40.0
+weight = 3.0
+max_oxygen = 3.0
+walk_speed = 3.5
+run_speed = 6.5
+jump_height = 2.3
+jump_reach = 6.5
+
+[node name="SweeperPlate" type="Area3D" parent="Bays/Lure" unique_id=1762525351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.15, 3)
+script = ExtResource("6_bjc8i")
+channel = &"sweep"
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/Lure/SweeperPlate" unique_id=761187447]
+shape = SubResource("BoxShape3D_bejjj")
+
+[node name="Sweeper" type="CharacterBody3D" parent="Bays/Lure" unique_id=1853345079 instance=ExtResource("14_r2of1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 1, 3)
+script = ExtResource("15_arof4")
+interactions = Array[ExtResource("18_afaxc")]([SubResource("Resource_1e0ec")])
+
+[node name="OnPlate" type="Marker3D" parent="Bays/Lure/Sweeper" unique_id=201465871]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 0)
+
+[node name="Away" type="Marker3D" parent="Bays/Lure/Sweeper" unique_id=1926659085]
+
+[node name="CrossArea" type="Node3D" parent="Bays" unique_id=49954331]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 180, 0, 0)
+
+[node name="Label" type="Label3D" parent="Bays/CrossArea" unique_id=2012175613]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -9)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "CROSS-AREA
+this latch plate and one in the next area (door on the right) open this door together
+leave a box on the far plate (it stays there), come back and step on this one"
+
+[node name="Start" type="Marker3D" parent="Bays/CrossArea" unique_id=96435270]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Plate" type="Area3D" parent="Bays/CrossArea" unique_id=241146172]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.15, -2)
+script = ExtResource("6_bjc8i")
+channel = &"cross"
+mode = 1
+color = Color(0.9, 0.9, 0.9, 0.35)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/CrossArea/Plate" unique_id=313630356]
+shape = SubResource("BoxShape3D_5b5rp")
+
+[node name="WallLeft" type="CSGBox3D" parent="Bays/CrossArea" unique_id=2021479475]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_1kauc")
+
+[node name="WallRight" type="CSGBox3D" parent="Bays/CrossArea" unique_id=789060300]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.5, -6)
+use_collision = true
+size = Vector3(13, 3, 0.4)
+material = SubResource("StandardMaterial3D_rgwaa")
+
+[node name="Door" type="AnimatableBody3D" parent="Bays/CrossArea" unique_id=1271513123]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -6)
+script = ExtResource("7_3jd44")
+channel = &"cross"
+color = Color(0.8, 0.5, 0.3, 1)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/CrossArea/Door" unique_id=117451743]
+shape = SubResource("BoxShape3D_jreo6")
+
+[node name="ToB" type="Area3D" parent="Bays/CrossArea" unique_id=1236168549]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1, 3)
+script = ExtResource("20_o4dig")
+scene = "res://demo/switches/switches_b.tscn"
+spawn = &"FromA"
+color = Color(0.6, 0.3, 1, 0.3)
+
+[node name="Shape" type="CollisionShape3D" parent="Bays/CrossArea/ToB" unique_id=1035103274]
+shape = SubResource("BoxShape3D_i1vbj")
+
+[node name="FromB" type="Marker3D" parent="Bays/CrossArea" unique_id=704988373]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, 3)

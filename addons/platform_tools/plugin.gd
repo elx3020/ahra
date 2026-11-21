@@ -30,7 +30,7 @@ extends EditorPlugin
 ## Inspector: `channel` (tracks, circuits, switches, puzzle plates, energy switches, doors and
 ## dispensers) is the same channel dropdown, and a group's `circuit` checkbox turns circuit mode on
 ## or off with set_circuit().
-## Saving a scene (and starting the editor) re-bakes the door switch registry (channel_registry.gd).
+## Saving a scene (or any filesystem change) re-bakes the door switch registry (channel_registry.gd).
 ## Every change is undoable.
 
 const TrackPreview := preload("track_preview.gd")
@@ -100,7 +100,9 @@ func _enter_tree() -> void:
 	EditorInterface.get_editor_settings().settings_changed.connect(_render)
 	scene_changed.connect(_on_scene_changed)
 	scene_saved.connect(_on_scene_saved)
-	ChannelRegistry.bake() # scenes may have changed outside the editor
+	# the filesystem dock's first scan, and scenes added or deleted outside the editor
+	EditorInterface.get_resource_filesystem().filesystem_changed.connect(_on_scene_saved.bind(""))
+	ChannelRegistry.bake()
 	_refresh()
 
 
@@ -110,6 +112,9 @@ func _exit_tree() -> void:
 	EditorInterface.get_editor_settings().settings_changed.disconnect(_render)
 	scene_changed.disconnect(_on_scene_changed)
 	scene_saved.disconnect(_on_scene_saved)
+	for c: Dictionary in EditorInterface.get_resource_filesystem().filesystem_changed.get_connections():
+		if c.callable.get_object() == self:
+			EditorInterface.get_resource_filesystem().filesystem_changed.disconnect(c.callable)
 	set_timing_preview(false)
 	_end_drag()
 	remove_inspector_plugin(_channel_inspector)
@@ -449,8 +454,8 @@ func _render() -> void:
 		_preview.show_track(_anchors, _hover)
 
 
-## Every scene save re-bakes the door switch registry (World.registry), so doors count switches
-## in areas the player hasn't visited.
+## Every scene save (and filesystem change) re-bakes the door switch registry (World.registry), so
+## doors count switches in areas the player hasn't visited. An unchanged bake saves nothing.
 func _on_scene_saved(_path: String) -> void:
 	ChannelRegistry.bake()
 

@@ -7,7 +7,7 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 9
+const SECTIONS := 10
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
@@ -30,7 +30,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy, _test_dispenser, _test_memory]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy, _test_dispenser, _test_memory, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -423,6 +423,27 @@ func _test_memory() -> void:
 	_check(not is_instance_valid(hand), "out of the area's bounds: destroyed")
 	root.remove_child(area)
 	area.free()
+	sections += 1
+
+
+func _test_demo() -> void:
+	if course:
+		root.remove_child(course)
+		course.queue_free()
+		course = null
+	world.registry = load("res://world/switch_registry.tres")
+	var cross: Array = world.registry.channels.get("switches_a:cross", [])
+	_check(cross.size() == 2 and cross.any(func(s: Array) -> bool: return String(s[0]).begins_with("switches_b:")), "registry: the cross-area door counts the plate in switches_b")
+	var demo: Node = load("res://demo/switches/switches_a.tscn").instantiate()
+	root.add_child(demo)
+	await _wait(30)
+	var bays: Array = demo.get_node("Bays").get_children().map(func(b: Node) -> String: return String(b.name))
+	_check(["Hold", "LatchTrio", "Weight", "Energy", "Gravity", "Lure", "CrossArea"].all(func(n: String) -> bool: return n in bays), "demo: the seven bays")
+	var cross_door: Node = demo.find_children("*", "AnimatableBody3D").filter(func(n: Node) -> bool: return n.get("channel") == &"cross")[0]
+	_check(cross_door.amount == 0.0, "the cross-area door is shut while the far plate is unvisited")
+	var warned := demo.find_children("*", "", true, false).filter(func(n: Node) -> bool: return n.has_method(&"_get_configuration_warnings") and not n._get_configuration_warnings().is_empty())
+	_check(warned.is_empty(), "no configuration warnings")
+	demo.queue_free()
 	sections += 1
 
 
