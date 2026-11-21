@@ -88,8 +88,10 @@ func _test_data() -> void:
 	s.mark = &"Well"
 	s.run = true
 	shown = _editor_fields(s)
-	_check(shown.has("mark") and shown.has("wait") and not shown.has("lines"), "MOVE shows its fields")
-	_check(s.resource_name == "move → Well (run)", "move summary")
+	_check(shown.has("mark") and shown.has("wait") and shown.has("lines") and shown.has("room") and not shown.has("time"), "MOVE shows its fields")
+	_check(s.resource_name == "move → Well (run) (room 1.0 m)", "move summary (the say's lines carried over: the room check is on)")
+	s.lines = PackedStringArray()
+	_check(s.resource_name == "move → Well (run)", "move summary without lines")
 	var say := NpcStep.new()
 	say.lines = PackedStringArray(["a", "b", "c"])
 	var last := -1
