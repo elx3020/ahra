@@ -48,6 +48,15 @@ func run() -> void:
 	check(n.interactions.size() == 3, "undo add interaction")
 	hist.redo()
 	check(n.interactions.size() == 4, "redo add interaction")
+	var dup: Node3D = n.duplicate() # what Ctrl+D does
+	add_child(dup, true)
+	dup.owner = self
+	await frames(3)
+	check(dup.interactions.size() == 4 and dup.interactions[0].id == &"talk", "a duplicate keeps the interactions")
+	check(dup.interactions[0] != n.interactions[0] and dup.interactions[0].steps[0] != n.interactions[0].steps[0], "a duplicate gets its own copies (editing it doesn't edit the original)")
+	check(n.interactions[0] == t1, "the original keeps its own")
+	remove_child(dup)
+	dup.free()
 
 	var m1: Marker3D = nt.place_mark(n, Vector3(3, 0, 0))
 	var m2: Marker3D = nt.place_mark(n, Vector3(0, 0, 3))

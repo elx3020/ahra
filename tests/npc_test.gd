@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 13
+const SECTIONS := 14
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -401,6 +401,68 @@ func _test_leave() -> void:
 		held = held or player.state_name == &"puppet"
 	await _wait(10)
 	_check(held and not shy.present and player.state_name != &"puppet", "bark leave: player held during the fade, then released")
+	sections += 1
+
+
+## Regression tests for the final review's findings.
+func _test_review() -> void:
+	world.reset_story()
+	_course()
+	# 1: a leave cut short (its NPC freed, or removed, mid-fade) never leaves the screen black
+	var cut := _npc(Vector3(-30, 1, 0), [_talk(&"bye", [_step(NpcStep.Kind.LEAVE, {fade = 0.3})])], {}, "Cut")
+	await _wait(5)
+	await _start_key(cut)
+	await _wait(5)
+	_check(world.fade_rect.color.a > 0.0, "leave fading")
+	cut.queue_free()
+	await _wait(40)
+	_check(is_zero_approx(world.fade_rect.color.a) and player.state_name != &"puppet", "NPC freed mid-fade: screen back, player free")
+	var gone := _npc(Vector3(-25, 1, 0), [_talk(&"bye", [_step(NpcStep.Kind.LEAVE, {fade = 0.3})])], {}, "Removed")
+	await _wait(5)
+	await _start_key(gone)
+	await _wait(5)
+	course.remove_child(gone)
+	await _wait(40)
+	_check(is_zero_approx(world.fade_rect.color.a) and player.state_name != &"puppet", "NPC removed mid-fade: screen back, player free")
+	gone.free()
+
+	# 2: an NPC that turns absent during its own talk lets the player go
+	world.set_flag(&"here")
+	var tmp := _npc(Vector3(-20, 1, 0), [_talk(&"t", [_say(["A"]), _say(["B"])])], {appears_if = PackedStringArray(["here"])}, "Tmp")
+	await _wait(5)
+	await _start_key(tmp)
+	_check(player.state_name == &"puppet" and tmp.line == "A", "talking to an appears_if NPC")
+	world.set_flag(&"here", 0)
+	await _wait(3)
+	_check(player.state_name != &"puppet" and tmp.playing == null, "it turns absent mid-talk: talk cut, player released")
+
+	# 3: an absent NPC never fires a near interaction, not even on its first physics frame
+	player.teleport(Vector3(21, 1, 0))
+	await _wait(5)
+	var hidden := _npc(Vector3(20, 1, 0), [_talk(&"b", [_say(["Boo"], {time = 0.2})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false, once = true})], {appears_if = PackedStringArray(["never_set"])}, "Hidden")
+	await _wait(10)
+	_check(world.npcs.get(hidden.memory_id(), {}).get("plays", {}).get("b", 0) == 0 and hidden.playing == null, "absent NPC: its once bark isn't used up")
+
+	# 4: the press that closes a talk doesn't reach a neighbouring zone, whatever the node order
+	var zone := _interactable(Vector3(3.2, 1, 6)) # the player at (1.5, 1, 6) is in it, nearer the NPC
+	var used := [0]
+	zone.used.connect(func(_p: Player) -> void: used[0] += 1)
+	var first := _npc(Vector3(0, 1, 6), [_talk(&"t", [_say(["Only"])])], {}, "First")
+	course.move_child(first, 0) # processes before the player
+	await _wait(5)
+	await _start_key(first)
+	_check(first.line == "Only", "talking to the nearer NPC")
+	await _press(&"interact")
+	await _wait(5)
+	_check(first.playing == null and used[0] == 0, "the closing press doesn't use the neighbouring zone")
+
+	# 5: a talk that doesn't walk saves no position (moving the NPC in the editor still works)
+	var still := _npc(Vector3(30, 1, 0), [_talk(&"t", [_say(["Hi"])])], {}, "Still")
+	await _wait(5)
+	await _start_key(still)
+	await _press(&"interact")
+	await _wait(3)
+	_check(still.playing == null and not world.npcs[still.memory_id()].has("pos"), "a talk without walking saves no position")
 	sections += 1
 
 

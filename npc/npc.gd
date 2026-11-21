@@ -50,6 +50,8 @@ var line := "" ## the line showing in the bubble (without the key mark), or ""
 
 var _run := 0 ## bumped when an interaction starts or is cut: a stale coroutine stops at its next step
 var _locked := false ## the running interaction holds the player
+var _leaving := false ## a leave step is fading the screen
+var _moved := false ## walked since its position was last saved
 var _started_frame := -1 ## physics frame the interaction started on (its key press doesn't advance it)
 var _ended_frame := -1 ## physics frame the last one ended on (its closing press doesn't reopen one)
 var _look_mode := -1 ## -1: default look; else the NpcStep.Look a step set
@@ -78,13 +80,35 @@ func _ready() -> void:
 	add_to_group(&"npc")
 	_mat.albedo_color = color
 	if Engine.is_editor_hint():
+		_unshare.call_deferred() # deferred: the editor sets a duplicate's owner after adding it
 		return
 	_cache_marks()
 	var f := -global_basis.z.slide(up_direction)
 	if f.length() > 0.01:
 		facing = f.normalized()
-	# deferred: an NPC added from code gets its owner (so its memory id) after add_child returns
+	# deferred: an NPC added from code gets its owner (so its memory id) after add_child returns.
+	# No physics until then: an NPC that left (or hasn't appeared) mustn't fire a near interaction.
+	set_physics_process(false)
 	_start.call_deferred()
+
+
+## Duplicating an NPC in the editor (Ctrl+D, copy/paste) shares its interaction resources with the
+## original: give the copy its own (steps included; external sounds stay shared), so editing one's
+## lines doesn't edit the other's. Same idea as ShapeSet's shapes.
+func _unshare() -> void:
+	if not is_inside_tree() or owner == null or owner != get_tree().edited_scene_root:
+		return
+	var taken := {}
+	for n in get_tree().get_nodes_in_group(&"npc"):
+		if n != self and n.owner == owner:
+			for i in n.interactions:
+				taken[i] = true
+	if not interactions.any(func(i: NpcInteraction) -> bool: return i != null and taken.has(i)):
+		return
+	var own: Array[NpcInteraction] = []
+	for i in interactions:
+		own.append(i.duplicate_deep(Resource.DEEP_DUPLICATE_INTERNAL) if i else null)
+	interactions = own
 
 
 func _start() -> void:
@@ -96,6 +120,7 @@ func _start() -> void:
 		reset_physics_interpolation()
 	World.flags_changed.connect(refresh_presence)
 	refresh_presence()
+	set_physics_process(true)
 
 
 ## This placement's key in World.npcs: area and path (Channels.id).
@@ -237,16 +262,24 @@ func _do(s: NpcStep, run: int) -> void:
 			if not _locked and p:
 				_locked = true # a bark that leaves still holds the player through the fade
 				p.start_puppet()
+			_leaving = true # freed or unloaded meanwhile: _exit_tree clears the screen
 			await World.fade(1.0, s.fade)
+			if run != _run:
+				return
 			memory().gone = true
 			if s.flag:
 				World.set_flag(s.flag) # flags_changed: this NPC goes, copies waiting on the flag come
 			refresh_presence()
 			cue.emit(&"leave")
 			await _sleep(LEAVE_HOLD) # rendered at full black: the swap never shows through
+			if run != _run:
+				return
 			await World.fade(0.0, s.fade)
+			if run != _run:
+				return
+			_leaving = false
+			_run += 1 # steps after a leave never run (bumped first: a `finished` listener may play again)
 			_end()
-			_run += 1 # steps after a leave never run
 
 
 ## NEAR interactions: the first available one (list order) whose distance holds the player fires
@@ -272,13 +305,14 @@ func _check_near(p: Player) -> void:
 	play(fire)
 
 
-## Back to idle: neutral face, default look, no bubble, position saved, player released.
+## Back to idle: neutral face, default look, no bubble, position saved (if it walked), player released.
 func _end() -> void:
 	anim = &"idle"
 	face = &"neutral"
 	_look_mode = -1
 	_hush()
-	save_position()
+	if _moved: # a talk that never walked leaves no position: the editor placement still counts
+		save_position()
 	var was_locked := _locked
 	_locked = false
 	playing = null
@@ -311,7 +345,9 @@ func _exit_tree() -> void:
 	_run += 1
 	if _locked and is_instance_valid(player()) and player().is_inside_tree():
 		player().end_puppet()
-	World.fade(0.0, 0.0)
+	if _leaving: # a fade of its own is running: replace it with a clear screen
+		World.fade(0.0, 0.0)
+		_leaving = false
 	_locked = false
 	playing = null
 
@@ -359,6 +395,10 @@ func refresh_presence() -> void:
 	var on: bool = not memory().gone
 	for f: String in appears_if:
 		on = on and World.flag(f) > 0
+	if not on and playing != null and not memory().gone: # turned absent mid-interaction (a flag
+		stop_walk() # cleared, reset_story): cut it and let the player go. A leave sets gone first
+		_run += 1 # and finishes itself.
+		_end()
 	present = on
 	visible = on
 	prompt.visible = prompt.visible and on
@@ -382,6 +422,7 @@ func _cache_marks() -> void:
 func walk_to(point: Vector3, running := false) -> void:
 	_target = point
 	_running = running
+	_moved = true
 	var d := (point - global_position).slide(up_direction).length()
 	_walk_left = d / (run_speed if running else walk_speed) * 2.0 + 1.0
 
@@ -399,6 +440,7 @@ func save_position() -> void:
 	var m := memory()
 	m.pos = global_position
 	m.facing = facing
+	_moved = false
 
 
 func _physics_process(delta: float) -> void:

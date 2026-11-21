@@ -122,7 +122,7 @@ blocked walk never strands the player. A step that can't run (a missing mark, no
 warns and is skipped.
 
 At the end of every interaction the NPC goes back to `idle`, `neutral`, its default look, hides the
-bubble, saves where it stands and releases the player.
+bubble, saves where it stands (if it walked) and releases the player.
 
 **Marks** are floor points. The head looks 1.5 m above a mark (at someone standing there), and a
 snapped walk lands the NPC standing on it. They are cached when the NPC loads, before it ever
@@ -147,8 +147,8 @@ placement has its own memory.
   `World.flags_changed`.
 - **NPC memory** (`World.npcs`): one entry per placed NPC, keyed by `Channels.id` (area and node
   path): `plays` per interaction key, `gone`, and `pos` / `facing` once it has moved. An NPC
-  writes its position on every arrival and at the end of every interaction, and goes back there
-  when its area loads.
+  writes its position on every arrival and at the end of an interaction that walked it, and goes
+  back there when its area loads. One that never walked keeps its editor placement.
 - **Saving** the game means saving `World.time`, `channels`, `signals`, `flags` and `npcs`:
   plain data. `World.reset_story()` forgets flags and memory (the demo's key 7).
 - **Renaming or moving an NPC node** changes its memory key: what it remembered is lost. Give

@@ -97,6 +97,7 @@ var _envs: Array[EnvProfile] = []
 var water_zone: EnvZone ## set by water EnvZones; gives the surface height
 var interactable: Interactable ## what interact reaches: the nearest usable zone, picked each physics frame
 var interactables: Array[Interactable] = [] ## every Interactable zone the player stands in
+var _released := -1 ## physics frame end_puppet() ran: the press that ended a talk reaches nothing else
 var swing_point: SwingPoint
 var puppet_target: Variant = null
 var air_speed := 0.0
@@ -336,7 +337,7 @@ func ground_step(dir: Vector3, speed: float, delta: float) -> StringName:
 		return &"dash"
 	if Input.is_action_just_pressed(&"attack") and melee_cd <= 0.0:
 		return &"melee"
-	if interactable and Input.is_action_just_pressed(&"interact"):
+	if interactable and Input.is_action_just_pressed(&"interact") and Engine.get_physics_frames() > _released:
 		return &"interact"
 	if can_climb():
 		return &"climb"
@@ -452,6 +453,7 @@ func start_puppet(target: Variant = null) -> void:
 func end_puppet() -> void:
 	if state_name == &"puppet":
 		change_state(&"idle")
+		_released = Engine.get_physics_frames()
 
 
 ## Called by EnvZones on enter/exit. Overlapping zones all apply at once.

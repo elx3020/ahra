@@ -14,6 +14,8 @@ var flags := {}
 ## gone = bool, pos = Vector3, facing = Vector3}; pos/facing only once the NPC has moved.
 var npcs := {}
 var fade_rect: ColorRect ## the black full-screen overlay fade() tweens
+
+var _fade_tween: Tween
 var spawn: StringName ## marker the next area puts the player at (set by SceneDoor)
 ## channel key ("area:name", see Channels) -> state, changed by PlatformSwitches, read by tracks:
 ##   t0: last change, drive: [drive of starts-off, of starts-on platforms] at t0,
@@ -70,13 +72,19 @@ func reset_story() -> void:
 
 
 ## Tweens the screen overlay to `to_alpha` (1 = black) over `duration` seconds. Awaitable.
+## A new fade replaces one still running, so `fade(0.0, 0.0)` clears the screen for good.
+## ponytail: a replaced fade never emits `finished`, so whoever awaits it never resumes; today
+## the only such awaiter is a leave whose NPC is gone. Return a cancel flag if fades ever overlap.
 func fade(to_alpha: float, duration := 0.4) -> void:
+	if _fade_tween:
+		_fade_tween.kill()
+		_fade_tween = null
 	if duration <= 0.0:
 		fade_rect.color.a = to_alpha
 		return
-	var tw := create_tween()
-	tw.tween_property(fade_rect, "color:a", to_alpha, duration)
-	await tw.finished
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(fade_rect, "color:a", to_alpha, duration)
+	await _fade_tween.finished
 
 
 ## Motion seconds a channel has given its platforms so far: grows while they move,
