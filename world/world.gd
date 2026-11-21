@@ -27,9 +27,18 @@ var channels := {}
 ## end signals tracks have sent (PlatformSequence.end_signal): "area:track path#signal" -> how many
 ## times, so an area loading later neither misses nor repeats them
 var signals := {}
+## Door switch state per placement (Channels.id): {on, locked} for weight plates, {shot_at, end}
+## (world times) for energy switches. Doors read it through openness(). Saved with the rest.
+var switches := {}
+## Weights' memory per placement (Channels.id): {pos, basis, gravity}, {gone = true} for a
+## destroyed hand-placed one, {alive = names} for a dispenser. Written by GameArea and Dispenser.
+var bodies := {}
+## Every saved scene's door switches by channel (baked in the editor): see switches_of().
+var registry: SwitchRegistry
 
 
 func _ready() -> void:
+	registry = load(SwitchRegistry.PATH) if ResourceLoader.exists(SwitchRegistry.PATH) else SwitchRegistry.new()
 	var layer := CanvasLayer.new()
 	layer.layer = 100
 	fade_rect = ColorRect.new()
@@ -170,6 +179,90 @@ func _settle(channel: StringName) -> Dictionary:
 	return c
 
 
+## The switches on a door channel: [id, kind] pairs, kind "hold", "latch" or "energy". The baked
+## registry (every saved scene, visited or not) plus the switches loaded now (scenes built in code).
+## ponytail: scans the door_switch group on every call; cache per physics frame if puzzles get big.
+func switches_of(channel: StringName) -> Array:
+	var out: Array = registry.channels.get(String(channel), []).duplicate()
+	var seen := {}
+	for s: Array in out:
+		seen[s[0]] = true
+	for n in get_tree().get_nodes_in_group(&"door_switch"):
+		var id: String = n.switch_id()
+		if not seen.has(id) and Channels.key(n, n.channel) == channel:
+			seen[id] = true
+			out.append([id, n.kind()])
+	return out
+
+
+## A weight plate's state changed (`on`: something rests on it). Latch plates lock when this
+## makes every switch on the channel on at once.
+func press(channel: StringName, id: String, on: bool) -> void:
+	var s: Dictionary = switches.get(id, {on = false, locked = false})
+	s.on = on
+	switches[id] = s
+	_check_lock(channel)
+
+
+## A shot hit an energy switch: `add` more seconds of energy, at most `cap` seconds in all.
+func charge(channel: StringName, id: String, add: float, cap: float) -> void:
+	var s: Dictionary = switches.get(id, {shot_at = 0.0, end = 0.0})
+	var left := maxf(s.end - time, 0.0)
+	s.end = time + minf(left + add, cap)
+	s.shot_at = time
+	switches[id] = s
+	_check_lock(channel)
+
+
+## Plates: on or locked. Energy switches: energy left. A switch with no state yet is off.
+func switch_on(id: String) -> bool:
+	var s: Dictionary = switches.get(id, {})
+	if s.has("end"):
+		return time < s.end
+	return s.get("on", false) or s.get("locked", false)
+
+
+## An energy switch's charge left, 0..1 of what it had at its last shot.
+func energy(id: String) -> float:
+	var s: Dictionary = switches.get(id, {})
+	if not s.has("end") or s.end <= s.shot_at:
+		return 0.0
+	return clampf((s.end - time) / (s.end - s.shot_at), 0.0, 1.0)
+
+
+## How open the doors on `channel` are, 0..1: shut unless every switch is on; with energy
+## switches, the smallest charge left (the door slides shut as it drains).
+func openness(channel: StringName) -> float:
+	var list := switches_of(channel)
+	if list.is_empty():
+		return 0.0
+	var out := 1.0
+	for s: Array in list:
+		if not switch_on(s[0]):
+			return 0.0
+		if s[1] == "energy":
+			out = minf(out, energy(s[0]))
+	return out
+
+
+## The doors are open for good: every switch on the channel is a locked latch plate.
+func solved(channel: StringName) -> bool:
+	var list := switches_of(channel)
+	return not list.is_empty() and list.all(func(s: Array) -> bool:
+		return s[1] == "latch" and switches.get(s[0], {}).get("locked", false))
+
+
+func _check_lock(channel: StringName) -> void:
+	var list := switches_of(channel)
+	if list.is_empty() or not list.all(func(s: Array) -> bool: return switch_on(s[0])):
+		return
+	for s: Array in list:
+		if s[1] == "latch":
+			var st: Dictionary = switches.get(s[0], {on = true, locked = false})
+			st.locked = true
+			switches[s[0]] = st
+
+
 func debug_text() -> String:
 	var out := ""
 	for ch: StringName in channels:
@@ -180,4 +273,9 @@ func debug_text() -> String:
 	var pairs := PackedStringArray()
 	for f: String in flags:
 		pairs.append("%s=%d" % [f, flags[f]])
-	return "\nchannels:" + (out if out else " none") + "\nflags: " + (", ".join(pairs) if pairs else "none")
+	var on := PackedStringArray()
+	for id: String in switches:
+		if switch_on(id):
+			on.append(id.get_slice(":", 1) + (" (locked)" if switches[id].get("locked", false) else ""))
+	return "\nchannels:" + (out if out else " none") + "\nflags: " + (", ".join(pairs) if pairs else "none") \
+		+ "\nswitches: " + (", ".join(on) + " on" if on else "none on")
