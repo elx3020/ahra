@@ -1,9 +1,19 @@
 extends Node
 ## Autoload "World": state that outlives scene changes. The world clock and the
 ## platform channels live here, so every area computes its platforms from the same
-## timeline. Saving the game = saving `time`, `channels` and `signals` (plain data).
+## timeline. Story flags and NPC memory live here too. Saving the game = saving `time`,
+## `channels`, `signals`, `flags` and `npcs` (plain data).
+## It also owns the screen fade (`fade`), which survives scene changes.
+
+signal flags_changed
 
 var time := 0.0 ## world seconds; pauses with the tree, keeps running across scene changes
+## Story flags: game-wide name -> int (keys are Strings). Set by NPC flag/leave steps or any code.
+var flags := {}
+## NPC memory per placement (Channels.id of the NPC): {plays = {interaction key: count},
+## gone = bool, pos = Vector3, facing = Vector3}; pos/facing only once the NPC has moved.
+var npcs := {}
+var fade_rect: ColorRect ## the black full-screen overlay fade() tweens
 var spawn: StringName ## marker the next area puts the player at (set by SceneDoor)
 ## channel key ("area:name", see Channels) -> state, changed by PlatformSwitches, read by tracks:
 ##   t0: last change, drive: [drive of starts-off, of starts-on platforms] at t0,
@@ -17,8 +27,56 @@ var channels := {}
 var signals := {}
 
 
+func _ready() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	fade_rect = ColorRect.new()
+	fade_rect.color = Color(0, 0, 0, 0)
+	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(fade_rect)
+	add_child(layer)
+
+
 func _physics_process(delta: float) -> void:
 	time += delta
+
+
+## A story flag's value; 0 when unset.
+func flag(flag_name: StringName) -> int:
+	return flags.get(String(flag_name), 0)
+
+
+## Sets a story flag (0 clears it) and tells listeners (NPCs re-check what they say and whether
+## they are present).
+func set_flag(flag_name: StringName, value := 1) -> void:
+	flags[String(flag_name)] = value
+	flags_changed.emit()
+
+
+## The memory entry of the NPC placed at `id` (Channels.id), created on first use. Returned by
+## reference: the NPC writes into it.
+func npc_memory(id: String) -> Dictionary:
+	if id not in npcs:
+		npcs[id] = {plays = {}, gone = false}
+	return npcs[id]
+
+
+## Forgets every story flag and all NPC memory (a new game; the demo's debug key).
+func reset_story() -> void:
+	flags.clear()
+	npcs.clear()
+	flags_changed.emit()
+
+
+## Tweens the screen overlay to `to_alpha` (1 = black) over `duration` seconds. Awaitable.
+func fade(to_alpha: float, duration := 0.4) -> void:
+	if duration <= 0.0:
+		fade_rect.color.a = to_alpha
+		return
+	var tw := create_tween()
+	tw.tween_property(fade_rect, "color:a", to_alpha, duration)
+	await tw.finished
 
 
 ## Motion seconds a channel has given its platforms so far: grows while they move,
@@ -111,4 +169,7 @@ func debug_text() -> String:
 		out += "\n  %s: %s%s, speed x%.2f, start wait x%.2f, end wait x%.2f%s" % [ch,
 			"toggled, " if c.flip else "", "reversed" if c.dir < 0.0 else "forward", c.rates.x, c.rates.y, c.rates.z,
 			", running %.1fs" % (c.run_end - time) if time < c.run_end else ""]
-	return "\nchannels:" + (out if out else " none")
+	var pairs := PackedStringArray()
+	for f: String in flags:
+		pairs.append("%s=%d" % [f, flags[f]])
+	return "\nchannels:" + (out if out else " none") + "\nflags: " + (", ".join(pairs) if pairs else "none")

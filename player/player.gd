@@ -95,7 +95,8 @@ var anim: StringName = &"idle"
 var env: EnvProfile ## ambient + every zone the player is in, blended (EnvProfile.combine)
 var _envs: Array[EnvProfile] = []
 var water_zone: EnvZone ## set by water EnvZones; gives the surface height
-var interactable: Interactable
+var interactable: Interactable ## what interact reaches: the nearest usable zone, picked each physics frame
+var interactables: Array[Interactable] = [] ## every Interactable zone the player stands in
 var swing_point: SwingPoint
 var puppet_target: Variant = null
 var air_speed := 0.0
@@ -173,12 +174,28 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed(&"shoot") and shoot_cd <= 0.0 and state_name in SHOOT_STATES:
 		shoot()
 
+	interactable = _pick_interactable()
 	var next := state.physics(delta)
 	if next:
 		change_state(next)
 	floor_velocity = get_platform_velocity() if is_on_floor() else Vector3.ZERO
 	_orient(delta)
 	_animate(delta)
+
+
+## The nearest zone in `interactables` that can_interact(), or null. Freed zones are dropped.
+func _pick_interactable() -> Interactable:
+	var best: Interactable = null
+	var best_d := INF
+	for z: Variant in interactables.duplicate(): # untyped: a freed zone can't be assigned to a typed var
+		if not is_instance_valid(z):
+			interactables.erase(z)
+			continue
+		var d := global_position.distance_squared_to(z.global_position)
+		if d < best_d and z.can_interact():
+			best = z
+			best_d = d
+	return best
 
 
 func _tick_stats(delta: float) -> void:
