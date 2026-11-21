@@ -1,6 +1,6 @@
 # Switch puzzles design: weight plates, energy switches, doors, carriable weights
 
-Date: 2026-11-21. Status: draft for approval.
+Date: 2026-11-21. Status: approved by the user 2026-11-21.
 
 ## Intent
 
@@ -408,6 +408,7 @@ carry drag, throw arc) is untested: say so.
   walking into weights; weight drives push speed, friction and stamina drain.
 - Dropping what you carry when hurt.
 - Channel wiring (approach 2), because a door's switches can be in other areas.
+- A carried weight is dropped at a `SceneDoor` and stays in its area (no carrying between areas).
 
 ## My calls (correct any)
 
@@ -419,7 +420,6 @@ carry drag, throw arc) is untested: say so.
 - Keys: R carry / put down, T throw.
 - Stamina drains while carrying (not a one-off cost at pickup); no regen while carrying.
 - Jump and interact work while carrying; walk speed drops with weight, jump height doesn't.
-- Weights are dropped (and stay in their area) when going through a `SceneDoor`.
 - A destroyed hand-placed weight is gone for good; only dispensers replace weights.
 - "Solved" = every switch on the channel is a locked latch plate; mixed channels never stop
   their dispensers.
