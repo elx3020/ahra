@@ -5,7 +5,7 @@ extends SceneTree
 ## No Npc / NpcTalk static types here: they reference the World autoload, which -s scripts
 ## compile before (see CLAUDE.md). NPC scenes are load()ed at runtime.
 
-const SECTIONS := 16
+const SECTIONS := 17
 const PLAYER := preload("res://player/player.tscn")
 const NPC := "res://npc/npc.tscn"
 
@@ -25,7 +25,7 @@ func _run() -> void:
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_overlap, _test_data, _test_body, _test_key, _test_memory,
-		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_demo]
+		_test_progression, _test_beats, _test_talk_overlap, _test_edges, _test_near, _test_leave, _test_review, _test_minors, _test_avoid, _test_routine, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -572,6 +572,87 @@ func _test_avoid() -> void:
 	var t0 := Engine.get_physics_frames()
 	_check(await _wait_until(func() -> bool: return perf.line == "Done", 400) and Engine.get_physics_frames() - t0 < 5 * Engine.physics_ticks_per_second, "walks around the held player to its mark (no snap)")
 	await _press(&"interact")
+	sections += 1
+
+
+func _test_routine() -> void:
+	world.reset_story()
+	_course()
+	var loop := _talk(&"loop", [_step(NpcStep.Kind.MOVE, {mark = &"A"}), _step(NpcStep.Kind.WAIT, {time = 0.2}),
+		_step(NpcStep.Kind.MOVE, {mark = &"B"}), _step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var make := func() -> Node3D: return _npc(Vector3(0, 1, -8), [loop, _talk(&"talk", [_say(["Busy!"])])], {}, "Sweeper",
+		{"A": Vector3(4, -0.8, 0), "B": Vector3(-4, -0.8, 0)})
+	var s: Node3D = make.call()
+	var arrivals := [0]
+	s.arrived.connect(func() -> void: arrivals[0] += 1)
+	await _wait(10)
+	_check(s.playing == loop and s.walking() and player.state_name != &"puppet", "the routine starts on its own and doesn't hold the player")
+	_check(await _wait_until(func() -> bool: return arrivals[0] >= 3, 600), "it loops: A, B, A...")
+
+	# a talk cuts it; afterwards it resumes at the step it was on
+	await _wait_until(func() -> bool: return s.step_at == 2 and s.walking(), 400)
+	await _start_key(s)
+	_check(s.line == "Busy!" and player.state_name == &"puppet" and not s.walking(), "a talk cuts the routine")
+	await _press(&"interact")
+	await _wait(5)
+	_check(s.playing == loop and s.step_at == 2 and s.walking(), "resumes at the step it was on (walking to B)")
+
+	# waiting at a taken mark, then talked to: the wait is cleared, the routine resumes after
+	await _wait_until(func() -> bool: return s.step_at == 0 and s.walking(), 400)
+	player.teleport(s.marks[&"A"] + Vector3.UP)
+	await _wait_until(func() -> bool: return s.waiting, 400)
+	player.teleport(s.global_position + Vector3(1.0, 0, 0)) # into its Talk zone, off the mark
+	await _wait(3)
+	await _press(&"interact")
+	await _wait(3)
+	_check(s.line == "Busy!" and not s.waiting and s.anim != &"wait", "talking to a waiting routine NPC")
+	await _press(&"interact")
+	await _wait(5)
+	_check(s.playing == loop and s.step_at == 0, "back to its routine")
+
+	# absent mid-routine: stops; present again: restarts
+	var ghost := _npc(Vector3(0, 1, 8), [_talk(&"g", [_step(NpcStep.Kind.WAIT, {time = 0.5})], {trigger = NpcInteraction.Trigger.ROUTINE})], {appears_if = PackedStringArray(["haunt"])}, "Ghost")
+	await _wait(5)
+	_check(ghost.playing == null, "absent: no routine")
+	world.set_flag(&"haunt")
+	await _wait(5)
+	_check(ghost.playing != null, "present: the routine starts")
+	world.set_flag(&"haunt", 0)
+	await _wait(5)
+	_check(ghost.playing == null and not ghost.present, "absent again: it stops")
+
+	# progression picks the routine (list order), at its next loop
+	var late := _talk(&"late", [_step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE, needs = PackedStringArray(["late"])})
+	var early := _talk(&"early", [_step(NpcStep.Kind.WAIT, {time = 0.2})], {trigger = NpcInteraction.Trigger.ROUTINE})
+	var prog := _npc(Vector3(10, 1, 8), [late, early], {}, "Prog")
+	await _wait(5)
+	_check(prog.playing == early, "early routine first")
+	world.set_flag(&"late")
+	_check(await _wait_until(func() -> bool: return prog.playing == late, 60), "the late routine takes over")
+
+	# a near bark fires during a routine, then the routine resumes
+	var bark := _talk(&"bark", [_say(["Hi!"], {time = 0.3})], {trigger = NpcInteraction.Trigger.NEAR, locks_player = false})
+	var chatty := _npc(Vector3(-20, 1, 8), [bark, _talk(&"r", [_step(NpcStep.Kind.WAIT, {time = 1.0})], {trigger = NpcInteraction.Trigger.ROUTINE})], {}, "Chatty")
+	await _wait(5)
+	player.teleport(Vector3(-17, 1, 8))
+	await _wait(5)
+	_check(chatty.playing == bark, "a bark cuts the routine")
+	_check(await _wait_until(func() -> bool: return chatty.playing != null and chatty.playing.trigger == NpcInteraction.Trigger.ROUTINE, 60), "the routine resumes after the bark")
+
+	# instant routine: no freeze, a warning
+	var quick := _npc(Vector3(-20, 1, -8), [_talk(&"q", [_step(NpcStep.Kind.FACE, {face = &"happy"})], {trigger = NpcInteraction.Trigger.ROUTINE})], {}, "Quick")
+	await _wait(30)
+	var loops: int = world.npcs[quick.memory_id()].plays["q"]
+	_check(loops > 0 and loops <= 31, "an instant routine loops at most once a frame (%d)" % loops)
+	_check(" ".join(quick._get_configuration_warnings()).contains("takes time"), "and warns")
+
+	# reload: back at its saved spot, running its routine
+	var spot: Vector3 = s.global_position
+	course.remove_child(s)
+	s.free()
+	s = make.call()
+	await _wait(5)
+	_check(s.playing == loop and _flat(s.global_position).distance_to(_flat(spot)) < 1.5, "reloaded: its routine runs again from where it stood")
 	sections += 1
 
 

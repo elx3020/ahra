@@ -51,6 +51,7 @@ var waiting := false ## a walk paused beside its destination because the player 
 var marks := {} ## mark name (StringName) -> global position, cached before the NPC ever moves
 var playing: NpcInteraction ## the interaction running, or null
 var line := "" ## the line showing in the bubble (without the key mark), or ""
+var step_at := 0 ## index of the step the running interaction is on
 
 var _run := 0 ## bumped when an interaction starts or is cut: a stale coroutine stops at its next step
 var _locked := false ## the running interaction holds the player
@@ -61,6 +62,8 @@ var _ended_frame := -1 ## physics frame the last one ended on (its closing press
 var _look_mode := -1 ## -1: default look; else the NpcStep.Look a step set
 var _look_mark: StringName
 var _last_line := {} ## NpcStep -> index of the version shown last
+var _routine: NpcInteraction ## the routine a talk or a bark cut, to resume at _routine_from
+var _routine_from := 0
 var _armed := {} ## NEAR NpcInteraction -> false once fired, until the player is beyond distance + 1 m
 var _target: Variant = null ## walk target (global), or null
 var _running := false
@@ -178,16 +181,42 @@ func start_talk() -> void:
 	if not can_talk():
 		return
 	var i := choose(NpcInteraction.Trigger.KEY)
-	if playing: # cut the bark the normal way: its face and look don't carry over, `finished` fires
-		stop_walk()
-		_run += 1
-		_end()
+	if playing: # a bark or the routine
+		_cut()
 	play(i)
 
 
-## Runs `i` step by step (a coroutine). Steps run back to back until one waits. Starting another
-## interaction cuts this one: it stops at its next step.
-func play(i: NpcInteraction) -> void:
+## Ends the running interaction early, the normal way (face and look reset, `finished` fires).
+## A cut routine remembers its step, to resume there.
+func _cut() -> void:
+	if playing and playing.trigger == NpcInteraction.Trigger.ROUTINE:
+		_routine = playing
+		_routine_from = step_at
+	stop_walk()
+	_run += 1
+	_end()
+
+
+## One physics frame after an interaction ends (so a routine of instant steps loops at most once a
+## frame), the first available routine plays: from the step it was cut on, else from the start.
+func _resume_routine() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().physics_frame
+	if not is_inside_tree() or not present or playing != null:
+		return
+	var r := choose(NpcInteraction.Trigger.ROUTINE)
+	if r == null:
+		return
+	var from := _routine_from if r == _routine and _routine_from < r.steps.size() else 0
+	_routine = null
+	_routine_from = 0
+	play(r, from)
+
+
+## Runs `i` step by step from `from_step` (a coroutine). Steps run back to back until one waits.
+## Starting another interaction cuts this one: it stops at its next step. Routines never lock.
+func play(i: NpcInteraction, from_step := 0) -> void:
 	_run += 1
 	var run := _run
 	_hush()
@@ -195,15 +224,16 @@ func play(i: NpcInteraction) -> void:
 	_started_frame = Engine.get_physics_frames()
 	var plays: Dictionary = memory().plays
 	plays[key_of(i)] = plays.get(key_of(i), 0) + 1 # counted at the start: a cut `once` doesn't replay
-	_locked = i.locks_player
+	_locked = i.locks_player and i.trigger != NpcInteraction.Trigger.ROUTINE
 	var p := player()
 	if _locked and p:
 		p.start_puppet()
 		_face(p.global_position)
-	for s in i.steps:
-		if s == null:
+	for k in range(from_step, i.steps.size()):
+		step_at = k
+		if i.steps[k] == null:
 			continue
-		await _do(s, run)
+		await _do(i.steps[k], run)
 		if run != _run:
 			return
 	_end()
@@ -308,11 +338,13 @@ func _check_near(p: Player) -> void:
 		elif fire == null and d <= i.distance and _armed.get(i, true) \
 				and i.available(World.flags, memory().plays.get(key_of(i), 0)):
 			fire = i
-	if fire == null or playing != null or p.state_name == &"puppet":
+	if fire == null or (playing != null and playing.trigger != NpcInteraction.Trigger.ROUTINE) 			or p.state_name == &"puppet":
 		return
 	for i in interactions:
 		if i and i.trigger == NpcInteraction.Trigger.NEAR and d <= i.distance:
 			_armed[i] = false
+	if playing: # a bark cuts the routine
+		_cut()
 	play(fire)
 
 
@@ -331,6 +363,7 @@ func _end() -> void:
 	if was_locked and is_instance_valid(player()):
 		player().end_puppet()
 	finished.emit()
+	_resume_routine() # a routine loops through here; after anything else, it resumes
 
 
 func _hush() -> void:
@@ -363,6 +396,18 @@ func _exit_tree() -> void:
 	playing = null
 
 
+## Whether step `s` waits for something (time, a walk, the key) rather than going on at once.
+static func _takes_time(s: NpcStep) -> bool:
+	if s == null:
+		return false
+	match s.kind:
+		NpcStep.Kind.SAY, NpcStep.Kind.WAIT: return true
+		NpcStep.Kind.ANIM: return s.time > 0.0
+		NpcStep.Kind.MOVE: return s.wait
+		NpcStep.Kind.SOUND: return s.sound_wait
+	return false
+
+
 func _get_configuration_warnings() -> PackedStringArray:
 	var out := PackedStringArray()
 	var mark_names := get_children().filter(func(m: Node) -> bool: return m is Marker3D).map(func(m: Node) -> StringName: return StringName(m.name))
@@ -379,6 +424,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		ids[i.id] = true
 		if i.steps.is_empty():
 			out.append("%s has no steps." % label)
+		elif i.trigger == NpcInteraction.Trigger.ROUTINE and not i.steps.any(_takes_time):
+			out.append("%s: a routine with no step that takes time loops every frame; add a walk, a wait or a line." % label)
 		var left := false
 		for s in i.steps:
 			if s == null:
@@ -418,6 +465,8 @@ func refresh_presence() -> void:
 	if not on:
 		stop_walk()
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if on and playing == null:
+		_resume_routine()
 
 
 # --- walking ------------------------------------------------------------------------------

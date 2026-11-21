@@ -5,9 +5,11 @@ extends Resource
 ## interact key (KEY, in the NPC's Talk zone) or by the player coming within `distance` (NEAR).
 ## The NPC plays the first available interaction of its list with that trigger, so list order is
 ## priority: later-game interactions (with `needs`) go above earlier ones.
+## ROUTINE: plays whenever nothing else runs, and loops (a patrol, a chore). A key talk or a bark
+## cuts it; it resumes at the step it was on. It never holds the player.
 ## `resource_name` keeps a one-line summary, shown on the NPC's interactions array rows.
 
-enum Trigger { KEY, NEAR }
+enum Trigger { KEY, NEAR, ROUTINE }
 
 ## Memory key (how many times it played). Unique per NPC; the NPC Tools templates fill it in.
 @export var id: StringName:
@@ -29,7 +31,7 @@ enum Trigger { KEY, NEAR }
 
 
 func _validate_property(property: Dictionary) -> void:
-	if property.name == "distance" and trigger != Trigger.NEAR:
+	if (property.name == "distance" and trigger != Trigger.NEAR) or (property.name == "locks_player" and trigger == Trigger.ROUTINE):
 		property.usage &= ~PROPERTY_USAGE_EDITOR
 
 
@@ -46,10 +48,10 @@ func available(flags: Dictionary, plays: int) -> bool:
 ## out (locking is shown only when it differs from the trigger's usual: KEY locks, NEAR doesn't).
 func summary() -> String:
 	var parts := PackedStringArray([String(id) if id else "?"])
-	parts.append("key" if trigger == Trigger.KEY else "near %s m" % String.num(distance))
+	parts.append(["key", "near %s m" % String.num(distance), "routine"][trigger])
 	if once:
 		parts.append("once")
-	if locks_player != (trigger == Trigger.KEY):
+	if trigger != Trigger.ROUTINE and locks_player != (trigger == Trigger.KEY):
 		parts.append("locks" if locks_player else "free")
 	if not needs.is_empty():
 		parts.append("needs " + ", ".join(needs))
