@@ -26,6 +26,7 @@ func _ready() -> void:
 	cam.global_position = player.global_position + cam.global_basis.z * 40.0
 	# camera moves every render frame itself, following the player's interpolated position
 	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_restore_weights()
 
 
 func _process(delta: float) -> void:
@@ -36,8 +37,41 @@ func _process(delta: float) -> void:
 		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * delta))
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
+	for n in get_tree().get_nodes_in_group(&"weight"):
+		var w := n as WeightBody
+		if not w.gone and w.global_position.distance_to(bounds_center) > bounds_radius:
+			w.destroy()
 	var bay := "bay: %s\n" % bays[_bay()].name if bays else ""
 	hud.text = help() + bay + player.debug_text() + World.debug_text()
+
+
+## Remembers every weight's place, gravity and pose (World.bodies), so the area finds them where
+## they were. ponytail: writes every weight every physics frame; write only awake ones if weights
+## get many.
+func _physics_process(_delta: float) -> void:
+	for n in get_tree().get_nodes_in_group(&"weight"):
+		var w := n as WeightBody
+		if not w.gone and not w.is_queued_for_deletion():
+			World.bodies[Channels.placement_id(w)] = w.state()
+
+
+## Puts the area's weights back as they were left: placed ones where they were (or gone for good if
+## destroyed), dispensed ones too (their Dispenser recreated them in its _ready, before this).
+func _restore_weights() -> void:
+	for n in get_tree().get_nodes_in_group(&"weight"):
+		var w := n as WeightBody
+		if not is_ancestor_of(w):
+			continue
+		var id := Channels.placement_id(w)
+		var mem: Dictionary = World.bodies.get(id, {})
+		if mem.get("gone", false):
+			w.gone = true
+			w.queue_free()
+			continue
+		if mem.has("pos"):
+			w.restore(mem)
+		if not w.dispensed:
+			w.destroyed.connect(func() -> void: World.bodies[id] = {gone = true})
 
 
 func _unhandled_input(e: InputEvent) -> void:

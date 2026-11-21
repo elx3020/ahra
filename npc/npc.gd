@@ -141,10 +141,7 @@ func _start() -> void:
 ## ponytail: keyed by node path, so renaming or moving the NPC node forgets its memory; add a
 ## stable key export if saves must survive scene edits.
 func memory_id() -> String:
-	if owner != null or get_parent() == null:
-		return Channels.id(self)
-	var area := Channels.area_of(get_parent())
-	return Channels.area_name(area) + ":" + String(area.get_path_to(self)) if area else String(get_path())
+	return Channels.placement_id(self)
 
 
 func memory() -> Dictionary:

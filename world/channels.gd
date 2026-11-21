@@ -42,6 +42,16 @@ static func id(node: Node) -> String:
 	return area_name(area) + ":" + String(area.get_path_to(node)) if area else String(node.get_path())
 
 
+## The key for World's memory of a placed thing (an NPC, a weight): id(), except that a scene
+## instanced from code has no owner, so area_of would take it for an area of its own (every such
+## box would be "box:."): it is keyed by its path under its parent's area instead.
+static func placement_id(node: Node) -> String:
+	if node.owner != null or node.get_parent() == null:
+		return id(node)
+	var area := area_of(node.get_parent())
+	return area_name(area) + ":" + String(area.get_path_to(node)) if area else String(node.get_path())
+
+
 static func area_of(node: Node) -> Node:
 	var n := node
 	while n:

@@ -7,7 +7,7 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 7
+const SECTIONS := 9
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
@@ -30,7 +30,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy, _test_dispenser, _test_memory]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -368,6 +368,64 @@ func _test_energy() -> void:
 	sections += 1
 
 
+func _test_dispenser() -> void:
+	_course(Vector3(-10, 1, 0))
+	world.registry.channels["d_ch"] = [["t:DL", "latch"]]
+	var d := _dispenser(Vector3(0, 1, 0), &"d_ch", 2)
+	await _wait(30)
+	_check(d.weights().size() == 1, "one at a time: the second waits for the spot")
+	d.weights()[0].global_position = Vector3(4, 0.5, 0)
+	await _wait(30)
+	_check(d.weights().size() == 2 and d.weights().all(func(w: WeightBody) -> bool: return w.dispensed), "spot clear: the second comes out")
+	d.weights()[1].destroy() # Weight2, the one resting on the spawn spot
+	await _wait(60)
+	_check(d.weights().size() == 1, "a lost weight waits respawn_delay")
+	await _wait(90)
+	_check(d.weights().size() == 2, "then it is replaced (and rests on the spot)")
+	d.weights()[0].queue_free() # Weight1, away from the spot, freed by other code
+	await _wait(200)
+	_check(d.weights().size() == 1, "a plain queue_free counts as lost; the spawn waits while the spot is taken")
+	d.weights()[0].global_position = Vector3(-4, 0.5, 0)
+	await _wait(10)
+	_check(d.weights().size() == 2, "spot clear: replaced")
+	world.press(&"d_ch", "t:DL", true)
+	d.weights()[0].destroy()
+	await _wait(200)
+	_check(world.solved(&"d_ch") and d.weights().size() == 1, "solved: no more replacements")
+	sections += 1
+
+
+func _test_memory() -> void:
+	var area := _area("mem")
+	var hand := _weight_in(area, "Hand", Vector3(3, 0.5, 2))
+	var spare := _weight_in(area, "Spare", Vector3(-3, 0.5, 2))
+	var d := _dispenser_in(area, Vector3(0, 1, -4), &"", 1)
+	root.add_child(area)
+	await _wait(30)
+	hand.global_position = Vector3(5, 0.5, -2)
+	spare.destroy()
+	d.weights()[0].global_position = Vector3(-5, 0.5, -2)
+	await _wait(30)
+	root.remove_child(area) # like a scene change
+	area.free()
+	area = _area("mem")
+	hand = _weight_in(area, "Hand", Vector3(3, 0.5, 2))
+	spare = _weight_in(area, "Spare", Vector3(-3, 0.5, 2))
+	d = _dispenser_in(area, Vector3(0, 1, -4), &"", 1)
+	root.add_child(area) # children are ready before the area: the dispenser recreates, then the area restores
+	await _wait(5)
+	_check(hand.global_position.distance_to(Vector3(5, 0.5, -2)) < 0.1, "a hand-placed weight is back where it was left")
+	_check(not is_instance_valid(spare), "a destroyed hand-placed weight stays gone")
+	_check(d.weights().size() == 1 and d.weights()[0].global_position.distance_to(Vector3(-5, 0.5, -2)) < 0.1, "a dispensed weight is back where it was left, no extra spawn")
+	area.bounds_radius = 20.0
+	hand.global_position = Vector3(0, -30, 0)
+	await _wait(5)
+	_check(not is_instance_valid(hand), "out of the area's bounds: destroyed")
+	root.remove_child(area)
+	area.free()
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -472,6 +530,64 @@ func _energy(at: Vector3, ch: StringName) -> AnimatableBody3D:
 	e.add_child(cs)
 	course.add_child(e)
 	return e
+
+
+## A dispenser of boxes on channel `ch`, keeping `n` in play.
+func _dispenser(at: Vector3, ch: StringName, n: int) -> Node3D:
+	var d: Node3D = load("res://puzzle/dispenser.gd").new()
+	d.channel = ch
+	d.count = n
+	d.position = at
+	course.add_child(d)
+	return d
+
+
+## A bare GameArea named `area_name` (Player, Camera, HUD/Label, a floor), not in the tree yet: the
+## caller adds its weights and dispensers first. The course goes away.
+func _area(area_name: String) -> Node3D:
+	if course:
+		root.remove_child(course)
+		course.queue_free()
+		course = null
+	var a: Node3D = load("res://world/area.gd").new()
+	a.area_id = StringName(area_name)
+	var floor := CSGBox3D.new()
+	floor.size = Vector3(40, 1, 40)
+	floor.position = Vector3(0, -0.5, 0)
+	floor.use_collision = true
+	a.add_child(floor)
+	var p: Player = PLAYER.instantiate()
+	p.name = "Player"
+	p.position = Vector3(0, 1, 6)
+	a.add_child(p)
+	var cam := Camera3D.new()
+	cam.name = "Camera"
+	a.add_child(cam)
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"
+	var label := Label.new()
+	label.name = "Label"
+	hud.add_child(label)
+	a.add_child(hud)
+	return a
+
+
+func _weight_in(area: Node3D, node_name: String, at: Vector3) -> WeightBody:
+	var b: WeightBody = BOX.instantiate()
+	b.name = node_name
+	b.position = at
+	area.add_child(b)
+	return b
+
+
+func _dispenser_in(area: Node3D, at: Vector3, ch: StringName, n: int) -> Node3D:
+	var d: Node3D = load("res://puzzle/dispenser.gd").new()
+	d.name = "Dispenser"
+	d.channel = ch
+	d.count = n
+	d.position = at
+	area.add_child(d)
+	return d
 
 
 func _flat(v: Vector3) -> Vector3:
