@@ -23,7 +23,8 @@ func _init() -> void:
 
 func _update_property() -> void:
 	var o := get_edited_object()
-	_picker.allow_none = not o is PlatformSwitch # a switch needs a channel to control
+	# a switch needs a channel to control, a door one to listen to; a dispenser may never stop
+	_picker.allow_none = not (o is PlatformSwitch or o is WeightPlate or o is EnergySwitch or o is Door)
 	_picker.setup(o.get(get_edited_property()), String(o.name) if o is Node else "signal", _context())
 
 

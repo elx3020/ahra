@@ -27,12 +27,15 @@ extends EditorPlugin
 ## - Add Path: draws another path into the track (multipath), anchors placed as for New Track,
 ##   snapping onto the track's own anchors (junctions); if the track's last sequence ends where
 ##   the new path starts, a run along it is added.
-## Inspector: `channel` (tracks, circuits, switches) is the same channel dropdown, and a group's
-## `circuit` checkbox turns circuit mode on or off with set_circuit().
+## Inspector: `channel` (tracks, circuits, switches, puzzle plates, energy switches, doors and
+## dispensers) is the same channel dropdown, and a group's `circuit` checkbox turns circuit mode on
+## or off with set_circuit().
+## Saving a scene (and starting the editor) re-bakes the door switch registry (channel_registry.gd).
 ## Every change is undoable.
 
 const TrackPreview := preload("track_preview.gd")
 const ChannelPicker := preload("channel_picker.gd")
+const ChannelRegistry := preload("channel_registry.gd")
 const SWITCH_SIZE := Vector3(2, 2, 2) ## a new switch's zone
 
 const SHAPES := {
@@ -96,6 +99,8 @@ func _enter_tree() -> void:
 	EditorInterface.get_selection().selection_changed.connect(_refresh)
 	EditorInterface.get_editor_settings().settings_changed.connect(_render)
 	scene_changed.connect(_on_scene_changed)
+	scene_saved.connect(_on_scene_saved)
+	ChannelRegistry.bake() # scenes may have changed outside the editor
 	_refresh()
 
 
@@ -104,6 +109,7 @@ func _exit_tree() -> void:
 	EditorInterface.get_selection().selection_changed.disconnect(_refresh)
 	EditorInterface.get_editor_settings().settings_changed.disconnect(_render)
 	scene_changed.disconnect(_on_scene_changed)
+	scene_saved.disconnect(_on_scene_saved)
 	set_timing_preview(false)
 	_end_drag()
 	remove_inspector_plugin(_channel_inspector)
@@ -443,6 +449,12 @@ func _render() -> void:
 		_preview.show_track(_anchors, _hover)
 
 
+## Every scene save re-bakes the door switch registry (World.registry), so doors count switches
+## in areas the player hasn't visited.
+func _on_scene_saved(_path: String) -> void:
+	ChannelRegistry.bake()
+
+
 func _on_scene_changed(_root: Node) -> void:
 	cancel_track() # the preview and anchors belong to the scene that was open
 
@@ -744,14 +756,15 @@ func add_switch(channel: StringName, action: int, starts_on: bool) -> PlatformSw
 	return sw
 
 
-## Inspector: `channel` on tracks, circuits and switches, and a sequence's `end_signal`, are the
-## channel picker; a group's `circuit` checkbox goes through set_circuit.
+## Inspector: `channel` on tracks, circuits, switches and the puzzle nodes (plates, energy switches,
+## doors, dispensers), and a sequence's `end_signal`, are the channel picker; a group's `circuit`
+## checkbox goes through set_circuit.
 class ChannelInspector extends EditorInspectorPlugin:
 	const ChannelProperty := preload("channel_property.gd")
 	var plugin: EditorPlugin
 
 	func _can_handle(o: Object) -> bool:
-		return o is PlatformProgram or o is PlatformSwitch or o is PlatformSequence
+		return o is PlatformProgram or o is PlatformSwitch or o is PlatformSequence or o is WeightPlate 				or o is EnergySwitch or o is Door or o is Dispenser
 
 	func _parse_property(o: Object, _type: Variant.Type, name: String, _hint: PropertyHint, _hint_string: String, _usage: int, _wide: bool) -> bool:
 		if name == "channel" or name == "end_signal":

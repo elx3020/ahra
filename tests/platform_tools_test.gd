@@ -490,6 +490,17 @@ func run() -> void:
 	hist.undo()
 	check(sa.get_parent() == null and sb.get_parent() == null, "(test tracks removed)")
 
+	# --- switch registry ---
+	var scene_text := '[gd_scene format=3]\n\n[ext_resource type="Script" path="res://puzzle/weight_plate.gd" id="1_p"]\n[ext_resource type="Script" path="res://puzzle/energy_switch.gd" id="2_e"]\n\n[node name="Room" type="Node3D"]\n\n[node name="A" type="Area3D" parent="."]\nscript = ExtResource("1_p")\nchannel = &"gate"\nmode = 1\n\n[node name="Bay" type="Node3D" parent="."]\n\n[node name="H" type="Area3D" parent="Bay"]\nscript = ExtResource("1_p")\nchannel = &"gate"\n\n[node name="Z" type="AnimatableBody3D" parent="Bay"]\nscript = ExtResource("2_e")\nchannel = &"other:gate"\n'
+	var reg_script = load("res://addons/platform_tools/channel_registry.gd")
+	check(reg_script.switches_in(scene_text, "res://x/room.tscn") == [["room:gate", "room:A", "latch"], ["room:gate", "room:Bay/H", "hold"], ["other:gate", "room:Bay/Z", "energy"]], "registry: plates and energy switches, ids and kinds")
+	reg_script.bake()
+	check(load(SwitchRegistry.PATH) is SwitchRegistry, "bake writes the switch registry")
+	check(not reg_script.bake(), "an unchanged bake doesn't rewrite the file")
+	var plate: Node = load("res://puzzle/weight_plate.gd").new()
+	check(pt._channel_inspector._can_handle(plate), "the channel picker handles weight plates")
+	plate.free()
+
 	# --- circuit mode ---
 	EditorInterface.get_selection().clear()
 	await frames(1)

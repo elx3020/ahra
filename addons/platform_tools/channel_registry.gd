@@ -25,7 +25,8 @@ static func channels() -> Dictionary:
 	if open:
 		var here := open_path if open_path else "(unsaved scene)"
 		for n in [open] + open.find_children("*", "", true, false):
-			if (n is PlatformSwitch or n is PlatformProgram and n.plays()) and n.channel != &"":
+			if (n is PlatformSwitch or n is PlatformProgram and n.plays() or n is WeightPlate or n is EnergySwitch \
+					or n is Door or n is Dispenser) and n.channel != &"":
 				_add(found, Channels.key(n, n.channel), here)
 			if n is PlatformTrackInstance:
 				for q in n.sequences:
@@ -42,12 +43,76 @@ static func channels() -> Dictionary:
 ## The channel keys a saved scene's text uses: its nodes' `channel`s and their sequences'
 ## `end_signal`s, resolved as Channels.key would (area_id or file name, then scoped groups).
 static func keys_in(text: String, path: String) -> Array:
+	var refs := RegEx.create_from_string('SubResource\\("([^"]+)"\\)')
+	var signals := {}
+	var out := []
+	for n: Dictionary in _nodes(text, path, signals):
+		var used := [n.props.get("channel", "")]
+		for r in refs.search_all(n.props.get("sequences", "")):
+			used.append(signals.get(r.get_string(1), ""))
+		for name: String in used:
+			if name != "":
+				out.append(name if name.contains(":") else n.prefix + name)
+	return out
+
+
+## The door switches in a saved scene's text: [channel key, switch id (as Channels.id), kind] for
+## each weight plate ("hold" / "latch") and energy switch ("energy") that has a channel.
+## ponytail: like keys_in, it doesn't look inside instanced sub-scenes (a switch inside an
+## instanced room scene is missed); read those files' nodes under the instance's path if needed.
+static func switches_in(text: String, path: String) -> Array:
+	var nodes := _nodes(text, path)
+	if nodes.is_empty():
+		return []
+	var area: String = nodes[0].props.get("area_id", path.get_file().get_basename())
+	var out := []
+	for n: Dictionary in nodes:
+		var ch: String = n.props.get("channel", "")
+		var kind := ""
+		if n.script == "res://puzzle/weight_plate.gd":
+			kind = "latch" if n.props.get("mode", "0") == "1" else "hold"
+		elif n.script == "res://puzzle/energy_switch.gd":
+			kind = "energy"
+		if kind != "" and ch != "":
+			out.append([ch if ch.contains(":") else n.prefix + ch, area + ":" + n.path, kind])
+	return out
+
+
+## Rebuilds the switch registry (SwitchRegistry.PATH) from every saved scene, so doors count the
+## switches of areas the player hasn't visited. Saves only when it changed; returns whether it did.
+## The plugin calls it on each scene save and when the editor starts.
+static func bake() -> bool:
+	var files := []
+	_scene_files(EditorInterface.get_resource_filesystem().get_filesystem(), files)
+	var data := {}
+	for path: String in files:
+		for sw: Array in switches_in(FileAccess.get_file_as_string(path), path):
+			if not data.has(sw[0]):
+				data[sw[0]] = []
+			data[sw[0]].append([sw[1], sw[2]])
+	if ResourceLoader.exists(SwitchRegistry.PATH):
+		var old := load(SwitchRegistry.PATH) as SwitchRegistry
+		if old and old.channels == data:
+			return false
+	var reg := SwitchRegistry.new()
+	reg.channels = data
+	ResourceSaver.save(reg, SwitchRegistry.PATH)
+	EditorInterface.get_resource_filesystem().update_file(SwitchRegistry.PATH)
+	return true
+
+
+## A saved scene's nodes: {path (from the root, "." for it), prefix (what a plain channel name gets
+## in front of it there: area_id or file name, then scoped groups), props (saved values as text,
+## StringNames unquoted), script (its res:// path, "" if none)}. `signals` gets the sub-resources'
+## end_signals by id.
+static func _nodes(text: String, path: String, signals := {}) -> Array:
 	var head := RegEx.create_from_string('^\\[node name="([^"]+)"(?:[^\\]]*? parent="([^"]*)")?')
 	var res_id := RegEx.create_from_string(' id="([^"]+)"')
+	var ext := RegEx.create_from_string('^\\[ext_resource [^\\]]*?path="([^"]+)"[^\\]]*? id="([^"]+)"')
 	var value := RegEx.create_from_string('^(\\w+) = (?:&"([^"]*)"|(.*))$')
-	var refs := RegEx.create_from_string('SubResource\\("([^"]+)"\\)')
-	var signals := {} # sub-resource id -> its end_signal
-	var nodes := [] # [path, parent path, {property: value}]
+	var ext_ref := RegEx.create_from_string('ExtResource\\("([^"]+)"\\)')
+	var exts := {} # ext resource id -> its path
+	var raw := [] # [path, parent path, {property: value}]
 	var res := ""
 	for line in text.split("\n"):
 		if line.begins_with("["):
@@ -59,8 +124,11 @@ static func keys_in(text: String, path: String) -> Array:
 				var root := h.get_start(2) < 0
 				var parent := h.get_string(2)
 				var at := "." if root else (h.get_string(1) if parent == "." else parent + "/" + h.get_string(1))
-				nodes.append([at, parent, {name = h.get_string(1)}])
+				raw.append([at, parent, {name = h.get_string(1)}])
 			else:
+				var e := ext.search(line)
+				if e:
+					exts[e.get_string(2)] = e.get_string(1)
 				res = "-" # ext resources, connections...: not a node
 			continue
 		var m := value.search(line)
@@ -69,22 +137,18 @@ static func keys_in(text: String, path: String) -> Array:
 		if res != "":
 			if m.get_string(1) == "end_signal":
 				signals[res] = m.get_string(2)
-		elif not nodes.is_empty():
-			nodes[-1][2][m.get_string(1)] = m.get_string(2) if m.get_start(2) >= 0 else m.get_string(3)
+		elif not raw.is_empty():
+			raw[-1][2][m.get_string(1)] = m.get_string(2) if m.get_start(2) >= 0 else m.get_string(3)
 	var prefix := {} # node path -> what a plain name gets in front of it there
 	var out := []
-	for n: Array in nodes:
+	for n: Array in raw:
 		var props: Dictionary = n[2]
 		var p: String = (props.get("area_id", path.get_file().get_basename()) + ":") if n[0] == "." else prefix.get(n[1], "")
 		if props.get("channel_scope") == "true":
 			p += props.name + "/"
 		prefix[n[0]] = p
-		var used := [props.get("channel", "")]
-		for r in refs.search_all(props.get("sequences", "")):
-			used.append(signals.get(r.get_string(1), ""))
-		for name: String in used:
-			if name != "":
-				out.append(name if name.contains(":") else p + name)
+		var sc := ext_ref.search(props.get("script", ""))
+		out.append({path = n[0], prefix = p, props = props, script = exts.get(sc.get_string(1), "") if sc else ""})
 	return out
 
 

@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="SwitchRegistry" format=3 uid="uid://bsx0mf5xaoxsr"]
+
+[ext_resource type="Script" uid="uid://d3rhrxiht8y3c" path="res://puzzle/switch_registry.gd" id="1_3f1g8"]
+
+[resource]
+script = ExtResource("1_3f1g8")
