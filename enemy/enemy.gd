@@ -182,6 +182,7 @@ func _physics_process(delta: float) -> void:
 	if max_stamina > 0.0 and stamina <= 0.0 and state_name not in [&"stun", &"death", &"puppet"]:
 		stun(stun_time) # exhausted: the timed opening
 	var next := state.physics(delta)
+	WeightBody.push_from(self, weight, run_speed)
 	if next:
 		change_state(next)
 	_fall_damage()
@@ -223,6 +224,13 @@ func vspeed() -> float:
 
 func planar() -> Vector3:
 	return velocity - up_direction * vspeed()
+
+
+## Sticky gravity, set by GravityZones: movement already splits along up_direction.
+## ponytail: only walking and chasing on a ceiling are tested; climb, swing, fly and solved jumps
+## under flipped gravity aren't. Mirror an enemy_test course upside down when a puzzle needs them.
+func set_gravity_dir(dir: Vector3) -> void:
+	up_direction = -dir.normalized()
 
 
 func set_vspeed(v: float) -> void:
@@ -553,7 +561,7 @@ func _exclude() -> Array[RID]:
 	if _excl_frame != Engine.get_physics_frames():
 		_excl_frame = Engine.get_physics_frames()
 		_excl = [get_rid()]
-		for group: StringName in [&"enemy", &"player"]:
+		for group: StringName in [&"enemy", &"player", &"weight"]: # weights: walked into and pushed, not walls
 			for n: Node in get_tree().get_nodes_in_group(group):
 				if n is CollisionObject3D:
 					_excl.append((n as CollisionObject3D).get_rid())

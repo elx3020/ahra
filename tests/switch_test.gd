@@ -7,10 +7,12 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 3
+const SECTIONS := 4
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
+const RUNNER := "res://enemy/runner/runner.tscn"
+const NPC := "res://npc/npc.tscn"
 
 var fails := 0
 var sections := 0
@@ -27,7 +29,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight, _test_carry]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -202,6 +204,49 @@ func _test_carry() -> void:
 	sections += 1
 
 
+func _test_gravity() -> void:
+	world.reset_story()
+	_course(Vector3(-30, 1, 0))
+	_box(Vector3(0, 10.5, 0), Vector3(80, 1, 30)) # ceiling, underside at y 10
+	var e: Enemy = load(RUNNER).instantiate()
+	e.position = Vector3(5, 1, 0)
+	course.add_child(e)
+	var n := _npc(Vector3(-5, 1, 0), "Flipper")
+	var gz: GravityZone = _zone(GravityZone, Vector3(0, 1, 0), Vector3(20, 2, 6))
+	gz.gravity_dir = Vector3.UP
+	await _wait(120)
+	_check(e.up_direction.is_equal_approx(Vector3.DOWN) and e.is_on_floor() and e.global_position.y > 8.5, "an enemy flips and stands on the ceiling")
+	_check(n.up_direction.is_equal_approx(Vector3.DOWN) and n.is_on_floor() and n.global_position.y > 8.5, "an NPC flips too")
+	n.save_position()
+	_check(world.npcs[n.memory_id()].gravity == Vector3.UP, "NPC memory keeps its gravity")
+	course.remove_child(n)
+	n.free()
+	var again := _npc(Vector3(-5, 1, 0), "Flipper")
+	await _wait(10)
+	_check(again.gravity_dir == Vector3.UP and again.global_position.y > 8.5, "re-instanced NPC is back on the ceiling, still flipped")
+	player.teleport(Vector3(-2, 1, 0)) # into the zone: up to the ceiling as well
+	await _wait(45)
+	var gap := e.global_position.distance_to(player.global_position)
+	await _wait(90)
+	_check(player.up_direction.is_equal_approx(Vector3.DOWN) and e.global_position.distance_to(player.global_position) < gap - 2.0, "a flipped enemy chases a flipped player along the ceiling")
+	# pushing: an enemy chasing the player shoves a box in its way; an NPC walking to a mark does too
+	_course(Vector3(-6, 1, 0))
+	var box := _weight(Vector3(0, 0.5, 0))
+	var chaser: Enemy = load(RUNNER).instantiate()
+	chaser.position = Vector3(3, 1, 0)
+	course.add_child(chaser)
+	await _wait(150)
+	_check(box.global_position.x < -0.3, "an enemy walking into a weight pushes it")
+	_course(Vector3(-20, 1, 10))
+	var box2 := _weight(Vector3(0, 0.5, 0))
+	var walker := _npc(Vector3(3, 1, 0), "Walker")
+	await _wait(10)
+	walker.walk_to(Vector3(-4, 0, 0))
+	await _wait(150)
+	_check(box2.global_position.x < -0.3, "an NPC walking into a weight pushes it")
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -254,6 +299,16 @@ func _reset_lift(w: WeightBody) -> void:
 	w.global_position = Vector3(1, 0.5, 0)
 	w.linear_velocity = Vector3.ZERO
 	await _wait(20)
+
+
+## An NPC (loaded at runtime: Npc reaches the World autoload) named `npc_name`, so a re-instance
+## with the same name finds the same memory.
+func _npc(at: Vector3, npc_name := "") -> Node3D:
+	var n: Node3D = load(NPC).instantiate()
+	n.name = npc_name if npc_name else "Npc%d" % course.get_child_count()
+	n.position = at
+	course.add_child(n)
+	return n
 
 
 func _flat(v: Vector3) -> Vector3:

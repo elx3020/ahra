@@ -35,6 +35,7 @@ const LEAVE_HOLD := 0.15 ## seconds a leave holds the screen black between its t
 @export var walk_speed := 2.5
 @export var run_speed := 5.0
 @export var accel := 20.0
+@export var push_strength := 6.0 ## walking into a weight pushes it at walk speed * push_strength / weight (at most x1)
 @export var color := Color(0.3, 0.65, 0.45): ## tints the placeholder body
 	set(v):
 		color = v
@@ -47,6 +48,7 @@ var look_target: Variant = null ## global point the head turns to, or null (stra
 var speaking := false ## a line is showing (the mouth moves)
 var facing := Vector3.FORWARD
 var present := true ## false while absent (appears_if unmet, or it left)
+var gravity_dir := Vector3.DOWN ## sticky, set by GravityZones; remembered with the position
 var waiting := false ## a walk paused beside its destination because the player stands on it
 var marks := {} ## mark name (StringName) -> global position, cached before the NPC ever moves
 var playing: NpcInteraction ## the interaction running, or null
@@ -64,6 +66,7 @@ var _look_mark: StringName
 var _last_line := {} ## NpcStep -> index of the version shown last
 var _routine: NpcInteraction ## the routine a talk or a bark cut, to resume at _routine_from
 var _routine_from := 0
+var _marks_up := Vector3.UP ## up when the marks were cached: a timeout snap only lands on a mark of the same floor
 var _armed := {} ## NEAR NpcInteraction -> false once fired, until the player is beyond distance + 1 m
 var _target: Variant = null ## walk target (global), or null
 var _running := false
@@ -120,6 +123,8 @@ func _unshare() -> void:
 
 func _start() -> void:
 	var mem := memory()
+	if mem.has("gravity"):
+		set_gravity_dir(mem.gravity)
 	if mem.has("pos"):
 		global_position = mem.pos
 		facing = mem.facing
@@ -484,6 +489,7 @@ func refresh_presence() -> void:
 # --- walking ------------------------------------------------------------------------------
 
 func _cache_marks() -> void:
+	_marks_up = up_direction
 	for m in get_children():
 		if m is Marker3D:
 			marks[StringName(m.name)] = m.global_position
@@ -520,10 +526,18 @@ func walking() -> bool:
 
 
 ## Writes where the NPC stands into its memory (restored when the area loads again).
+## Sticky gravity, set by GravityZones (walls and ceilings become its floor).
+func set_gravity_dir(dir: Vector3) -> void:
+	gravity_dir = dir.normalized()
+	up_direction = -gravity_dir
+	_moved = true
+
+
 func save_position() -> void:
 	var m := memory()
 	m.pos = global_position
 	m.facing = facing
+	m.gravity = gravity_dir
 	_moved = false
 
 
@@ -537,6 +551,7 @@ func _physics_process(delta: float) -> void:
 	if p:
 		_check_near(p)
 	_move(delta)
+	WeightBody.push_from(self, push_strength, walk_speed)
 	_look(delta)
 	_orient(delta)
 	_animate(delta)
@@ -569,15 +584,17 @@ func _move(delta: float) -> void:
 					beside = true # the held player is on it, something is in the way: here will do
 				elif taken(target):
 					_walk_left = 1.0 # never snap onto the player
-				else:
+				elif up_direction.dot(_marks_up) > 0.99:
 					snap = true
+				else:
+					beside = true # the mark is on the floor of another gravity: the walk ends here
 			elif to.length() > 0.01:
 				dir = _steer(to.normalized(), target)
 				facing = dir
 	var speed := run_speed if _running else walk_speed
 	var vert := velocity.project(up_direction)
 	if not is_on_floor():
-		vert += get_gravity() * delta
+		vert += gravity_dir * get_gravity().length() * delta
 	velocity = velocity.slide(up_direction).move_toward(dir * speed, accel * delta) + vert
 	move_and_slide()
 	if snap:
