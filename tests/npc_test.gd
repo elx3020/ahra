@@ -719,6 +719,10 @@ func _test_room() -> void:
 	player.teleport(n.marks[&"M"] + Vector3(2.5, 0.8, 0))
 	await _wait(3)
 	_check(not n.in_way(n.marks[&"M"], 1.0), "beyond the mark isn't")
+	player.teleport(n.global_position + Vector3(-0.9, 0, 0))
+	await _wait(3)
+	_check(not n.in_way(n.marks[&"M"], 1.0), "touching it from behind isn't")
+	_check(not n.in_way(n.global_position, 1.0), "nor is anyone when there's no way to walk")
 	# on the line: complains, stays, the once talk isn't spent
 	await _start_key(n) # player at +1.5 x: on the line
 	_check(n.line == "Want me to move?", "talk starts")

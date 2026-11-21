@@ -529,14 +529,17 @@ func taken(point: Vector3) -> bool:
 	return p != null and (p.global_position - point).slide(up_direction).length() < CLEARANCE
 
 
-## Whether the player stands within `room` (planar) of the way from here to `point`: the
-## straight segment, so standing on `point` counts and standing past it doesn't.
+## Whether the player stands ahead, within `room` (planar) of the way from here to `point`: the
+## straight segment, so standing on `point` counts and standing past it, behind or level with
+## the NPC doesn't.
 func in_way(point: Vector3, room: float) -> bool:
 	var p := player()
 	if p == null:
 		return false
 	var to := (point - global_position).slide(up_direction)
 	var at := (p.global_position - global_position).slide(up_direction)
+	if at.dot(to) <= 0.0: # behind, level, or no way to walk
+		return false
 	return Geometry3D.get_closest_point_to_segment(at, Vector3.ZERO, to).distance_to(at) < room
 
 

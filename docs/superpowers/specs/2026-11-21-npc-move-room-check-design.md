@@ -24,8 +24,9 @@ check is acceptable (today's behavior); the system must stay simple.
 - `NpcStep` `MOVE` shows two more fields: `lines` (the complaint versions, the same field `SAY`
   uses, same never-repeat pick) and `room` (metres, default 1.0). Empty `lines`: no check, the walk
   behaves exactly as today.
-- When a `MOVE` with lines starts, the NPC checks whether the player stands within `room` (planar)
-  of the straight line from the NPC to the mark (the segment, so standing on the mark counts).
+- When a `MOVE` with lines starts, the NPC checks whether the player stands ahead of it and within
+  `room` (planar) of the straight line from the NPC to the mark (the segment, so standing on the
+  mark counts; behind or level with the NPC doesn't — final review fix).
   - **In the way:** it says one of the lines like a `SAY` (locked talks wait for interact, `▸`;
     unlocked ones show it for its time), then the interaction ends right there (later steps
     skipped) and the NPC stays put. The run is not counted (its play is taken back, floor 0), so a

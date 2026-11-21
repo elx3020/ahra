@@ -143,8 +143,9 @@ doesn't count) snaps the NPC to its mark, never onto the player, so a blocked wa
 the player. Don't put a mark where the player stands while talking to that NPC.
 
 **Needing room.** To have an NPC refuse instead of squeezing past (the Doorman in his doorway),
-give the walk `lines` and a `room`. When the step starts, a player within `room` m of the straight
-line to the mark (standing on the mark counts) gets one of the lines, and the interaction stops
+give the walk `lines` and a `room`. When the step starts, a player ahead of the NPC within `room` m
+of the straight line to the mark (standing on the mark counts; behind or level with it doesn't)
+gets one of the lines, and the interaction stops
 there: the NPC stays put, steps before the walk stay done, and the run isn't counted, so a `once`
 talk plays again from the top. It is checked once, not during the walk. A routine that complains
 starts its loop over. No lines, no check.
