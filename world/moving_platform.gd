@@ -8,6 +8,8 @@ extends AnimatableBody3D
 ## ceilings make the shape thin on that axis (or rotate it) and pair it with a GravityZone.
 ## A `surface` profile turns it into an ice / mud / wind... platform: an EnvZone wrapping its
 ## shapes rides along with it.
+## Door and EnergySwitch reuse it as a solid body shaped by ShapeSet (no track; they override the
+## configuration warning).
 
 @export var color := Color(0.55, 0.6, 0.75):
 	set(v):

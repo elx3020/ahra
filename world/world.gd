@@ -183,6 +183,8 @@ func _settle(channel: StringName) -> Dictionary:
 ## registry (every saved scene, visited or not) plus the switches loaded now (scenes built in code).
 ## ponytail: scans the door_switch group on every call; cache per physics frame if puzzles get big.
 func switches_of(channel: StringName) -> Array:
+	if channel == &"":
+		return [] # no channel links nothing
 	var out: Array = registry.channels.get(String(channel), []).duplicate()
 	var seen := {}
 	for s: Array in out:

@@ -7,12 +7,13 @@ extends SceneTree
 ## they reach the World autoload, which -s scripts compile before (see CLAUDE.md). Their scripts
 ## and scenes are load()ed at runtime.
 
-const SECTIONS := 4
+const SECTIONS := 6
 const PLAYER := preload("res://player/player.tscn")
 const BOX := preload("res://puzzle/box.tscn")
 const BALL := preload("res://puzzle/ball.tscn")
 const RUNNER := "res://enemy/runner/runner.tscn"
 const NPC := "res://npc/npc.tscn"
+const WARMUP_FRAMES := 3 ## WeightPlate.WARMUP (tests can't type WeightPlate)
 
 var fails := 0
 var sections := 0
@@ -29,7 +30,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity]
+	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -247,6 +248,100 @@ func _test_gravity() -> void:
 	sections += 1
 
 
+func _test_plate() -> void:
+	world.reset_story()
+	_course(Vector3(-10, 1, 0))
+	var hold := _plate(Vector3(0, 0.15, 0), &"p_hold")
+	await _wait(10)
+	_check(not hold.pressed and hold.kind() == "hold" and hold.is_in_group(&"door_switch"), "empty hold plate")
+	player.teleport(Vector3(0, 1, 0))
+	await _wait(10)
+	_check(hold.pressed and world.switch_on(hold.switch_id()), "the player presses it")
+	player.teleport(Vector3(-10, 1, 0))
+	await _wait(10)
+	_check(not hold.pressed, "stepping off releases it")
+	var b := _weight(Vector3(0.8, 1.5, 0)) # on the plate's +x half
+	await _wait(40)
+	_check(hold.pressed, "a weight presses it")
+	player.teleport(Vector3(1.9, 1, 0)) # off the plate, 1.1 m from the weight
+	player.facing = Vector3.LEFT
+	await _wait(10)
+	await _press(&"carry")
+	await _wait(5)
+	_check(player.held == b and not hold.pressed, "lifting the weight off releases it; carried weights never count")
+	player.drop_held()
+	b.queue_free()
+	player.teleport(Vector3(-10, 1, 0))
+	var e: Enemy = load(RUNNER).instantiate()
+	e.position = Vector3(0, 1, 0)
+	course.add_child(e)
+	e.start_puppet() # stands still instead of chasing the player off the plate
+	await _wait(20)
+	_check(hold.pressed, "an enemy presses it")
+	e.queue_free()
+	var n := _npc(Vector3(0, 1, 0))
+	await _wait(20)
+	_check(hold.pressed, "an NPC presses it")
+	n.queue_free()
+	_box(Vector3(15.5, 1.5, 0), Vector3(1, 3, 3)) # a wall, face at x 15
+	var wall := _plate(Vector3(14.85, 1, 0), &"p_wall", false, Vector3(0, 0, deg_to_rad(90))) # face points -x, slab x 14.7..15
+	var shoved := _weight(Vector3(13.8, 0.5, 0))
+	shoved.linear_velocity = Vector3(3, 0, 0)
+	await _wait(30)
+	_check(not wall.pressed, "a weight shoved sideways against a wall plate doesn't count")
+	shoved.set_gravity_dir(Vector3.RIGHT)
+	await _wait(30)
+	_check(wall.pressed, "with gravity into the plate it counts")
+	_box(Vector3(30, 8.5, 0), Vector3(6, 1, 6))
+	var ceiling := _plate(Vector3(30, 7.85, 0), &"p_ceil", false, Vector3(deg_to_rad(180), 0, 0))
+	var up := _weight(Vector3(30, 0.5, 0))
+	up.set_gravity_dir(Vector3.UP)
+	await _wait(60)
+	_check(ceiling.pressed, "a weight that fell up onto a ceiling plate presses it")
+	world.registry.channels["t:warm"] = []
+	world.switches["/root/Course/Warm"] = {on = true, locked = false}
+	var warm := _plate(Vector3(-25, 0.15, 0), &"t:warm")
+	warm.name = "Warm"
+	await _wait(1)
+	_check(world.switch_on("/root/Course/Warm"), "warmup: a loading plate doesn't release its saved state at once")
+	await _wait(WARMUP_FRAMES + 2)
+	_check(not world.switch_on("/root/Course/Warm"), "after warmup it reads what is really on it")
+	# latch trio: springs back until both are on at once, then locks
+	var la := _plate(Vector3(40, 0.15, 0), &"p_latch", true)
+	var lb := _plate(Vector3(44, 0.15, 0), &"p_latch", true)
+	player.teleport(Vector3(40, 1, 0))
+	await _wait(10)
+	player.teleport(Vector3(37, 1, 0))
+	await _wait(10)
+	_check(not la.is_on(), "a latch springs back while the other is off")
+	_weight(Vector3(44, 1.5, 0))
+	player.teleport(Vector3(40, 1, 0))
+	await _wait(40)
+	player.teleport(Vector3(37, 1, 0))
+	await _wait(10)
+	_check(la.is_on() and lb.is_on() and world.solved(&"p_latch"), "both on at once: both lock, solved")
+	sections += 1
+
+
+func _test_door() -> void:
+	_course(Vector3(-10, 1, 0))
+	_plate(Vector3(0, 0.15, 0), &"d_hold")
+	var door := _door(Vector3(0, 1.5, 5), &"d_hold")
+	await _wait(10)
+	_check(door.amount == 0.0 and door._get_configuration_warnings().is_empty(), "shut, no warnings")
+	player.teleport(Vector3(0, 1, 0))
+	await _wait(30)
+	_check(door.amount == 1.0 and door.position.is_equal_approx(Vector3(0, 4.5, 5)), "opens by open_offset within open_time")
+	player.teleport(Vector3(0, 1, 5)) # in the doorway
+	await _wait(40)
+	_check(door.amount == 0.0 and absf(player.global_position.z - 5.0) > 0.7, "closing pushes the player out of the doorway, no crush")
+	var lonely := _door(Vector3(10, 1.5, 5), &"")
+	var orphan := _door(Vector3(20, 1.5, 5), &"nobody")
+	await _wait(10)
+	_check(lonely.amount == 0.0 and not lonely._get_configuration_warnings().is_empty() and orphan.amount == 0.0, "no channel / no switches: shut, warned, no errors")
+	sections += 1
+
+
 # --- building the course -------------------------------------------------------------
 
 func _course(player_at := Vector3(-10, 1, 0)) -> void:
@@ -309,6 +404,34 @@ func _npc(at: Vector3, npc_name := "") -> Node3D:
 	n.position = at
 	course.add_child(n)
 	return n
+
+
+## A weight plate (2 x 0.3 x 2 slab) on channel `ch`; `rot` turns it onto a wall or ceiling.
+func _plate(at: Vector3, ch: StringName, latch := false, rot := Vector3.ZERO) -> Area3D:
+	var z: Area3D = load("res://puzzle/weight_plate.gd").new()
+	z.channel = ch
+	z.mode = 1 if latch else 0
+	z.position = at
+	z.rotation = rot
+	course.add_child(z)
+	var s := BoxShape3D.new()
+	s.size = Vector3(2, 0.3, 2)
+	z.add_shape(s)
+	return z
+
+
+## A door (4 x 3 x 0.4) on channel `ch`.
+func _door(at: Vector3, ch: StringName) -> AnimatableBody3D:
+	var d: AnimatableBody3D = load("res://puzzle/door.gd").new()
+	d.channel = ch
+	d.position = at
+	var cs := CollisionShape3D.new()
+	var s := BoxShape3D.new()
+	s.size = Vector3(4, 3, 0.4)
+	cs.shape = s
+	d.add_child(cs)
+	course.add_child(d)
+	return d
 
 
 func _flat(v: Vector3) -> Vector3:
