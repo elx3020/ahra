@@ -816,6 +816,21 @@ func _test_demo() -> void:
 	await _wait(3)
 	_check(by_name.Smith.line == "You rang the bell!", "demo: Smith's new line after the bell")
 	await _talk_through(by_name.Smith)
+	var door: Node3D = by_name.Doorman
+	var home := _flat(door.global_position)
+	for off in [Vector3(0.6, 0, 1.2), Vector3(1.2, 0, 1.0)]: # in front, right of centre: he'd wedge on the wall end
+		player.teleport(door.global_position + off)
+		await _wait(5)
+		await _press(&"interact")
+		for k in 4:
+			await _wait(8)
+			if door.line == "You're in my way. Step back a bit.":
+				break
+			await _press(&"interact")
+		_check(door.line == "You're in my way. Step back a bit." and not door.walking(), "demo: the Doorman grumbles when the player is in his way (%s)" % off)
+		await _press(&"interact")
+		await _wait(5)
+		_check(door.playing == null and _flat(door.global_position).distance_to(home) < 0.2, "demo: ...and stays in the gap")
 	var aside: Vector3 = by_name.Doorman.marks[&"Aside"]
 	await _talk_through(by_name.Doorman)
 	_check(_flat(by_name.Doorman.global_position).distance_to(_flat(aside)) < 0.4, "demo: the Doorman steps aside")
