@@ -1,7 +1,5 @@
 [gd_scene format=3 uid="uid://cgnh4prnbrlrf"]
 
-[ext_resource type="Texture2D" uid="uid://be08ioeixnoji" path="res://demo/materials/pbr/bricks_decal/bricks_decal_heightmap.png" id="4_ins2n"]
-[ext_resource type="Texture2D" uid="uid://dau3fejqnuxa5" path="res://demo/materials/pbr/bricks_decal/bricks_decal_normal.png" id="5_rbb7q"]
 [ext_resource type="Script" uid="uid://b8xdry2ovq5kx" path="res://world/area.gd" id="area"]
 [ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="player"]
 [ext_resource type="PackedScene" path="res://demo/ruins/torch.tscn" id="torch"]
@@ -102,9 +100,8 @@ light_energy = 0.55
 shadow_enabled = true
 directional_shadow_max_distance = 80.0
 
-[node name="VoxelGI" type="VoxelGI" parent="."]
+[node name="VoxelGI" type="VoxelGI" parent="." unique_id=1581578822]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, 0)
-subdiv = 2
 size = Vector3(64, 14, 64)
 data = ExtResource("vgi_data")
 
@@ -519,10 +516,3 @@ preprocess = 8.0
 visibility_aabb = AABB(-30, -4, -30, 60, 16, 60)
 process_material = SubResource("ember_motion")
 draw_pass_1 = SubResource("ember_quad")
-
-[node name="Decal2" type="Decal" parent="." unique_id=2075644723]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6848693, 0, -0.12893999)
-size = Vector3(5, 5, 5)
-texture_albedo = ExtResource("4_ins2n")
-texture_normal = ExtResource("5_rbb7q")
-albedo_mix = 0.0

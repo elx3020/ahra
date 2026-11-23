@@ -1,7 +1,7 @@
 extends Node3D
 ## PBR material showcase. A day/night cycle moves the sun and moon, tints the procedural sky
-## and turns the lamps on at dusk. G switches global illumination between SDFGI (high-end
-## devices, the default) and VoxelGI (mid-range devices). Drag to orbit, mouse wheel to zoom.
+## and turns the lamps on at dusk. Global illumination is the baked VoxelGI (re-bake it after moving
+## the static geometry). Drag to orbit, mouse wheel to zoom.
 
 ## Hour of day, 0-24. The sun rises in the east (+X) at 6 and sets at 18.
 @export_range(0.0, 24.0, 0.01) var hour := 10.0
@@ -21,20 +21,17 @@ extends Node3D
 @onready var sky: ProceduralSkyMaterial = env.sky.sky_material
 @onready var sun: DirectionalLight3D = $Sun
 @onready var moon: DirectionalLight3D = $Moon
-@onready var voxel_gi: VoxelGI = $VoxelGI
 @onready var pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera
 @onready var time_slider: HSlider = %TimeSlider
 @onready var speed_slider: HSlider = %SpeedSlider
 @onready var time_label: Label = %TimeLabel
-@onready var gi_label: Label = %GILabel
 
 
 func _ready() -> void:
 	speed_slider.value = hours_per_second
 	time_slider.value_changed.connect(func(v: float) -> void: hour = v)
 	speed_slider.value_changed.connect(func(v: float) -> void: hours_per_second = v)
-	set_sdfgi(true)
 
 
 func _process(delta: float) -> void:
@@ -71,20 +68,8 @@ func _aim(light: DirectionalLight3D, to_light: Vector3, energy: float) -> void:
 	light.basis = Basis.looking_at(-to_light)
 
 
-## SDFGI for high-end devices, VoxelGI for mid-range ones.
-func set_sdfgi(on: bool) -> void:
-	if not on and voxel_gi.data == null:
-		# ponytail: bakes the static geometry on first use (a short hitch); bake it in the editor and save the data if that matters
-		voxel_gi.bake()
-	env.sdfgi_enabled = on
-	voxel_gi.visible = not on
-	gi_label.text = "GI: %s    [G] switch" % ("SDFGI (high end)" if on else "VoxelGI (mid range)")
-
-
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_G:
-		set_sdfgi(not env.sdfgi_enabled)
-	elif e is InputEventMouseMotion and e.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT):
+	if e is InputEventMouseMotion and e.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT):
 		pivot.rotation.y -= e.relative.x * 0.005
 		pivot.rotation.x = clampf(pivot.rotation.x - e.relative.y * 0.005, -1.45, -0.05)
 	elif e is InputEventMouseButton and e.pressed and e.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:

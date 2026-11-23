@@ -3,7 +3,12 @@ extends Node3D
 ## Root of a playable area (one scene of the game): iso camera follow, debug HUD and keys,
 ## bay warps, out-of-bounds death, and the spawn point when arriving through a SceneDoor.
 ## Needs children Player, Camera and HUD/Label; Bays (optional) are the warp targets.
+## The Camera is authored orthographic; its `size` is the view height at the player. At runtime it
+## becomes a narrow perspective camera far away (pseudo-iso), because Godot's GI pass (VoxelGI,
+## SDFGI) samples mirrored positions with orthographic cameras (godot#60522).
 
+const FOV := 10.0 ## degrees: narrow enough to read as isometric
+const CLIP := 40.0 ## the near plane sits this far from the player, toward the camera
 const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing) | J/LMB melee | K/RMB shoot | R carry / put down | T throw\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
 
 @export var bounds_center := Vector3.ZERO
@@ -14,6 +19,7 @@ const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down |
 @onready var cam: Camera3D = $Camera
 @onready var hud: Label = $HUD/Label
 @onready var bays: Array = $Bays.get_children() if has_node(^"Bays") else []
+var cam_distance := 0.0
 
 
 func _ready() -> void:
@@ -23,14 +29,24 @@ func _ready() -> void:
 		player.teleport(spawn.global_position)
 		player.checkpoint = spawn.global_position
 	cam.rotation_degrees = Vector3(-35.264, 45.0, 0.0) # true isometric
-	cam.global_position = player.global_position + cam.global_basis.z * 40.0
+	cam_distance = cam.size * 0.5 / tan(deg_to_rad(FOV * 0.5))
+	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
+	cam.fov = FOV
+	cam.near = maxf(cam_distance - CLIP, 0.05)
+	# Shadow distances count from the camera: shift them so they cover what they did from the old ortho
+	# camera, CLIP away. ponytail: PSSM splits lose every shadow nearer than the player with this far,
+	# narrow camera (Godot 4.7), so one orthogonal split covers the slab; sharper far shadows need that fixed.
+	for light: DirectionalLight3D in find_children("*", "DirectionalLight3D", true, false):
+		light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+		light.directional_shadow_max_distance += cam.near
+	cam.global_position = player.global_position + cam.global_basis.z * cam_distance
 	# camera moves every render frame itself, following the player's interpolated position
 	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_restore_weights()
 
 
 func _process(delta: float) -> void:
-	var target := player.get_global_transform_interpolated().origin + cam.global_basis.z * 40.0
+	var target := player.get_global_transform_interpolated().origin + cam.global_basis.z * cam_distance
 	if cam.global_position.distance_to(target) > 8.0: # snap after teleports
 		cam.global_position = target
 	else:

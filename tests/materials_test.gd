@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless test of the PBR material showcase (demo/materials/materials.tscn): the materials load,
-## the clock drives sun, moon and lamps, the GUI slider sets the time, G switches SDFGI <-> VoxelGI.
+## the clock drives sun, moon and lamps, the GUI slider sets the time, baked VoxelGI lights it (no SDFGI).
 ## Run: Godot_console.exe --headless --path . -s res://tests/materials_test.gd
 
 var fails := 0
@@ -41,21 +41,10 @@ func _run() -> void:
 
 	var env: Environment = demo.env
 	var vgi: VoxelGI = demo.get_node("VoxelGI")
-	_check(env.sdfgi_enabled and not vgi.visible, "SDFGI by default")
-	_press_g()
-	_check(not env.sdfgi_enabled and vgi.visible, "G switches to VoxelGI")
-	_press_g()
-	_check(env.sdfgi_enabled and not vgi.visible, "G switches back to SDFGI")
+	_check(not env.sdfgi_enabled and vgi.visible and vgi.data != null, "baked VoxelGI on, SDFGI off")
 
 	print("MATERIALS: " + ("OK" if fails == 0 else "%d FAILED" % fails))
 	quit(fails)
-
-
-func _press_g() -> void:
-	var e := InputEventKey.new()
-	e.keycode = KEY_G
-	e.pressed = true
-	root.push_input(e)
 
 
 func _check(ok: bool, what: String) -> void:
