@@ -1,0 +1,67 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="wax"]
+albedo_color = Color(0.95, 0.85, 0.7, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="flame"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.55, 0.18, 1)
+emission_energy_multiplier = 8.0
+
+[sub_resource type="CylinderMesh" id="tall"]
+material = SubResource("wax")
+top_radius = 0.07
+bottom_radius = 0.08
+height = 0.45
+
+[sub_resource type="CylinderMesh" id="short"]
+material = SubResource("wax")
+top_radius = 0.06
+bottom_radius = 0.07
+height = 0.25
+
+[sub_resource type="SphereMesh" id="tip"]
+material = SubResource("flame")
+radius = 0.05
+height = 0.16
+
+[node name="Torch" type="Node3D"]
+
+[node name="Tall" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, 0)
+mesh = SubResource("tall")
+
+[node name="Flame" type="MeshInstance3D" parent="Tall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("tip")
+
+[node name="Short" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, 0.125, 0.1)
+mesh = SubResource("short")
+
+[node name="Flame" type="MeshInstance3D" parent="Short"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("tip")
+
+[node name="Short2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.1, 0.16)
+mesh = SubResource("short")
+
+[node name="Flame" type="MeshInstance3D" parent="Short2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+cast_shadow = 0
+gi_mode = 0
+mesh = SubResource("tip")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 5.0
+shadow_enabled = true
+omni_range = 6.0

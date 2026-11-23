@@ -1,0 +1,528 @@
+[gd_scene format=3 uid="uid://cgnh4prnbrlrf"]
+
+[ext_resource type="Texture2D" uid="uid://be08ioeixnoji" path="res://demo/materials/pbr/bricks_decal/bricks_decal_heightmap.png" id="4_ins2n"]
+[ext_resource type="Texture2D" uid="uid://dau3fejqnuxa5" path="res://demo/materials/pbr/bricks_decal/bricks_decal_normal.png" id="5_rbb7q"]
+[ext_resource type="Script" uid="uid://b8xdry2ovq5kx" path="res://world/area.gd" id="area"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="player"]
+[ext_resource type="PackedScene" path="res://demo/ruins/torch.tscn" id="torch"]
+[ext_resource type="VoxelGIData" path="res://demo/ruins/ruins.VoxelGI_data.res" id="vgi_data"]
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.06, 0.05, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.35, 0.3, 0.55, 1)
+ambient_light_energy = 0.3
+tonemap_mode = 2
+glow_enabled = true
+glow_bloom = 0.05
+volumetric_fog_density = 0.006
+volumetric_fog_albedo = Color(0.6, 0.55, 0.8, 1)
+volumetric_fog_emission = Color(0.02, 0.015, 0.04, 1)
+volumetric_fog_length = 100.0
+adjustment_enabled = true
+adjustment_saturation = 1.2
+
+[sub_resource type="StandardMaterial3D" id="floor"]
+albedo_color = Color(0.3, 0.45, 0.45, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="brick"]
+albedo_color = Color(0.62, 0.34, 0.26, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="cap"]
+albedo_color = Color(0.35, 0.55, 0.5, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="stone"]
+albedo_color = Color(0.45, 0.4, 0.45, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="door_glow"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.62, 0.25, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="StandardMaterial3D" id="banner"]
+albedo_color = Color(0.7, 0.18, 0.1, 1)
+
+[sub_resource type="StandardMaterial3D" id="window_glow"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.8, 0.35, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="StandardMaterial3D" id="magic"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(0.85, 0.3, 1, 1)
+emission_energy_multiplier = 5.0
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.38, 0.24, 0.17, 1)
+roughness = 0.8
+
+[sub_resource type="ParticleProcessMaterial" id="ember_motion"]
+emission_shape = 3
+emission_box_extents = Vector3(25, 3, 25)
+direction = Vector3(0, 1, 0)
+spread = 40.0
+initial_velocity_min = 0.1
+initial_velocity_max = 0.4
+gravity = Vector3(0, 0.05, 0)
+scale_min = 0.5
+
+[sub_resource type="StandardMaterial3D" id="ember"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.3, 0.15, 1)
+emission_energy_multiplier = 4.0
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="ember_quad"]
+material = SubResource("ember")
+size = Vector2(0.08, 0.08)
+
+[node name="Ruins" type="Node3D" unique_id=1698059443]
+script = ExtResource("area")
+bounds_radius = 50.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1392197352]
+environment = SubResource("env")
+
+[node name="Moon" type="DirectionalLight3D" parent="." unique_id=778683787]
+transform = Transform3D(-0.70710677, 0.65094453, -0.27617243, 0, 0.3905668, 0.9205746, 0.70710677, 0.65094453, -0.27617243, 0, 10, 0)
+light_color = Color(0.55, 0.8, 0.95, 1)
+light_energy = 0.55
+shadow_enabled = true
+directional_shadow_max_distance = 80.0
+
+[node name="VoxelGI" type="VoxelGI" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, 0)
+subdiv = 2
+size = Vector3(64, 14, 64)
+data = ExtResource("vgi_data")
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1334332991]
+projection = 1
+current = true
+size = 18.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1447776150]
+
+[node name="Label" type="Label" parent="HUD" unique_id=613108861]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." unique_id=1151832212 instance=ExtResource("player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1, 2)
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1402911761]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0026705265, -0.4974606, 0.0026841164)
+use_collision = true
+size = Vector3(64, 1, 64)
+material = SubResource("floor")
+
+[node name="Hall" type="Node3D" parent="." unique_id=2009489332]
+
+[node name="Body" type="CSGBox3D" parent="Hall" unique_id=1275513284]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 3.5, -12)
+use_collision = true
+size = Vector3(18, 7, 6)
+material = SubResource("brick")
+
+[node name="Cap" type="CSGBox3D" parent="Hall" unique_id=1460851855]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 7.2, -12)
+use_collision = true
+size = Vector3(18.4, 0.4, 6.4)
+material = SubResource("cap")
+
+[node name="Buttress" type="CSGBox3D" parent="Hall" unique_id=197870696]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 3.5, -8.7)
+use_collision = true
+size = Vector3(0.8, 7, 0.6)
+material = SubResource("brick")
+
+[node name="Buttress2" type="CSGBox3D" parent="Hall" unique_id=1123927975]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3.5, -8.7)
+use_collision = true
+size = Vector3(0.8, 7, 0.6)
+material = SubResource("brick")
+
+[node name="DoorLeft" type="CSGBox3D" parent="Hall" unique_id=1055062702]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 1.8, -8.7)
+use_collision = true
+size = Vector3(0.6, 3.6, 0.6)
+material = SubResource("stone")
+
+[node name="DoorRight" type="CSGBox3D" parent="Hall" unique_id=1749262194]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 1.8, -8.7)
+use_collision = true
+size = Vector3(0.6, 3.6, 0.6)
+material = SubResource("stone")
+
+[node name="Lintel" type="CSGBox3D" parent="Hall" unique_id=1470614361]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.9, -8.75)
+use_collision = true
+size = Vector3(3, 0.6, 0.9)
+material = SubResource("stone")
+
+[node name="Pediment" type="CSGBox3D" parent="Hall" unique_id=2042721661]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.45, -8.8)
+use_collision = true
+size = Vector3(3.4, 0.5, 1.1)
+material = SubResource("cap")
+
+[node name="Door" type="CSGBox3D" parent="Hall" unique_id=1859906543]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, -8.95)
+size = Vector3(1.6, 3.4, 0.1)
+material = SubResource("door_glow")
+
+[node name="Step" type="CSGBox3D" parent="Hall" unique_id=1169354310]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8.3)
+use_collision = true
+size = Vector3(3.6, 0.2, 1.4)
+material = SubResource("stone")
+
+[node name="Shield" type="CSGBox3D" parent="Hall" unique_id=1579153609]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 3.2, -8.9)
+size = Vector3(1, 1.3, 0.15)
+material = SubResource("banner")
+
+[node name="DoorLight" type="OmniLight3D" parent="Hall" unique_id=1815640759]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -7.6)
+light_color = Color(1, 0.72, 0.38, 1)
+light_energy = 2.0
+shadow_enabled = true
+omni_range = 7.0
+
+[node name="TorchLeft" parent="Hall" unique_id=1085576218 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0.2, -8)
+
+[node name="TorchRight" parent="Hall" unique_id=633989379 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0.2, -8)
+
+[node name="TorchShield" parent="Hall" unique_id=548531592 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0, -8.5)
+
+[node name="Tower" type="Node3D" parent="." unique_id=2031259222]
+
+[node name="Body" type="CSGBox3D" parent="Tower" unique_id=962181697]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 5.5, -14)
+use_collision = true
+size = Vector3(10, 11, 10)
+material = SubResource("brick")
+
+[node name="Cap" type="CSGBox3D" parent="Tower" unique_id=1688307908]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 11.2, -14)
+use_collision = true
+size = Vector3(10.4, 0.4, 10.4)
+material = SubResource("cap")
+
+[node name="Window" type="CSGBox3D" parent="Tower" unique_id=1693712035]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 7.5, -8.95)
+size = Vector3(1, 1.6, 0.1)
+material = SubResource("window_glow")
+
+[node name="Window2" type="CSGBox3D" parent="Tower" unique_id=1667237171]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 7.5, -8.95)
+size = Vector3(1, 1.6, 0.1)
+material = SubResource("window_glow")
+
+[node name="Arch" type="Node3D" parent="." unique_id=1042804393]
+
+[node name="Left" type="CSGBox3D" parent="Arch" unique_id=1067180950]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 1.6, -5)
+use_collision = true
+size = Vector3(0.7, 3.2, 0.7)
+material = SubResource("stone")
+
+[node name="Right" type="CSGBox3D" parent="Arch" unique_id=2064429652]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 1.6, -5)
+use_collision = true
+size = Vector3(0.7, 3.2, 0.7)
+material = SubResource("stone")
+
+[node name="Lintel" type="CSGBox3D" parent="Arch" unique_id=951125975]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 3.45, -5)
+use_collision = true
+size = Vector3(3.1, 0.5, 0.9)
+material = SubResource("cap")
+
+[node name="Alley" type="Node3D" parent="." unique_id=1292015286]
+
+[node name="NorthRow" type="CSGBox3D" parent="Alley" unique_id=99117350]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 3, -12)
+use_collision = true
+size = Vector3(16, 6, 6)
+material = SubResource("brick")
+
+[node name="NorthCap" type="CSGBox3D" parent="Alley" unique_id=2030260968]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 6.2, -12)
+use_collision = true
+size = Vector3(16.4, 0.4, 6.4)
+material = SubResource("cap")
+
+[node name="End" type="CSGBox3D" parent="Alley" unique_id=1168392230]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 2, -7.5)
+use_collision = true
+size = Vector3(2, 4, 3)
+material = SubResource("stone")
+
+[node name="Torch" parent="Alley" unique_id=292775677 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, -8.5)
+
+[node name="Torch2" parent="Alley" unique_id=869895325 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -8.5)
+
+[node name="Inn" type="Node3D" parent="." unique_id=1093936615]
+
+[node name="Body" type="CSGBox3D" parent="Inn" unique_id=1110225995]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2.75, -2.5)
+use_collision = true
+size = Vector3(20, 5.5, 7)
+material = SubResource("brick")
+
+[node name="Cap" type="CSGBox3D" parent="Inn" unique_id=1312281651]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 5.7, -2.5)
+use_collision = true
+size = Vector3(20.4, 0.4, 7.4)
+material = SubResource("cap")
+
+[node name="Window" type="CSGBox3D" parent="Inn" unique_id=631005757]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.95, 1.9, -2.5)
+size = Vector3(0.1, 2.2, 1.4)
+material = SubResource("window_glow")
+
+[node name="WindowArch" type="CSGCylinder3D" parent="Inn" unique_id=669305019]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -9.95, 3, -2.5)
+radius = 0.7
+height = 0.1
+sides = 16
+material = SubResource("window_glow")
+
+[node name="WindowLight" type="OmniLight3D" parent="Inn" unique_id=1715125651]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.2, 2.2, -2.5)
+light_color = Color(1, 0.8, 0.4, 1)
+light_energy = 1.5
+shadow_enabled = true
+
+[node name="Ruin" type="Node3D" parent="." unique_id=1903079744]
+
+[node name="Wall" type="CSGCombiner3D" parent="Ruin" unique_id=424453056]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.25, 0, 8)
+use_collision = true
+
+[node name="Body" type="CSGBox3D" parent="Ruin/Wall" unique_id=117531305]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)
+size = Vector3(1.5, 4.5, 10)
+material = SubResource("brick")
+
+[node name="Opening" type="CSGBox3D" parent="Ruin/Wall" unique_id=1457882189]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -2.2)
+operation = 2
+size = Vector3(2, 2.2, 1.8)
+
+[node name="OpeningTop" type="CSGCylinder3D" parent="Ruin/Wall" unique_id=477435737]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 2.2, -2.2)
+operation = 2
+radius = 0.9
+sides = 16
+
+[node name="Opening2" type="CSGBox3D" parent="Ruin/Wall" unique_id=443034403]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 2.2)
+operation = 2
+size = Vector3(2, 2.2, 1.8)
+
+[node name="OpeningTop2" type="CSGCylinder3D" parent="Ruin/Wall" unique_id=982167573]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 2.2, 2.2)
+operation = 2
+radius = 0.9
+sides = 16
+
+[node name="Broken" type="CSGBox3D" parent="Ruin/Wall" unique_id=892086752]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.4, 3.8)
+operation = 2
+size = Vector3(2, 1.8, 2.6)
+
+[node name="Low" type="CSGBox3D" parent="Ruin" unique_id=1183536196]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1.3, 13.6)
+use_collision = true
+size = Vector3(8, 2.6, 1.2)
+material = SubResource("brick")
+
+[node name="Pillar" type="CSGBox3D" parent="Ruin" unique_id=1665559177]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.8, 13.6)
+use_collision = true
+size = Vector3(1, 3.6, 1)
+material = SubResource("stone")
+
+[node name="Rubble" type="CSGBox3D" parent="Ruin" unique_id=1454355007]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.2, 4.2)
+use_collision = true
+size = Vector3(0.6, 0.4, 0.5)
+material = SubResource("stone")
+
+[node name="Rubble2" type="CSGBox3D" parent="Ruin" unique_id=1152666884]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.6, 0.15, 9.5)
+use_collision = true
+size = Vector3(0.4, 0.3, 0.4)
+material = SubResource("stone")
+
+[node name="Rubble3" type="CSGBox3D" parent="Ruin" unique_id=2136128832]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.25, 12.6)
+use_collision = true
+size = Vector3(0.5, 0.5, 0.5)
+material = SubResource("stone")
+
+[node name="Crystal" type="CSGSphere3D" parent="Ruin" unique_id=2113329806]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.6, 0.1, 6)
+radius = 0.18
+material = SubResource("magic")
+
+[node name="Crystal2" type="CSGSphere3D" parent="Ruin" unique_id=1688052555]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.3, 0.1, 6.5)
+radius = 0.14
+material = SubResource("magic")
+
+[node name="Crystal3" type="CSGSphere3D" parent="Ruin" unique_id=1149322083]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.8, 0.08, 6.8)
+radius = 0.1
+material = SubResource("magic")
+
+[node name="MagicLight" type="OmniLight3D" parent="Ruin" unique_id=1951759818]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.7, 6.4)
+light_color = Color(0.85, 0.3, 1, 1)
+light_energy = 3.0
+shadow_enabled = true
+
+[node name="Torch" parent="Ruin" unique_id=878407415 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.7, 0, 11.6)
+
+[node name="House" type="Node3D" parent="." unique_id=1352839608]
+
+[node name="Body" type="CSGBox3D" parent="House" unique_id=2108630613]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3, 21)
+use_collision = true
+size = Vector3(8, 6, 8)
+material = SubResource("brick")
+
+[node name="Cap" type="CSGBox3D" parent="House" unique_id=1691815626]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 6.2, 21)
+use_collision = true
+size = Vector3(8.4, 0.4, 8.4)
+material = SubResource("cap")
+
+[node name="Door" type="CSGBox3D" parent="House" unique_id=1413452211]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 1.2, 20)
+size = Vector3(0.1, 2.4, 1.4)
+material = SubResource("wood")
+
+[node name="DoorFrame" type="CSGBox3D" parent="House" unique_id=366526594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 2.6, 20)
+use_collision = true
+size = Vector3(0.3, 0.4, 2)
+material = SubResource("stone")
+
+[node name="Torch" parent="House" unique_id=205544720 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0, 21.5)
+
+[node name="Fence" type="CSGBox3D" parent="House" unique_id=642448850]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.7, 19)
+use_collision = true
+size = Vector3(0.3, 1.4, 0.3)
+material = SubResource("wood")
+
+[node name="Fence2" type="CSGBox3D" parent="House" unique_id=1594631024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.7, 19)
+use_collision = true
+size = Vector3(0.3, 1.4, 0.3)
+material = SubResource("wood")
+
+[node name="FenceRail" type="CSGBox3D" parent="House" unique_id=1078586553]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1, 19)
+use_collision = true
+size = Vector3(3.2, 0.15, 0.12)
+material = SubResource("wood")
+
+[node name="Keep" type="Node3D" parent="." unique_id=2055260458]
+
+[node name="Body" type="CSGBox3D" parent="Keep" unique_id=727263488]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 3.5, 9)
+use_collision = true
+size = Vector3(6, 7, 8)
+material = SubResource("brick")
+
+[node name="Cap" type="CSGBox3D" parent="Keep" unique_id=2061449849]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 7.2, 9)
+use_collision = true
+size = Vector3(6.4, 0.4, 8.4)
+material = SubResource("cap")
+
+[node name="LowWall" type="CSGBox3D" parent="Keep" unique_id=1537605476]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.4, 0.8, -6)
+use_collision = true
+size = Vector3(1.2, 1.6, 6)
+material = SubResource("brick")
+
+[node name="LowWall2" type="CSGBox3D" parent="Keep" unique_id=1582012794]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.4, 0.5, 2.5)
+use_collision = true
+size = Vector3(1.2, 1, 4)
+material = SubResource("brick")
+
+[node name="Torch" parent="Keep" unique_id=1992163051 instance=ExtResource("torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 13.6)
+
+[node name="Props" type="Node3D" parent="." unique_id=101330376]
+
+[node name="Barrel" type="CSGCylinder3D" parent="Props" unique_id=1895084278]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.5, 0.5)
+use_collision = true
+radius = 0.45
+height = 1.0
+sides = 12
+material = SubResource("wood")
+
+[node name="Crate" type="CSGBox3D" parent="Props" unique_id=1630891224]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.4, 3.2)
+use_collision = true
+size = Vector3(0.8, 0.8, 0.8)
+material = SubResource("wood")
+
+[node name="Crate2" type="CSGBox3D" parent="Props" unique_id=1378531450]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 0.4, 3.6)
+use_collision = true
+size = Vector3(0.8, 0.8, 0.8)
+material = SubResource("wood")
+
+[node name="Crate3" type="CSGBox3D" parent="Props" unique_id=1552994898]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 1.1, 3.4)
+use_collision = true
+size = Vector3(0.6, 0.6, 0.6)
+material = SubResource("wood")
+
+[node name="Embers" type="GPUParticles3D" parent="." unique_id=1690932620]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+gi_mode = 0
+amount = 80
+lifetime = 8.0
+preprocess = 8.0
+visibility_aabb = AABB(-30, -4, -30, 60, 16, 60)
+process_material = SubResource("ember_motion")
+draw_pass_1 = SubResource("ember_quad")
+
+[node name="Decal2" type="Decal" parent="." unique_id=2075644723]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6848693, 0, -0.12893999)
+size = Vector3(5, 5, 5)
+texture_albedo = ExtResource("4_ins2n")
+texture_normal = ExtResource("5_rbb7q")
+albedo_mix = 0.0

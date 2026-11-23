@@ -51,10 +51,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.9, 0)
 [node name="Body" type="MeshInstance3D" parent="Visual" unique_id=1239462776]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 material_override = SubResource("body_mat")
+gi_mode = 0
 mesh = SubResource("body_mesh")
 
 [node name="Nose" type="MeshInstance3D" parent="Visual" unique_id=1652538454]
 transform = Transform3D(2.3331087, 0, 0, 0, 1, 0, 0, 0, 0.7079041, 0, 1.4, -0.42)
+gi_mode = 0
 mesh = SubResource("nose_mesh")
 
 [node name="GaugeLayer" type="CanvasLayer" parent="." unique_id=314730347]
