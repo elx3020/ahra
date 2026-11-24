@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://colmvd5qadqy1"]
 
-[ext_resource type="Shader" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
+[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
 
 [resource]
 resource_name = "crystal"
@@ -9,13 +9,18 @@ shader = ExtResource("1_forest")
 shader_parameter/pattern = 0
 shader_parameter/base_color = Color(0.95539, 0.95832, 0.48979, 1)
 shader_parameter/side_color = Color(0.95539, 0.95832, 0.48979, 1)
+shader_parameter/top_threshold = 0.48
+shader_parameter/side_threshold = -0.22
+shader_parameter/shade_power = 0.0
 shader_parameter/roughness = 0.0
 shader_parameter/emission = Color(1, 0.79427, 0.22209, 1)
 shader_parameter/emission_strength = 0.04
 shader_parameter/noise_scale = 5.0
 shader_parameter/noise_detail = 2.0
 shader_parameter/warp = 0.48398
+shader_parameter/cutout = 0.6
 shader_parameter/cell_scale = 0.48
 shader_parameter/cell_detail = 1
 shader_parameter/cell_manhattan = false
 shader_parameter/facet = 0.51934
+shader_parameter/ramp_end = 0.964

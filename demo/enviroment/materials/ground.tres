@@ -22,5 +22,5 @@ shader_parameter/cutout = 0.6
 shader_parameter/cell_scale = 1.9
 shader_parameter/cell_detail = 1
 shader_parameter/cell_manhattan = false
-shader_parameter/facet = 0.55249
+shader_parameter/facet = 0.6010000285475
 shader_parameter/ramp_end = 0.964

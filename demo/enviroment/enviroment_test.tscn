@@ -5,7 +5,6 @@
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_auh11"]
 [ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="3_dkaou"]
 [ext_resource type="Texture2D" uid="uid://ctfp4ua3obrpl" path="res://demo/enviroment/forest_sky.exr" id="4_sky"]
-[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="5_forest"]
 [ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="7_o7dyp"]
 
 [sub_resource type="PanoramaSkyMaterial" id="sky_mat"]
@@ -32,7 +31,7 @@ shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
 shader_parameter/edge_width = 0.2650000125875
-shader_parameter/edge_threshold = 0.05500000191398
+shader_parameter/edge_threshold = 0.03000000072648
 shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
 shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
 shader_parameter/show_details = false
@@ -52,32 +51,6 @@ shader_parameter/shadow_boost = 0.5
 shader_parameter/light_fade = 0.0
 shader_parameter/light_from_brightness = 0.0
 
-[sub_resource type="PlaneMesh" id="canopy_mesh"]
-size = Vector2(277.908, 277.908)
-
-[sub_resource type="ShaderMaterial" id="canopy_mat"]
-resource_name = "canopy"
-render_priority = 0
-shader = ExtResource("5_forest")
-shader_parameter/pattern = 2
-shader_parameter/base_color = Color(0.90633, 0.90633, 0.90633, 1)
-shader_parameter/side_color = Color(0.725, 0.512, 0.516, 1)
-shader_parameter/top_threshold = 0.48
-shader_parameter/side_threshold = -0.22
-shader_parameter/shade_power = 0.0
-shader_parameter/roughness = 0.5
-shader_parameter/emission = Color(1, 1, 1, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/noise_scale = 8.08
-shader_parameter/noise_detail = 10.4
-shader_parameter/warp = 0.751
-shader_parameter/cutout = 0.6
-shader_parameter/cell_scale = 0.69
-shader_parameter/cell_detail = 1
-shader_parameter/cell_manhattan = false
-shader_parameter/facet = 0.552
-shader_parameter/ramp_end = 0.964
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmrfl"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
@@ -91,6 +64,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 environment = SubResource("env")
 
 [node name="Camera" type="Camera3D" parent="." unique_id=314350963]
+transform = Transform3D(0.70710677, -0.5043442, 0.4956177, 0, 0.70090926, 0.71325046, -0.70710677, -0.5043442, 0.4956177, 13.545, 29.04, 21.026)
 projection = 1
 current = true
 size = 20.0
@@ -127,13 +101,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("3_dkaou")]
-
-[node name="Canopy" type="MeshInstance3D" parent="." unique_id=2041356771]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 254.508, 302.622, -237.21)
-cast_shadow = 3
-gi_mode = 0
-mesh = SubResource("canopy_mesh")
-surface_material_override/0 = SubResource("canopy_mat")
 
 [node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)

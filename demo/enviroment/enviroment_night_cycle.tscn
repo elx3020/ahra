@@ -1,12 +1,24 @@
 [gd_scene format=3 uid="uid://gj2ugaky7x86"]
 
-[ext_resource type="Script" path="res://demo/enviroment/enviroment_night_cycle.gd" id="1_dhlqv"]
-[ext_resource type="Script" path="res://world/weather.gd" id="8_weather"]
+[ext_resource type="Script" uid="uid://d321wxkto5onb" path="res://demo/enviroment/enviroment_night_cycle.gd" id="1_dhlqv"]
 [ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="2_ewff8"]
 [ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="4_g03kv"]
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="5_vhako"]
 [ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="6_jib5a"]
-[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="7_ddjf3"]
+[ext_resource type="VoxelGIData" uid="uid://xpvaoc0iy0n1" path="res://demo/enviroment/deep_forest_voxel_gi_data.tres" id="8_ewff8"]
+[ext_resource type="Script" uid="uid://clb8jdlv5b5iw" path="res://world/weather.gd" id="8_weather"]
+
+[sub_resource type="Gradient" id="sky_top"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.005, 0.008, 0.02, 1, 0.01, 0.015, 0.04, 1, 0.12, 0.15, 0.32, 1, 0.3562, 0.4449, 0.6022, 1, 0.3562, 0.4449, 0.6022, 1)
+
+[sub_resource type="Gradient" id="sky_horizon"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.02, 0.025, 0.05, 1, 0.04, 0.05, 0.09, 1, 0.95, 0.5, 0.25, 1, 0.4793, 0.5154, 0.5721, 1, 0.4793, 0.5154, 0.5721, 1)
+
+[sub_resource type="Gradient" id="sun_color"]
+offsets = PackedFloat32Array(0.5, 0.56, 0.7)
+colors = PackedColorArray(1, 0.35, 0.1, 1, 1, 0.7, 0.45, 1, 1, 0.92945, 0.85423, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i8cpb"]
 render_priority = 0
@@ -40,46 +52,8 @@ shader_parameter/shadow_boost = 0.5
 shader_parameter/light_fade = 0.0
 shader_parameter/light_from_brightness = 0.0
 
-[sub_resource type="PlaneMesh" id="canopy_mesh"]
-size = Vector2(277.908, 277.908)
-
-[sub_resource type="ShaderMaterial" id="canopy_mat"]
-resource_name = "canopy"
-render_priority = 0
-shader = ExtResource("7_ddjf3")
-shader_parameter/pattern = 2
-shader_parameter/base_color = Color(0.90633, 0.90633, 0.90633, 1)
-shader_parameter/side_color = Color(0.725, 0.512, 0.516, 1)
-shader_parameter/top_threshold = 0.48
-shader_parameter/side_threshold = -0.22
-shader_parameter/shade_power = 0.0
-shader_parameter/roughness = 0.5
-shader_parameter/emission = Color(1, 1, 1, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/noise_scale = 8.08
-shader_parameter/noise_detail = 10.4
-shader_parameter/warp = 0.751
-shader_parameter/cutout = 0.6
-shader_parameter/cell_scale = 0.69
-shader_parameter/cell_detail = 1
-shader_parameter/cell_manhattan = false
-shader_parameter/facet = 0.552
-shader_parameter/ramp_end = 0.964
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmrfl"]
 albedo_color = Color(0.42, 0.42, 0.45, 1)
-
-[sub_resource type="Gradient" id="sky_top"]
-offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
-colors = PackedColorArray(0.005, 0.008, 0.02, 1, 0.01, 0.015, 0.04, 1, 0.12, 0.15, 0.32, 1, 0.3562, 0.4449, 0.6022, 1, 0.3562, 0.4449, 0.6022, 1)
-
-[sub_resource type="Gradient" id="sky_horizon"]
-offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
-colors = PackedColorArray(0.02, 0.025, 0.05, 1, 0.04, 0.05, 0.09, 1, 0.95, 0.5, 0.25, 1, 0.4793, 0.5154, 0.5721, 1, 0.4793, 0.5154, 0.5721, 1)
-
-[sub_resource type="Gradient" id="sun_color"]
-offsets = PackedFloat32Array(0.5, 0.56, 0.7)
-colors = PackedColorArray(1, 0.35, 0.1, 1, 1, 0.7, 0.45, 1, 1, 0.92945, 0.85423, 1)
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ewff8"]
 
@@ -131,7 +105,7 @@ shadow_enabled = true
 directional_shadow_max_distance = 200.0
 sky_mode = 1
 
-[node name="Weather" type="Node" parent="." node_paths=PackedStringArray("sun", "moon", "world_environment") unique_id=1406388297]
+[node name="Weather" type="Node" parent="." unique_id=1406388297 node_paths=PackedStringArray("sun", "moon", "world_environment")]
 script = ExtResource("8_weather")
 hour = 9.755
 sun_tilt_degrees = -37.43
@@ -155,16 +129,11 @@ omni_attenuation = 2.0
 
 [node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("4_g03kv")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
+visible = false
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("6_jib5a")]
-
-[node name="Canopy" type="MeshInstance3D" parent="." unique_id=2041356771]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 254.508, 302.622, -237.21)
-cast_shadow = 3
-gi_mode = 0
-mesh = SubResource("canopy_mesh")
-surface_material_override/0 = SubResource("canopy_mat")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.021873474, 0, 0.0063757896)
 
 [node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)
@@ -174,3 +143,8 @@ material = SubResource("StandardMaterial3D_cmrfl")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=666644200]
 environment = SubResource("Environment_52vkm")
+
+[node name="VoxelGI" type="VoxelGI" parent="." unique_id=242606633]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18846321, 9.095243, 0.116607666)
+size = Vector3(83.947754, 20, 84.557556)
+data = ExtResource("8_ewff8")
