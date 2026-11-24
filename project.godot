@@ -131,3 +131,22 @@ lights_and_shadows/positional_shadow/soft_shadow_filter_quality=3
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality.mobile=3
 anti_aliasing/quality/use_debanding=true
 global_illumination/sdfgi/probe_ray_count=2
+
+[shader_globals]
+
+sun_direction={
+"type": "vec3",
+"value": Vector3(0, 1, 0)
+}
+sun_color={
+"type": "color",
+"value": Color(1, 1, 1, 1)
+}
+daylight={
+"type": "float",
+"value": 1.0
+}
+time_of_day={
+"type": "float",
+"value": 0.5
+}

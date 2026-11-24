@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cn3kho5jsael1"]
 
 [ext_resource type="Script" uid="uid://bq5ppfecr7quu" path="res://demo/materials/materials.gd" id="1_3dhh3"]
+[ext_resource type="Script" path="res://world/weather.gd" id="21_weather"]
 [ext_resource type="VoxelGIData" uid="uid://lwhmtpi1vol5" path="res://demo/materials/materials.VoxelGI_data.res" id="2_axvij"]
 [ext_resource type="Material" uid="uid://ctxpo1cdvaft" path="res://demo/materials/pbr/glass.tres" id="2_ro6ug"]
 [ext_resource type="Material" uid="uid://cxmbhjciupixj" path="res://demo/materials/pbr/raw_crystal.tres" id="3_axvij"]
@@ -66,12 +67,19 @@ rings = 48
 [node name="Materials" type="Node3D" unique_id=1171685298]
 physics_interpolation_mode = 2
 script = ExtResource("1_3dhh3")
-sky_top = SubResource("Gradient_6mryn")
-sky_horizon = SubResource("Gradient_8ubmm")
-sun_color = SubResource("Gradient_8mq55")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2021412238]
 environment = SubResource("Environment_7mndl")
+
+[node name="Weather" type="Node" parent="." node_paths=PackedStringArray("sun", "moon", "world_environment", "lamps") unique_id=1309751128]
+script = ExtResource("21_weather")
+sky_top = SubResource("Gradient_6mryn")
+sky_horizon = SubResource("Gradient_8ubmm")
+sun_color = SubResource("Gradient_8mq55")
+sun = NodePath("../Sun")
+moon = NodePath("../Moon")
+world_environment = NodePath("../WorldEnvironment")
+lamps = NodePath("../Lamps")
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1945079537]
 shadow_enabled = true
@@ -360,32 +368,6 @@ offset_bottom = 16.0
 
 [node name="Box" type="VBoxContainer" parent="HUD/Panel" unique_id=103247176]
 layout_mode = 2
-
-[node name="TimeLabel" type="Label" parent="HUD/Panel/Box" unique_id=1101768415]
-unique_name_in_owner = true
-layout_mode = 2
-text = "TimeLabel"
-
-[node name="TimeSlider" type="HSlider" parent="HUD/Panel/Box" unique_id=1646852321]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 0)
-layout_mode = 2
-focus_mode = 0
-max_value = 24.0
-step = 0.01
-
-[node name="SpeedLabel" type="Label" parent="HUD/Panel/Box" unique_id=56106411]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Clock speed (hours per second)"
-
-[node name="SpeedSlider" type="HSlider" parent="HUD/Panel/Box" unique_id=1638203365]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 0)
-layout_mode = 2
-focus_mode = 0
-max_value = 4.0
-step = 0.01
 
 [node name="Help" type="Label" parent="HUD/Panel/Box" unique_id=1095582718]
 unique_name_in_owner = true
