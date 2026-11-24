@@ -39,7 +39,60 @@ import_script/path=""
 materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
-_subresources={}
+_subresources={
+"materials": {
+"Material": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/figure.tres",
+"use_external/path": "res://demo/enviroment/materials/figure.tres"
+},
+"Material.001": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/bark.tres",
+"use_external/path": "res://demo/enviroment/materials/bark.tres"
+},
+"Material.002": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/bushes.tres",
+"use_external/path": "res://demo/enviroment/materials/bushes.tres"
+},
+"blue_glow": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/glow.tres",
+"use_external/path": "res://demo/enviroment/materials/glow.tres"
+},
+"blue_glow.001": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/glow_bright.tres",
+"use_external/path": "res://demo/enviroment/materials/glow_bright.tres"
+},
+"crystal": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/crystal.tres",
+"use_external/path": "res://demo/enviroment/materials/crystal.tres"
+},
+"gradient_mat.001": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/sparkles.tres",
+"use_external/path": "res://demo/enviroment/materials/sparkles.tres"
+},
+"light_outside": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/light_shaft.tres",
+"use_external/path": "res://demo/enviroment/materials/light_shaft.tres"
+},
+"rock": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/rock.tres",
+"use_external/path": "res://demo/enviroment/materials/rock.tres"
+},
+"uv.001": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://demo/enviroment/materials/ground.tres",
+"use_external/path": "res://demo/enviroment/materials/ground.tres"
+}
+}
+}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
 gltf/texture_map_mode=1

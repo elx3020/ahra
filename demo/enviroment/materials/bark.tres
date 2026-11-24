@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
+
+[resource]
+resource_name = "bark"
+render_priority = 0
+shader = ExtResource("1_forest")
+shader_parameter/pattern = 1
+shader_parameter/base_color = Color(0.3822, 0.29017, 0.30786, 1)
+shader_parameter/shade_power = 0.21
+shader_parameter/roughness = 1.0
+shader_parameter/cell_scale = 2.15
+shader_parameter/cell_detail = 0
+shader_parameter/cell_manhattan = true
+shader_parameter/ramp_end = 0.96375

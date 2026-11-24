@@ -3,11 +3,11 @@
 [ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="1_akto7"]
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_auh11"]
 [ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="3_dkaou"]
+[ext_resource type="Texture2D" uid="uid://ctfp4ua3obrpl" path="res://demo/enviroment/forest_sky.exr" id="4_sky"]
+[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="5_forest"]
 
-[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
-sky_top_color = Color(0.42, 0.58, 0.82, 1)
-sky_horizon_color = Color(0.78, 0.8, 0.82, 1)
-ground_horizon_color = Color(0.78, 0.8, 0.82, 1)
+[sub_resource type="PanoramaSkyMaterial" id="sky_mat"]
+panorama = ExtResource("4_sky")
 
 [sub_resource type="Sky" id="sky"]
 sky_material = SubResource("sky_mat")
@@ -16,7 +16,7 @@ sky_material = SubResource("sky_mat")
 background_mode = 2
 sky = SubResource("sky")
 ambient_light_source = 3
-ambient_light_energy = 0.4
+tonemap_mode = 4
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i8cpb"]
 render_priority = 0
@@ -29,10 +29,10 @@ shader_parameter/show_silhouette = false
 shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
-shader_parameter/edge_width = 0.7
-shader_parameter/edge_threshold = 0.25
+shader_parameter/edge_width = 0.2650000125875
+shader_parameter/edge_threshold = 0.05500000191398
 shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
-shader_parameter/shadow_color = Color(0, 0, 0.03, 1)
+shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
 shader_parameter/show_details = false
 shader_parameter/detail_width = 0.6
 shader_parameter/detail_threshold = 0.12
@@ -44,11 +44,37 @@ shader_parameter/width_noise = 0.6
 shader_parameter/break_amount = 0.15
 shader_parameter/break_silhouette = false
 shader_parameter/wobble = 1.63200007752
-shader_parameter/light_direction = Vector3(0.48233825, 0.54445744, 0.6862331)
+shader_parameter/light_direction = Vector3(0.5543842, 0.66086954, -0.5058752)
 shader_parameter/light_thin = 0.45
 shader_parameter/shadow_boost = 0.5
 shader_parameter/light_fade = 0.0
 shader_parameter/light_from_brightness = 0.0
+
+[sub_resource type="PlaneMesh" id="canopy_mesh"]
+size = Vector2(277.908, 277.908)
+
+[sub_resource type="ShaderMaterial" id="canopy_mat"]
+resource_name = "canopy"
+render_priority = 0
+shader = ExtResource("5_forest")
+shader_parameter/pattern = 2
+shader_parameter/base_color = Color(0.90633, 0.90633, 0.90633, 1)
+shader_parameter/side_color = Color(0.725, 0.512, 0.516, 1)
+shader_parameter/top_threshold = 0.48
+shader_parameter/side_threshold = -0.22
+shader_parameter/shade_power = 0.0
+shader_parameter/roughness = 0.5
+shader_parameter/emission = Color(1, 1, 1, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/noise_scale = 8.08
+shader_parameter/noise_detail = 10.4
+shader_parameter/warp = 0.751
+shader_parameter/cutout = 0.6
+shader_parameter/cell_scale = 0.69
+shader_parameter/cell_detail = 1
+shader_parameter/cell_manhattan = false
+shader_parameter/facet = 0.552
+shader_parameter/ramp_end = 0.964
 
 [node name="Outline" type="Node3D" unique_id=1770233779]
 
@@ -56,15 +82,25 @@ shader_parameter/light_from_brightness = 0.0
 environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
-transform = Transform3D(0.8610337, -0.16115439, 0.48233834, -0.15055564, 0.8251661, 0.5444573, -0.48575088, -0.5414149, 0.68623316, 0, 8, 0)
-light_color = Color(1, 0.96, 0.88, 1)
+transform = Transform3D(0.814951, -0.16885664, 0.5543839, -0.5543839, -0.5058752, 0.6608691, 0.16885701, -0.845918, -0.50587493, 0, 8, 0)
+light_color = Color(1, 0.92945, 0.85423, 1)
+light_energy = 0.31831
 shadow_enabled = true
 directional_shadow_split_1 = 0.5
 directional_shadow_split_2 = 0.6
 directional_shadow_split_3 = 0.8
+directional_shadow_max_distance = 200.0
+
+[node name="Point" type="OmniLight3D" parent="." unique_id=1688140223]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.9729, 2.295, 11.5252)
+light_color = Color(0.64797, 0.92153, 0.92916, 1)
+light_energy = 2.533
+shadow_enabled = true
+omni_range = 16.0
+omni_attenuation = 2.0
 
 [node name="Camera" type="Camera3D" parent="." unique_id=999640400]
-transform = Transform3D(0.7071068, -0.40824828, 0.5773503, 0, 0.8164966, 0.5773503, -0.7071068, -0.40824828, 0.5773503, 51.08, 50.535, 50.635)
+transform = Transform3D(0.7071068, -0.40824828, 0.5773503, 0, 0.8164966, 0.5773503, -0.7071068, -0.40824828, 0.5773503, 58.045, 61.25, 59.665)
 current = true
 fov = 10.0
 
@@ -73,3 +109,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("3_dkaou")]
+
+[node name="Canopy" type="MeshInstance3D" parent="." unique_id=2041356771]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 254.508, 302.622, -237.21)
+cast_shadow = 3
+gi_mode = 0
+mesh = SubResource("canopy_mesh")
+surface_material_override/0 = SubResource("canopy_mat")

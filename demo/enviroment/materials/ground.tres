@@ -1,0 +1,22 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
+
+[resource]
+resource_name = "ground"
+render_priority = 0
+shader = ExtResource("1_forest")
+shader_parameter/pattern = 0
+shader_parameter/base_color = Color(0.48235, 0.62745, 0.56863, 1)
+shader_parameter/side_color = Color(0.72549, 0.5098, 0.51765, 1)
+shader_parameter/top_threshold = 2.0
+shader_parameter/side_threshold = 0.6
+shader_parameter/shade_power = 0.42
+shader_parameter/roughness = 1.0
+shader_parameter/noise_scale = 5.0
+shader_parameter/noise_detail = 2.0
+shader_parameter/warp = 0.61326
+shader_parameter/cell_scale = 1.9
+shader_parameter/cell_detail = 1
+shader_parameter/cell_manhattan = false
+shader_parameter/facet = 0.55249
