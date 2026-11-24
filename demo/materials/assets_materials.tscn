@@ -1,0 +1,134 @@
+[gd_scene format=3 uid="uid://sbgqj2x3gipd"]
+
+[ext_resource type="Script" uid="uid://bq5ppfecr7quu" path="res://demo/materials/materials.gd" id="1_2sujq"]
+[ext_resource type="VoxelGIData" uid="uid://bt7jullyofgck" path="res://demo/materials/assets_material.tres" id="2_an411"]
+[ext_resource type="PackedScene" uid="uid://wtfapgg4grua" path="res://game/assets/rock_medium.glb" id="3_a6s5s"]
+
+[sub_resource type="Gradient" id="Gradient_6mryn"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.005, 0.008, 0.02, 1, 0.01, 0.015, 0.04, 1, 0.12, 0.15, 0.32, 1, 0.22, 0.4, 0.72, 1, 0.18, 0.38, 0.78, 1)
+
+[sub_resource type="Gradient" id="Gradient_8ubmm"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.02, 0.025, 0.05, 1, 0.04, 0.05, 0.09, 1, 0.95, 0.5, 0.25, 1, 0.75, 0.78, 0.85, 1, 0.62, 0.72, 0.88, 1)
+
+[sub_resource type="Gradient" id="Gradient_8mq55"]
+offsets = PackedFloat32Array(0.5, 0.56, 0.7)
+colors = PackedColorArray(1, 0.35, 0.1, 1, 1, 0.7, 0.45, 1, 1, 0.97, 0.92, 1)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_xteba"]
+
+[sub_resource type="Sky" id="Sky_57m2h"]
+sky_material = SubResource("ProceduralSkyMaterial_xteba")
+process_mode = 2
+
+[sub_resource type="Environment" id="Environment_7mndl"]
+background_mode = 2
+sky = SubResource("Sky_57m2h")
+tonemap_mode = 4
+ssr_max_steps = 32
+glow_enabled = true
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_bjaeg"]
+size = Vector2(40, 40)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ojvq2"]
+albedo_color = Color(0.5, 0.5, 0.5, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_2ixu5"]
+material = SubResource("StandardMaterial3D_ojvq2")
+size = Vector3(37.193604, 4, 0.3)
+
+[node name="Materials" type="Node3D" unique_id=1171685298]
+physics_interpolation_mode = 2
+script = ExtResource("1_2sujq")
+sky_top = SubResource("Gradient_6mryn")
+sky_horizon = SubResource("Gradient_8ubmm")
+sun_color = SubResource("Gradient_8mq55")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2021412238]
+environment = SubResource("Environment_7mndl")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1945079537]
+transform = Transform3D(0.99998575, -0.0035651007, 0.003973839, 0.0014966665, 0.9017123, 0.43233415, -0.005124581, -0.432322, 0.90170467, 0, 7.628238, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 40.0
+
+[node name="Moon" type="DirectionalLight3D" parent="." unique_id=1459875354]
+light_color = Color(0.6, 0.7, 1, 1)
+shadow_enabled = true
+directional_shadow_max_distance = 40.0
+
+[node name="Lamps" type="Node3D" parent="." unique_id=529743095]
+
+[node name="OmniLight3D" type="OmniLight3D" parent="Lamps" unique_id=970248083]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8272326, 2.1516383, -2.606274)
+
+[node name="VoxelGI" type="VoxelGI" parent="." unique_id=1375743838]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.027954102, 2.5, -0.00048828125)
+size = Vector3(39.597412, 6, 40.043945)
+data = ExtResource("2_an411")
+
+[node name="Floor" type="MeshInstance3D" parent="." unique_id=1684515334]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.103367805, -0.025533676, -0.02747345)
+mesh = SubResource("PlaneMesh_bjaeg")
+
+[node name="Wall" type="MeshInstance3D" parent="." unique_id=978358136]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55285645, 2, -5.5)
+mesh = SubResource("BoxMesh_2ixu5")
+
+[node name="CameraPivot" type="Node3D" parent="." unique_id=2140576255]
+transform = Transform3D(1, 0, 0, 0, 0.90044713, 0.43496552, 0, -0.43496552, 0.90044713, 0, 0.5, 0)
+
+[node name="Camera" type="Camera3D" parent="CameraPivot" unique_id=1958435075]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
+current = true
+fov = 50.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=758200660]
+
+[node name="Panel" type="PanelContainer" parent="HUD" unique_id=2053847901]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 16.0
+
+[node name="Box" type="VBoxContainer" parent="HUD/Panel" unique_id=103247176]
+layout_mode = 2
+
+[node name="TimeLabel" type="Label" parent="HUD/Panel/Box" unique_id=1101768415]
+unique_name_in_owner = true
+layout_mode = 2
+text = "TimeLabel"
+
+[node name="TimeSlider" type="HSlider" parent="HUD/Panel/Box" unique_id=1646852321]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+focus_mode = 0
+max_value = 24.0
+step = 0.01
+
+[node name="SpeedLabel" type="Label" parent="HUD/Panel/Box" unique_id=56106411]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clock speed (hours per second)"
+
+[node name="SpeedSlider" type="HSlider" parent="HUD/Panel/Box" unique_id=1638203365]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+focus_mode = 0
+max_value = 4.0
+step = 0.01
+
+[node name="Help" type="Label" parent="HUD/Panel/Box" unique_id=1095582718]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Drag: orbit    Wheel: zoom"
+
+[node name="Walls" type="Node3D" parent="." unique_id=587049359]
+
+[node name="rock_medium" parent="." unique_id=913034518 instance=ExtResource("3_a6s5s")]
+transform = Transform3D(0.02867597, 0, 0.9995887, 0, 1, 0, -0.9995887, 0, 0.02867597, 0.19634485, 1.0878347, 0.06755924)

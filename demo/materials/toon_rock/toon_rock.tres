@@ -1,0 +1,42 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bx5lxtaqli7rw"]
+
+[ext_resource type="Shader" uid="uid://dyksctpvlsl6p" path="res://shaders/toon_rock.gdshader" id="1_rock"]
+[ext_resource type="Shader" uid="uid://cweegnhopfp0y" path="res://shaders/toon_rock_outline.gdshader" id="2_outline"]
+
+[sub_resource type="ShaderMaterial" id="outline"]
+render_priority = 0
+shader = ExtResource("2_outline")
+shader_parameter/outline_color = Color(0.08, 0.06, 0.08, 1)
+shader_parameter/outline_width = 0.0170000008075
+shader_parameter/outline_radial = 1.0
+
+[resource]
+render_priority = 0
+next_pass = SubResource("outline")
+shader = ExtResource("1_rock")
+shader_parameter/rock_color = Color(0.62, 0.56, 0.5, 1)
+shader_parameter/rock_color_alt = Color(0.48, 0.47, 0.5, 1)
+shader_parameter/patch_amount = 0.3750000178125
+shader_parameter/patch_scale = 1.38800006267012
+shader_parameter/flat_shading = 0.0
+shader_parameter/bands = 4
+shader_parameter/band_offset = 0.0
+shader_parameter/band_softness = 0.06
+shader_parameter/lit_tint = Color(1, 0.93, 0.8, 1)
+shader_parameter/shadow_tint = Color(0.42, 0.5, 0.75, 1)
+shader_parameter/shadow_fill = 0.3
+shader_parameter/crack_color = Color(0.5153295, 0.44143677, 0.5151414, 1)
+shader_parameter/crack_scale = 6.63500031190262
+shader_parameter/crack_width = 0.0070000003325
+shader_parameter/crack_coverage = 0.0
+shader_parameter/moss_color = Color(0.42, 0.56, 0.25, 1)
+shader_parameter/moss_color_alt = Color(0.32, 0.46, 0.22, 1)
+shader_parameter/moss_edge_color = Color(0.2, 0.33, 0.15, 1)
+shader_parameter/moss_amount = -0.353999969315
+shader_parameter/moss_direction = Vector3(0, 1, 0)
+shader_parameter/moss_edge_noise = 0.326000015485
+shader_parameter/moss_noise_scale = 2.5
+shader_parameter/moss_edge_width = 0.1
+shader_parameter/drip_amount = 0.7
+shader_parameter/drip_scale = 4.0
+shader_parameter/drip_reach = 0.35
