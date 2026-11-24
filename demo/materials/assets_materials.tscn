@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://bq5ppfecr7quu" path="res://demo/materials/materials.gd" id="1_2sujq"]
 [ext_resource type="VoxelGIData" uid="uid://bt7jullyofgck" path="res://demo/materials/assets_material.tres" id="2_an411"]
-[ext_resource type="PackedScene" uid="uid://wtfapgg4grua" path="res://game/assets/rock_medium.glb" id="3_a6s5s"]
 
 [sub_resource type="Gradient" id="Gradient_6mryn"]
 offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
@@ -129,6 +128,3 @@ layout_mode = 2
 text = "Drag: orbit    Wheel: zoom"
 
 [node name="Walls" type="Node3D" parent="." unique_id=587049359]
-
-[node name="rock_medium" parent="." unique_id=913034518 instance=ExtResource("3_a6s5s")]
-transform = Transform3D(0.02867597, 0, 0.9995887, 0, 1, 0, -0.9995887, 0, 0.02867597, 0.19634485, 1.0878347, 0.06755924)

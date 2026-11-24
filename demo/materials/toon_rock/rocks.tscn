@@ -1,8 +1,6 @@
 [gd_scene format=3 uid="uid://d3cenv3aub18m"]
 
 [ext_resource type="Material" uid="uid://bx5lxtaqli7rw" path="res://demo/materials/toon_rock/toon_rock.tres" id="1_rock"]
-[ext_resource type="PackedScene" uid="uid://wtfapgg4grua" path="res://game/assets/rock_medium.glb" id="2_dxxie"]
-[ext_resource type="PackedScene" uid="uid://bqfl6v641e5we" path="res://game/assets/rock_medium_2.glb" id="3_jl4b1"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.42, 0.58, 0.82, 1)
@@ -88,8 +86,6 @@ mesh = SubResource("block")
 
 [node name="Pillar" type="MeshInstance3D" parent="." unique_id=1648161590]
 transform = Transform3D(1, 0, 0, 0, 1, 0.1, 0, -0.1, 1, 0.5, 1.2, -3.5)
-instance_shader_parameters/crack_scale_mult = 1.6
-instance_shader_parameters/moss_offset = -0.2
 mesh = SubResource("pillar")
 
 [node name="Pebble1" type="MeshInstance3D" parent="." unique_id=5878553]
@@ -105,9 +101,3 @@ mesh = SubResource("pebble")
 transform = Transform3D(0.8, 0, 0, 0, 0.6, 0, 0, 0, 0.9, -1.2, 0.25, 2.6)
 instance_shader_parameters/moss_offset = -1.0
 mesh = SubResource("pebble")
-
-[node name="rock_medium" parent="." unique_id=2036569741 instance=ExtResource("2_dxxie")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.27589607, 1.2417414, 6.1020937)
-
-[node name="rock_medium_2" parent="." unique_id=228673052 instance=ExtResource("3_jl4b1")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8941383, -0.39843798, -3.3241057)

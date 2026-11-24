@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://wtfapgg4grua"
-path="res://.godot/imported/rock_medium.glb-1ce9758e237f68927a350a6a2416cebe.scn"
+uid="uid://dn4akh5t35b7g"
+path="res://.godot/imported/shapes.glb-478f8ee8378f2bd91da2c6eb4fbb68cc.scn"
 
 [deps]
 
-source_file="res://game/assets/rock_medium.glb"
-dest_files=["res://.godot/imported/rock_medium.glb-1ce9758e237f68927a350a6a2416cebe.scn"]
+source_file="res://demo/materials/box_projection/shapes.glb"
+dest_files=["res://.godot/imported/shapes.glb-478f8ee8378f2bd91da2c6eb4fbb68cc.scn"]
 
 [params]
 
@@ -41,10 +41,10 @@ materials/extract_format=0
 materials/extract_path=""
 _subresources={
 "materials": {
-"uv": {
+"box_noise": {
 "use_external/enabled": true,
-"use_external/fallback_path": "res://demo/materials/custom/toon_rock.tres",
-"use_external/path": "uid://bx5lxtaqli7rw"
+"use_external/fallback_path": "res://demo/materials/box_projection/box_noise.tres",
+"use_external/path": "res://demo/materials/box_projection/box_noise.tres"
 }
 }
 }

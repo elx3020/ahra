@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="1_outline"]
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_6t1p2"]
-[ext_resource type="PackedScene" uid="uid://bqfl6v641e5we" path="res://game/assets/rock_medium_2.glb" id="3_i8cpb"]
+[ext_resource type="Texture2D" uid="uid://70so6x3wssow" path="res://demo/materials/pbr/ice_floor/ice_floor_normal.png" id="3_i8cpb"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.42, 0.58, 0.82, 1)
@@ -22,28 +22,33 @@ ambient_light_energy = 0.4
 render_priority = 0
 shader = ExtResource("2_6t1p2")
 shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
-shader_parameter/line_width = 2.150000078375
-shader_parameter/surface_tint = 0.5390000256025
+shader_parameter/line_width = 2.2
+shader_parameter/antialias = true
+shader_parameter/surface_tint = 0.25
 shader_parameter/show_silhouette = false
 shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
-shader_parameter/edge_width = 0.8070000383325
+shader_parameter/edge_width = 0.7
 shader_parameter/edge_threshold = 0.25
-shader_parameter/show_details = true
+shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
+shader_parameter/shadow_color = Color(0, 0, 0.03, 1)
+shader_parameter/show_details = false
 shader_parameter/detail_width = 0.6
 shader_parameter/detail_threshold = 0.12
 shader_parameter/detail_ignore_shading = 0.85
+shader_parameter/cast_shadow_tint = Color(0.46, 0.57, 0.73, 1)
+shader_parameter/cast_shadow_tolerance = 0.4
 shader_parameter/noise_scale = 2.5
 shader_parameter/width_noise = 0.6
 shader_parameter/break_amount = 0.15
 shader_parameter/break_silhouette = false
-shader_parameter/wobble = 1.6320000775199999
-shader_parameter/light_direction = Vector3(0.48233834, 0.54445744, 0.68623316)
+shader_parameter/wobble = 1.63200007752
+shader_parameter/light_direction = Vector3(0.48233825, 0.54445744, 0.6862331)
 shader_parameter/light_thin = 0.45
 shader_parameter/shadow_boost = 0.5
-shader_parameter/light_fade = 0.35
-shader_parameter/light_from_brightness = 0.5
+shader_parameter/light_fade = 0.0
+shader_parameter/light_from_brightness = 0.0
 
 [sub_resource type="StandardMaterial3D" id="ground_mat"]
 diffuse_mode = 3
@@ -91,6 +96,12 @@ height = 2.0
 diffuse_mode = 3
 specular_mode = 2
 albedo_color = Color(0.78, 0.5, 0.36, 1)
+normal_enabled = true
+normal_scale = 2.05
+normal_texture = ExtResource("3_i8cpb")
+uv1_scale = Vector3(0.825, 0.825, 0.825)
+uv1_triplanar = true
+uv1_world_triplanar = true
 
 [sub_resource type="BoxMesh" id="box"]
 material = SubResource("clay_mat")
@@ -113,12 +124,15 @@ rings = 1
 environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
-transform = Transform3D(0.8610337, -0.16115442, 0.4823383, -0.15055567, 0.8251662, 0.54445744, -0.48575094, -0.54141504, 0.68623316, 0, 8, 0)
+transform = Transform3D(0.8610337, -0.16115439, 0.48233834, -0.15055564, 0.8251661, 0.5444573, -0.48575088, -0.5414149, 0.68623316, 0, 8, 0)
 light_color = Color(1, 0.96, 0.88, 1)
 shadow_enabled = true
+directional_shadow_split_1 = 0.5
+directional_shadow_split_2 = 0.6
+directional_shadow_split_3 = 0.8
 
 [node name="Camera" type="Camera3D" parent="." unique_id=999640400]
-transform = Transform3D(0.707, -0.408, 0.577, 0, 0.816, 0.577, -0.707, -0.408, 0.577, 29.5, 29.5, 29.5)
+transform = Transform3D(0.7071068, -0.40824828, 0.5773503, 0, 0.8164966, 0.5773503, -0.7071068, -0.40824828, 0.5773503, 28.856438, 29.5, 28.980953)
 current = true
 fov = 10.0
 
@@ -127,6 +141,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=406062037]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0053901672, 0.07951307, -0.110939026)
 mesh = SubResource("ground")
 
 [node name="FacetedRock" type="MeshInstance3D" parent="." unique_id=1326107213]
@@ -152,6 +167,3 @@ mesh = SubResource("pillar")
 [node name="Step" type="MeshInstance3D" parent="." unique_id=1350186824]
 transform = Transform3D(1.5, 0, 0, 0, 0.5, 0, 0, 0, 1.2, 2.2, 0.4, 2.6)
 mesh = SubResource("box")
-
-[node name="rock_medium_2" parent="." unique_id=272994398 instance=ExtResource("3_i8cpb")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.9605944, -4.7683716e-07, -4.524106)

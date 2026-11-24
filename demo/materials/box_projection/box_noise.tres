@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bst5sxaxcn2fn"]
+
+[ext_resource type="Shader" uid="uid://bxd1md2sqiqjs" path="res://demo/materials/box_projection/box_noise.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" uid="uid://b206l1t6cplla" path="res://demo/materials/box_projection/noise.png" id="2_noise"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_shader")
+shader_parameter/noise = ExtResource("2_noise")
+shader_parameter/scale = 0.51
+shader_parameter/blend = 0.25
+shader_parameter/color_a = Color(0.184, 0.231, 0.2, 1)
+shader_parameter/color_b = Color(0.725, 0.682, 0.58, 1)
+shader_parameter/roughness = 0.8

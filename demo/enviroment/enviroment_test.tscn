@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://hi1keu7wgdcf"]
+
+[ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="1_akto7"]
+[ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_auh11"]
+[ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="3_dkaou"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.42, 0.58, 0.82, 1)
+sky_horizon_color = Color(0.78, 0.8, 0.82, 1)
+ground_horizon_color = Color(0.78, 0.8, 0.82, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_i8cpb"]
+render_priority = 0
+shader = ExtResource("2_auh11")
+shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
+shader_parameter/line_width = 2.2
+shader_parameter/antialias = true
+shader_parameter/surface_tint = 0.25
+shader_parameter/show_silhouette = false
+shader_parameter/silhouette_width = 1.5
+shader_parameter/silhouette_threshold = 0.15
+shader_parameter/show_edges = true
+shader_parameter/edge_width = 0.7
+shader_parameter/edge_threshold = 0.25
+shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
+shader_parameter/shadow_color = Color(0, 0, 0.03, 1)
+shader_parameter/show_details = false
+shader_parameter/detail_width = 0.6
+shader_parameter/detail_threshold = 0.12
+shader_parameter/detail_ignore_shading = 0.85
+shader_parameter/cast_shadow_tint = Color(0.46, 0.57, 0.73, 1)
+shader_parameter/cast_shadow_tolerance = 0.4
+shader_parameter/noise_scale = 2.5
+shader_parameter/width_noise = 0.6
+shader_parameter/break_amount = 0.15
+shader_parameter/break_silhouette = false
+shader_parameter/wobble = 1.63200007752
+shader_parameter/light_direction = Vector3(0.48233825, 0.54445744, 0.6862331)
+shader_parameter/light_thin = 0.45
+shader_parameter/shadow_boost = 0.5
+shader_parameter/light_fade = 0.0
+shader_parameter/light_from_brightness = 0.0
+
+[node name="Outline" type="Node3D" unique_id=1770233779]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=434572541]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
+transform = Transform3D(0.8610337, -0.16115439, 0.48233834, -0.15055564, 0.8251661, 0.5444573, -0.48575088, -0.5414149, 0.68623316, 0, 8, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+shadow_enabled = true
+directional_shadow_split_1 = 0.5
+directional_shadow_split_2 = 0.6
+directional_shadow_split_3 = 0.8
+
+[node name="Camera" type="Camera3D" parent="." unique_id=999640400]
+transform = Transform3D(0.7071068, -0.40824828, 0.5773503, 0, 0.8164966, 0.5773503, -0.7071068, -0.40824828, 0.5773503, 51.08, 50.535, 50.635)
+current = true
+fov = 10.0
+
+[node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("1_akto7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
+material_override = SubResource("ShaderMaterial_i8cpb")
+
+[node name="forest" parent="." unique_id=473403532 instance=ExtResource("3_dkaou")]
