@@ -1,10 +1,12 @@
 [gd_scene format=3 uid="uid://hi1keu7wgdcf"]
 
+[ext_resource type="Script" uid="uid://kuumo6tsrgp1" path="res://demo/demo.gd" id="1_4ms84"]
 [ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="1_akto7"]
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_auh11"]
 [ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="3_dkaou"]
 [ext_resource type="Texture2D" uid="uid://ctfp4ua3obrpl" path="res://demo/enviroment/forest_sky.exr" id="4_sky"]
 [ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="5_forest"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="7_o7dyp"]
 
 [sub_resource type="PanoramaSkyMaterial" id="sky_mat"]
 panorama = ExtResource("4_sky")
@@ -76,10 +78,31 @@ shader_parameter/cell_manhattan = false
 shader_parameter/facet = 0.552
 shader_parameter/ramp_end = 0.964
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmrfl"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
 [node name="Outline" type="Node3D" unique_id=1770233779]
+script = ExtResource("1_4ms84")
+
+[node name="Player" parent="." unique_id=1602617663 instance=ExtResource("7_o7dyp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=434572541]
 environment = SubResource("env")
+
+[node name="Camera" type="Camera3D" parent="." unique_id=314350963]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1523319317]
+
+[node name="Label" type="Label" parent="HUD" unique_id=699981659]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
 transform = Transform3D(0.814951, -0.16885664, 0.5543839, -0.5543839, -0.5058752, 0.6608691, 0.16885701, -0.845918, -0.50587493, 0, 8, 0)
@@ -99,11 +122,6 @@ shadow_enabled = true
 omni_range = 16.0
 omni_attenuation = 2.0
 
-[node name="Camera" type="Camera3D" parent="." unique_id=999640400]
-transform = Transform3D(0.7071068, -0.40824828, 0.5773503, 0, 0.8164966, 0.5773503, -0.7071068, -0.40824828, 0.5773503, 58.045, 61.25, 59.665)
-current = true
-fov = 10.0
-
 [node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("1_akto7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
 material_override = SubResource("ShaderMaterial_i8cpb")
@@ -116,3 +134,9 @@ cast_shadow = 3
 gi_mode = 0
 mesh = SubResource("canopy_mesh")
 surface_material_override/0 = SubResource("canopy_mat")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)
+use_collision = true
+size = Vector3(84.94159, 1, 84.98779)
+material = SubResource("StandardMaterial3D_cmrfl")

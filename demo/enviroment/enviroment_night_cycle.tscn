@@ -1,0 +1,142 @@
+[gd_scene format=3 uid="uid://gj2ugaky7x86"]
+
+[ext_resource type="Script" uid="uid://kuumo6tsrgp1" path="res://demo/demo.gd" id="1_dhlqv"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="2_ewff8"]
+[ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="4_g03kv"]
+[ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="5_vhako"]
+[ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="6_jib5a"]
+[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="7_ddjf3"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_i8cpb"]
+render_priority = 0
+shader = ExtResource("5_vhako")
+shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
+shader_parameter/line_width = 2.2
+shader_parameter/antialias = true
+shader_parameter/surface_tint = 0.25
+shader_parameter/show_silhouette = false
+shader_parameter/silhouette_width = 1.5
+shader_parameter/silhouette_threshold = 0.15
+shader_parameter/show_edges = true
+shader_parameter/edge_width = 0.2650000125875
+shader_parameter/edge_threshold = 0.05500000191398
+shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
+shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
+shader_parameter/show_details = false
+shader_parameter/detail_width = 0.6
+shader_parameter/detail_threshold = 0.12
+shader_parameter/detail_ignore_shading = 0.85
+shader_parameter/cast_shadow_tint = Color(0.46, 0.57, 0.73, 1)
+shader_parameter/cast_shadow_tolerance = 0.4
+shader_parameter/noise_scale = 2.5
+shader_parameter/width_noise = 0.6
+shader_parameter/break_amount = 0.15
+shader_parameter/break_silhouette = false
+shader_parameter/wobble = 1.63200007752
+shader_parameter/light_direction = Vector3(0.5543842, 0.66086954, -0.5058752)
+shader_parameter/light_thin = 0.45
+shader_parameter/shadow_boost = 0.5
+shader_parameter/light_fade = 0.0
+shader_parameter/light_from_brightness = 0.0
+
+[sub_resource type="PlaneMesh" id="canopy_mesh"]
+size = Vector2(277.908, 277.908)
+
+[sub_resource type="ShaderMaterial" id="canopy_mat"]
+resource_name = "canopy"
+render_priority = 0
+shader = ExtResource("7_ddjf3")
+shader_parameter/pattern = 2
+shader_parameter/base_color = Color(0.90633, 0.90633, 0.90633, 1)
+shader_parameter/side_color = Color(0.725, 0.512, 0.516, 1)
+shader_parameter/top_threshold = 0.48
+shader_parameter/side_threshold = -0.22
+shader_parameter/shade_power = 0.0
+shader_parameter/roughness = 0.5
+shader_parameter/emission = Color(1, 1, 1, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/noise_scale = 8.08
+shader_parameter/noise_detail = 10.4
+shader_parameter/warp = 0.751
+shader_parameter/cutout = 0.6
+shader_parameter/cell_scale = 0.69
+shader_parameter/cell_detail = 1
+shader_parameter/cell_manhattan = false
+shader_parameter/facet = 0.552
+shader_parameter/ramp_end = 0.964
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmrfl"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ewff8"]
+
+[sub_resource type="Sky" id="Sky_57m2h"]
+sky_material = SubResource("ProceduralSkyMaterial_ewff8")
+process_mode = 2
+
+[sub_resource type="Environment" id="Environment_52vkm"]
+background_mode = 2
+sky = SubResource("Sky_57m2h")
+tonemap_mode = 4
+ssr_max_steps = 32
+glow_enabled = true
+
+[node name="Outline" type="Node3D" unique_id=1770233779]
+script = ExtResource("1_dhlqv")
+
+[node name="Player" parent="." unique_id=1602617663 instance=ExtResource("2_ewff8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
+
+[node name="Camera" type="Camera3D" parent="." unique_id=314350963]
+projection = 1
+current = true
+size = 20.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1523319317]
+
+[node name="Label" type="Label" parent="HUD" unique_id=699981659]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
+transform = Transform3D(0.814951, -0.16885664, 0.5543839, -0.5543839, -0.5058752, 0.6608691, 0.16885701, -0.845918, -0.50587493, 0, 8, 0)
+light_color = Color(1, 0.92945, 0.85423, 1)
+light_energy = 0.31831
+shadow_enabled = true
+directional_shadow_split_1 = 0.5
+directional_shadow_split_2 = 0.6
+directional_shadow_split_3 = 0.8
+directional_shadow_max_distance = 200.0
+
+[node name="Point" type="OmniLight3D" parent="." unique_id=1688140223]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.9729, 2.295, 11.5252)
+light_color = Color(0.64797, 0.92153, 0.92916, 1)
+light_energy = 2.533
+shadow_enabled = true
+omni_range = 16.0
+omni_attenuation = 2.0
+
+[node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("4_g03kv")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
+material_override = SubResource("ShaderMaterial_i8cpb")
+
+[node name="forest" parent="." unique_id=473403532 instance=ExtResource("6_jib5a")]
+
+[node name="Canopy" type="MeshInstance3D" parent="." unique_id=2041356771]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 254.508, 302.622, -237.21)
+cast_shadow = 3
+gi_mode = 0
+mesh = SubResource("canopy_mesh")
+surface_material_override/0 = SubResource("canopy_mat")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)
+use_collision = true
+size = Vector3(84.94159, 1, 84.98779)
+material = SubResource("StandardMaterial3D_cmrfl")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=666644200]
+environment = SubResource("Environment_52vkm")

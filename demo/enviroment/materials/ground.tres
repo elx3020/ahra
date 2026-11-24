@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://ckeotr2816v3f"]
 
-[ext_resource type="Shader" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
+[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
 
 [resource]
 resource_name = "ground"
@@ -13,10 +13,14 @@ shader_parameter/top_threshold = 2.0
 shader_parameter/side_threshold = 0.6
 shader_parameter/shade_power = 0.42
 shader_parameter/roughness = 1.0
+shader_parameter/emission = Color(1, 1, 1, 1)
+shader_parameter/emission_strength = 0.0
 shader_parameter/noise_scale = 5.0
 shader_parameter/noise_detail = 2.0
 shader_parameter/warp = 0.61326
+shader_parameter/cutout = 0.6
 shader_parameter/cell_scale = 1.9
 shader_parameter/cell_detail = 1
 shader_parameter/cell_manhattan = false
 shader_parameter/facet = 0.55249
+shader_parameter/ramp_end = 0.964
