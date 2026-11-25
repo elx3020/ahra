@@ -18,7 +18,6 @@ shader_parameter/emission_strength = 0.04
 shader_parameter/noise_scale = 5.0
 shader_parameter/noise_detail = 2.0
 shader_parameter/warp = 0.48398
-shader_parameter/cutout = 0.6
 shader_parameter/cell_scale = 0.48
 shader_parameter/cell_detail = 1
 shader_parameter/cell_manhattan = false

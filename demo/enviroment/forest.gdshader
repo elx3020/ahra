@@ -9,13 +9,14 @@
 //     points picks its colour.
 //   Bark (Material.001): each Voronoi cell gets its own shade of the base colour. Its wave bump
 //     (normals tilted ~1.5 degrees) is left out.
-//   Canopy (Material.003): noise holes in a shadow-only plane high above, dappling the sunlight.
+// Opaque only: no discard or alpha, so Godot's shared vertex-only material draws these meshes in
+// shadow maps and in a depth-only prepass.
 // Blender is Z up, Godot Y up (glTF: x, z, -y): patterns read the mesh in Blender's axes.
 // Diffuse is Lambert, like the Principled BSDF; specular 0.5 is its default IOR level.
 shader_type spatial;
 render_mode diffuse_lambert;
 
-uniform int pattern : hint_enum("Facets", "Bark", "Canopy") = 0;
+uniform int pattern : hint_enum("Facets", "Bark") = 0;
 
 group_uniforms colour;
 /// Principled Base Color. Facets: faces turned up past top_threshold, and facets at or below
@@ -40,8 +41,6 @@ uniform float noise_scale = 5.0;
 uniform float noise_detail : hint_range(0.0, 15.0) = 2.0;
 /// Facets: Mix factor from the noise (0) to the object position (1) for the Voronoi input.
 uniform float warp : hint_range(0.0, 1.0) = 0.751;
-/// Canopy: holes where the noise is at or below this.
-uniform float cutout : hint_range(0.0, 1.0) = 0.6;
 
 group_uniforms cells;
 /// Voronoi Texture (3D F1, randomness 1, roughness 0.5, lacunarity 2).
@@ -201,13 +200,11 @@ void fragment() {
 		bool side = n.z <= top_threshold && f.z > side_threshold;
 		ALBEDO = (side ? side_color : base_color) * blender_pow(f.z, shade_power);
 		NORMAL = normalize((VIEW_MATRIX * vec4(f.x, f.z, -f.y, 0.0)).xyz);
-	} else if (pattern == 1) {
+	} else {
 		vec3 cell_pos;
 		vec3 cell_col;
 		voronoi(v_obj, cell_pos, cell_col);
 		float shade = clamp(dot(cell_col, vec3(0.2126729, 0.7151522, 0.072175)) / ramp_end, 0.0, 1.0);
 		ALBEDO = base_color * blender_pow(shade, shade_power);
-	} else if (fbm(vec3(UV.x, 1.0 - UV.y, 0.0) * noise_scale, noise_detail) <= cutout) {
-		discard;
 	}
 }
