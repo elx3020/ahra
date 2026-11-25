@@ -1,0 +1,157 @@
+[gd_scene format=3 uid="uid://5tm50c5a2piy"]
+
+[ext_resource type="Script" uid="uid://d321wxkto5onb" path="res://demo/enviroment/enviroment_night_cycle.gd" id="1_dhlqv"]
+[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="2_ewff8"]
+[ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="4_g03kv"]
+[ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="5_vhako"]
+[ext_resource type="PackedScene" uid="uid://bgcwcy33odxf4" path="res://demo/enviroment_optimization_texture_baking/forest.glb" id="6_jib5a"]
+[ext_resource type="VoxelGIData" uid="uid://xpvaoc0iy0n1" path="res://demo/enviroment/deep_forest_voxel_gi_data.tres" id="8_ewff8"]
+[ext_resource type="Script" uid="uid://clb8jdlv5b5iw" path="res://world/weather.gd" id="8_weather"]
+[ext_resource type="Script" uid="uid://cofwjoe544qcp" path="res://demo/enviroment_optimization_texture_baking/forest_baker.gd" id="9_baker"]
+
+[sub_resource type="Gradient" id="sky_top"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.005, 0.008, 0.02, 1, 0.01, 0.015, 0.04, 1, 0.12, 0.15, 0.32, 1, 0.3562, 0.4449, 0.6022, 1, 0.3562, 0.4449, 0.6022, 1)
+
+[sub_resource type="Gradient" id="sky_horizon"]
+offsets = PackedFloat32Array(0, 0.44, 0.5, 0.58, 1)
+colors = PackedColorArray(0.02, 0.025, 0.05, 1, 0.04, 0.05, 0.09, 1, 0.95, 0.5, 0.25, 1, 0.4793, 0.5154, 0.5721, 1, 0.4793, 0.5154, 0.5721, 1)
+
+[sub_resource type="Gradient" id="sun_color"]
+offsets = PackedFloat32Array(0.5, 0.56, 0.7)
+colors = PackedColorArray(1, 0.35, 0.1, 1, 1, 0.7, 0.45, 1, 1, 0.92945, 0.85423, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_i8cpb"]
+render_priority = 0
+shader = ExtResource("5_vhako")
+shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
+shader_parameter/line_width = 2.2
+shader_parameter/surface_tint = 0.25
+shader_parameter/show_silhouette = false
+shader_parameter/silhouette_antialias = false
+shader_parameter/silhouette_width = 1.5
+shader_parameter/silhouette_threshold = 0.15
+shader_parameter/show_edges = true
+shader_parameter/edge_antialias = true
+shader_parameter/edge_width = 0.2650000125875
+shader_parameter/edge_threshold = 0.05500000191398
+shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
+shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
+shader_parameter/show_details = false
+shader_parameter/detail_antialias = false
+shader_parameter/detail_width = 0.6
+shader_parameter/detail_threshold = 0.12
+shader_parameter/detail_ignore_shading = 0.85
+shader_parameter/cast_shadow_tint = Color(0.46, 0.57, 0.73, 1)
+shader_parameter/cast_shadow_tolerance = 0.4
+shader_parameter/noise_scale = 2.5
+shader_parameter/width_noise = 0.6
+shader_parameter/break_amount = 0.15
+shader_parameter/break_silhouette = false
+shader_parameter/wobble = 1.63200007752
+shader_parameter/light_direction = Vector3(0.5543842, 0.66086954, -0.5058752)
+shader_parameter/light_thin = 0.45
+shader_parameter/shadow_boost = 0.5
+shader_parameter/light_fade = 0.0
+shader_parameter/light_from_brightness = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmrfl"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ewff8"]
+
+[sub_resource type="Sky" id="Sky_57m2h"]
+sky_material = SubResource("ProceduralSkyMaterial_ewff8")
+process_mode = 2
+
+[sub_resource type="Environment" id="Environment_52vkm"]
+background_mode = 2
+sky = SubResource("Sky_57m2h")
+tonemap_mode = 4
+ssr_max_steps = 32
+glow_enabled = true
+
+[node name="TextureBaking" type="Node3D" unique_id=1770233779]
+script = ExtResource("1_dhlqv")
+
+[node name="Player" parent="." unique_id=1602617663 instance=ExtResource("2_ewff8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
+
+[node name="Camera" type="Camera3D" parent="." unique_id=314350963]
+projection = 1
+current = true
+size = 20.0
+far = 160.0
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1523319317]
+
+[node name="Label" type="Label" parent="HUD" unique_id=699981659]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
+transform = Transform3D(0.814951, -0.16885664, 0.5543839, -0.5543839, -0.5058752, 0.6608691, 0.16885701, -0.845918, -0.50587493, 0, 8, 0)
+light_color = Color(1, 0.92945, 0.85423, 1)
+light_energy = 0.31831
+shadow_enabled = true
+directional_shadow_split_1 = 0.5
+directional_shadow_split_2 = 0.6
+directional_shadow_split_3 = 0.8
+directional_shadow_max_distance = 200.0
+sky_mode = 1
+
+[node name="Moon" type="DirectionalLight3D" parent="." unique_id=1873520447]
+light_color = Color(0.6, 0.7, 1, 1)
+shadow_enabled = true
+directional_shadow_max_distance = 200.0
+sky_mode = 1
+
+[node name="Weather" type="Node" parent="." unique_id=1406388297 node_paths=PackedStringArray("sun", "moon", "world_environment")]
+script = ExtResource("8_weather")
+hour = 9.755
+sun_tilt_degrees = -37.43
+sun_energy = 0.31831
+moon_energy = 0.05
+sky_top = SubResource("sky_top")
+sky_horizon = SubResource("sky_horizon")
+sun_color = SubResource("sun_color")
+ground_light = 0.0
+sun = NodePath("../Sun")
+moon = NodePath("../Moon")
+world_environment = NodePath("../WorldEnvironment")
+
+[node name="Point" type="OmniLight3D" parent="." unique_id=1688140223]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.9729, 2.295, 11.5252)
+light_color = Color(0.64797, 0.92153, 0.92916, 1)
+light_energy = 2.533
+shadow_enabled = true
+omni_range = 16.0
+omni_attenuation = 2.0
+
+[node name="ToonOutline" parent="." unique_id=775616513 node_paths=PackedStringArray("sun") instance=ExtResource("4_g03kv")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
+material_override = SubResource("ShaderMaterial_i8cpb")
+sun = NodePath("../Sun")
+
+[node name="forest" parent="." unique_id=473403532 instance=ExtResource("6_jib5a")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.021873474, 0, 0.0063757896)
+
+[node name="ForestBaker" type="Node" parent="." unique_id=1271844290 node_paths=PackedStringArray("forest")]
+script = ExtResource("9_baker")
+forest = NodePath("../forest")
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)
+use_collision = true
+size = Vector3(84.94159, 1, 84.98779)
+material = SubResource("StandardMaterial3D_cmrfl")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=666644200]
+environment = SubResource("Environment_52vkm")
+
+[node name="VoxelGI" type="VoxelGI" parent="." unique_id=242606633]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18846321, 9.095243, 0.116607666)
+size = Vector3(83.947754, 20, 84.557556)
+data = ExtResource("8_ewff8")
