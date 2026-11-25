@@ -1,11 +1,9 @@
 [gd_scene format=3 uid="uid://hi1keu7wgdcf"]
 
-[ext_resource type="Script" uid="uid://kuumo6tsrgp1" path="res://demo/demo.gd" id="1_4ms84"]
 [ext_resource type="PackedScene" path="res://demo/materials/outline/toon_outline.tscn" id="1_akto7"]
 [ext_resource type="Shader" uid="uid://dos1iblufu20g" path="res://demo/materials/outline/toon_outline.gdshader" id="2_auh11"]
 [ext_resource type="PackedScene" uid="uid://bh5xnq2v0bd03" path="res://demo/enviroment/forest.glb" id="3_dkaou"]
 [ext_resource type="Texture2D" uid="uid://ctfp4ua3obrpl" path="res://demo/enviroment/forest_sky.exr" id="4_sky"]
-[ext_resource type="PackedScene" uid="uid://bb0rhqoyxk76l" path="res://player/player.tscn" id="7_o7dyp"]
 
 [sub_resource type="PanoramaSkyMaterial" id="sky_mat"]
 panorama = ExtResource("4_sky")
@@ -24,17 +22,19 @@ render_priority = 0
 shader = ExtResource("2_auh11")
 shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
 shader_parameter/line_width = 2.2
-shader_parameter/antialias = true
 shader_parameter/surface_tint = 0.25
 shader_parameter/show_silhouette = false
+shader_parameter/silhouette_antialias = true
 shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
+shader_parameter/edge_antialias = true
 shader_parameter/edge_width = 0.2650000125875
 shader_parameter/edge_threshold = 0.03000000072648
 shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
 shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
 shader_parameter/show_details = false
+shader_parameter/detail_antialias = true
 shader_parameter/detail_width = 0.6
 shader_parameter/detail_threshold = 0.12
 shader_parameter/detail_ignore_shading = 0.85
@@ -55,10 +55,6 @@ shader_parameter/light_from_brightness = 0.0
 albedo_color = Color(0.42, 0.42, 0.45, 1)
 
 [node name="Outline" type="Node3D" unique_id=1770233779]
-script = ExtResource("1_4ms84")
-
-[node name="Player" parent="." unique_id=1602617663 instance=ExtResource("7_o7dyp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 6)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=434572541]
 environment = SubResource("env")
@@ -68,15 +64,8 @@ transform = Transform3D(0.70710677, -0.5043442, 0.4956177, 0, 0.70090926, 0.7132
 projection = 1
 current = true
 size = 20.0
-far = 500.0
-
-[node name="HUD" type="CanvasLayer" parent="." unique_id=1523319317]
-
-[node name="Label" type="Label" parent="HUD" unique_id=699981659]
-offset_left = 12.0
-offset_top = 8.0
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 6
+near = 0.001
+far = 100.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=1315873732]
 transform = Transform3D(0.814951, -0.16885664, 0.5543839, -0.5543839, -0.5058752, 0.6608691, 0.16885701, -0.845918, -0.50587493, 0, 8, 0)
@@ -98,9 +87,11 @@ omni_attenuation = 2.0
 
 [node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("1_akto7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
+visible = false
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("3_dkaou")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010644913, 0.047225952, -0.04434967)
 
 [node name="Floor" type="CSGBox3D" parent="." unique_id=750761654]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22683716, -0.5826869, -0.22583008)

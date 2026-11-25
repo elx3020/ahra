@@ -24,13 +24,13 @@ group_uniforms line;
 uniform vec4 line_color : source_color = vec4(0.07, 0.05, 0.08, 1.0);
 /// Base line width in pixels (each line type multiplies it).
 uniform float line_width : hint_range(0.5, 8.0) = 2.2;
-/// Smooth line borders by running the line tests 4 times per pixel (4x the cost).
-uniform bool antialias = true;
 /// 0 = flat line colour, 1 = a darkened version of the surface under the line (coloured ink).
 uniform float surface_tint : hint_range(0.0, 1.0) = 0.25;
 
 group_uniforms silhouette;
 uniform bool show_silhouette = true;
+/// Smooth silhouette borders: pixels near one run its test 4 more times.
+uniform bool silhouette_antialias = true;
 /// Width multiplier for silhouette lines.
 uniform float silhouette_width : hint_range(0.0, 4.0) = 1.5;
 /// How far behind the surface, in metres, the neighbour must be to count as a silhouette.
@@ -38,6 +38,8 @@ uniform float silhouette_threshold : hint_range(0.01, 2.0) = 0.15;
 
 group_uniforms edges;
 uniform bool show_edges = true;
+/// Smooth crease borders: pixels near one run its test 4 more times.
+uniform bool edge_antialias = true;
 /// Width multiplier for crease lines (they draw on both faces of the crease, so keep it lower).
 uniform float edge_width : hint_range(0.0, 4.0) = 0.7;
 /// Bend needed for a crease line: 0 = any bend, 1 = a 90 degree corner.
@@ -49,6 +51,8 @@ uniform vec3 shadow_color : source_color = vec3(0.0, 0.0, 0.03);
 
 group_uniforms details;
 uniform bool show_details = true;
+/// Smooth colour-border lines: pixels near one run their test 4 more times.
+uniform bool detail_antialias = true;
 /// Width multiplier for colour-border lines.
 uniform float detail_width : hint_range(0.0, 4.0) = 0.6;
 /// Colour difference needed for a detail line.
@@ -161,6 +165,9 @@ const vec2 DIRS[8] = vec2[](
 /// Rotated-grid sample points inside a pixel, for antialiasing.
 const vec2 SUBPIXEL[4] = vec2[](
 	vec2(0.125, 0.375), vec2(-0.375, 0.125), vec2(0.375, -0.125), vec2(-0.125, -0.375));
+/// How much wider, in pixels, the antialias pre-check reaches than the test: the sample points sit
+/// up to 0.4 px from the pixel point.
+const float AA_REACH = 0.5;
 
 /// Line alpha with and without the shadow-like detail lines; light() picks between them.
 varying float v_alpha_kept;
@@ -182,52 +189,67 @@ float shadow_step(vec3 a, vec3 b) {
 			* (1.0 - smoothstep(cast_shadow_tolerance, cast_shadow_tolerance + 0.1, off));
 }
 
-/// Line strengths at the pixel point c_uv (w = line width in pixels): silhouette, edge, detail,
-/// and shadow-like detail. For the strongest shadow-like detail so far (best), dark_uv is its
-/// darker side.
-vec4 line_tests(vec2 c_uv, vec2 px, mat4 ip, float w, inout float best, inout vec2 dark_uv) {
-	vec3 sc = textureLod(screen_tex, c_uv, 0.0).rgb;
+/// Neighbour i at r pixels from c_uv, kept off the screen border.
+vec2 neighbour(vec2 c_uv, vec2 px, int i, float r) {
+	return clamp(c_uv + DIRS[i] * r * px, px * 2.0, 1.0 - px * 2.0);
+}
+
+// Each test gives the line strength at the pixel point c_uv, r = its line width in pixels.
+// Depth tests measure the neighbour's distance from this pixel's surface plane, in metres,
+// so they hold up on surfaces seen at a grazing angle and at any camera distance.
+
+/// both_sides: also count the far side of a depth jump, where the line isn't drawn (a pixel there
+/// can have sample points on the near side).
+float silhouette_test(vec2 c_uv, vec2 px, mat4 ip, float r, bool both_sides) {
 	vec3 pc = view_pos(c_uv, ip);
 	vec3 nc = view_normal(c_uv, px, ip);
-	vec3 cc = chroma(sc);
 	float sil = 0.0;
-	float edge = 0.0;
-	float det = 0.0;
-	float shadowy = 0.0;
-	// Depth tests measure the neighbour's distance from this pixel's surface plane, in metres,
-	// so they hold up on surfaces seen at a grazing angle and at any camera distance.
 	for (int i = 0; i < 8; i++) {
-		if (show_silhouette) {
-			vec2 o = clamp(c_uv + DIRS[i] * w * silhouette_width * px, px * 2.0, 1.0 - px * 2.0);
-			float behind = -dot(view_pos_sky(o, ip) - pc, nc);
-			sil = max(sil, smoothstep(silhouette_threshold, silhouette_threshold * 1.5, behind));
-		}
-		if (show_edges) {
-			vec2 o = clamp(c_uv + DIRS[i] * w * edge_width * px, px * 2.0, 1.0 - px * 2.0);
-			float off_plane = abs(dot(view_pos_sky(o, ip) - pc, nc));
-			if (off_plane < silhouette_threshold) {
-				vec3 nn = view_normal(o, px, ip);
-				float bend = 1.0 - dot(nc, nn);
-				edge = max(edge, smoothstep(edge_threshold, edge_threshold * 1.4, bend));
-			}
-		}
-		if (show_details) {
-			vec2 o = clamp(c_uv + DIRS[i] * w * detail_width * px, px * 2.0, 1.0 - px * 2.0);
-			vec3 sn = textureLod(screen_tex, o, 0.0).rgb;
-			float d_hue = length(chroma(sn) - cc) * 3.0;
-			float d_all = length(sn - sc);
-			float d = smoothstep(detail_threshold, detail_threshold * 1.5,
-					mix(d_all, d_hue, detail_ignore_shading));
-			float t = shadow_step(sc, sn);
-			det = max(det, d * (1.0 - t));
-			shadowy = max(shadowy, d * t);
-			if (d * t > best) {
-				best = d * t;
-				dark_uv = dot(sn, vec3(1.0)) < dot(sc, vec3(1.0)) ? o : c_uv;
-			}
+		float behind = -dot(view_pos_sky(neighbour(c_uv, px, i, r), ip) - pc, nc);
+		behind = both_sides ? abs(behind) : behind;
+		sil = max(sil, smoothstep(silhouette_threshold, silhouette_threshold * 1.5, behind));
+	}
+	return sil;
+}
+
+float edge_test(vec2 c_uv, vec2 px, mat4 ip, float r) {
+	vec3 pc = view_pos(c_uv, ip);
+	vec3 nc = view_normal(c_uv, px, ip);
+	float edge = 0.0;
+	for (int i = 0; i < 8; i++) {
+		vec2 o = neighbour(c_uv, px, i, r);
+		float off_plane = abs(dot(view_pos_sky(o, ip) - pc, nc));
+		if (off_plane < silhouette_threshold) {
+			float bend = 1.0 - dot(nc, view_normal(o, px, ip));
+			edge = max(edge, smoothstep(edge_threshold, edge_threshold * 1.4, bend));
 		}
 	}
-	return vec4(sil, edge, det, shadowy);
+	return edge;
+}
+
+/// Detail and shadow-like detail. For the strongest shadow-like detail so far (best), dark_uv is
+/// its darker side. shadows = false skips the shadow check: every detail counts as not shadow-like.
+vec2 detail_test(vec2 c_uv, vec2 px, float r, bool shadows, inout float best, inout vec2 dark_uv) {
+	vec3 sc = textureLod(screen_tex, c_uv, 0.0).rgb;
+	vec3 cc = chroma(sc);
+	float det = 0.0;
+	float shadowy = 0.0;
+	for (int i = 0; i < 8; i++) {
+		vec2 o = neighbour(c_uv, px, i, r);
+		vec3 sn = textureLod(screen_tex, o, 0.0).rgb;
+		float d_hue = length(chroma(sn) - cc) * 3.0;
+		float d_all = length(sn - sc);
+		float d = smoothstep(detail_threshold, detail_threshold * 1.5,
+				mix(d_all, d_hue, detail_ignore_shading));
+		float t = shadows ? shadow_step(sc, sn) : 0.0;
+		det = max(det, d * (1.0 - t));
+		shadowy = max(shadowy, d * t);
+		if (d * t > best) {
+			best = d * t;
+			dark_uv = dot(sn, vec3(1.0)) < dot(sc, vec3(1.0)) ? o : c_uv;
+		}
+	}
+	return vec2(det, shadowy);
 }
 
 void fragment() {
@@ -260,16 +282,44 @@ void fragment() {
 			* mix(1.0 + shadow_boost, 1.0 - light_thin, lit);
 	w = max(w, 0.0);
 
-	// Antialias: average the line tests over four points inside the pixel, so line borders get
-	// partial coverage instead of stair steps.
-	int samples = antialias ? 4 : 1;
+	// Line strengths: silhouette, edge, detail, shadow-like detail. A line type that's off costs
+	// nothing. Antialias averages a test over four points inside the pixel, so line borders get
+	// partial coverage instead of stair steps. That's 4x the cost, so a pixel first runs one test
+	// reaching AA_REACH further, and only one near a line pays for the four.
 	vec4 lines = vec4(0.0);
 	float best = 0.0;
 	vec2 dark_uv = c_uv;
-	for (int s = 0; s < samples; s++) {
-		lines += line_tests(c_uv + (antialias ? SUBPIXEL[s] : vec2(0.0)) * px, px, ip, w, best, dark_uv);
+	if (show_silhouette) {
+		float r = w * silhouette_width;
+		if (!silhouette_antialias) {
+			lines.x = silhouette_test(c_uv, px, ip, r, false);
+		} else if (silhouette_test(c_uv, px, ip, r + AA_REACH, true) > 0.0) {
+			for (int s = 0; s < 4; s++) {
+				lines.x += silhouette_test(c_uv + SUBPIXEL[s] * px, px, ip, r, false) * 0.25;
+			}
+		}
 	}
-	lines /= float(samples);
+	if (show_edges) {
+		float r = w * edge_width;
+		if (!edge_antialias) {
+			lines.y = edge_test(c_uv, px, ip, r);
+		} else if (edge_test(c_uv, px, ip, r + AA_REACH) > 0.0) {
+			for (int s = 0; s < 4; s++) {
+				lines.y += edge_test(c_uv + SUBPIXEL[s] * px, px, ip, r) * 0.25;
+			}
+		}
+	}
+	if (show_details) {
+		float r = w * detail_width;
+		if (!detail_antialias) {
+			lines.zw = detail_test(c_uv, px, r, true, best, dark_uv);
+		} else if (detail_test(c_uv, px, r + AA_REACH, false, best, dark_uv).x > 0.0) {
+			// (without the shadow check it leaves best and dark_uv alone)
+			for (int s = 0; s < 4; s++) {
+				lines.zw += detail_test(c_uv + SUBPIXEL[s] * px, px, r, true, best, dark_uv) * 0.25;
+			}
+		}
+	}
 
 	float gap = break_amount > 0.0 ? smoothstep(break_amount - 0.04, break_amount + 0.04, n_break) : 1.0;
 	float edge_line = lines.y * gap;

@@ -25,17 +25,19 @@ render_priority = 0
 shader = ExtResource("5_vhako")
 shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
 shader_parameter/line_width = 2.2
-shader_parameter/antialias = true
 shader_parameter/surface_tint = 0.25
 shader_parameter/show_silhouette = false
+shader_parameter/silhouette_antialias = false
 shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
+shader_parameter/edge_antialias = true
 shader_parameter/edge_width = 0.2650000125875
 shader_parameter/edge_threshold = 0.05500000191398
 shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
 shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
 shader_parameter/show_details = false
+shader_parameter/detail_antialias = false
 shader_parameter/detail_width = 0.6
 shader_parameter/detail_threshold = 0.12
 shader_parameter/detail_ignore_shading = 0.85
@@ -127,10 +129,10 @@ shadow_enabled = true
 omni_range = 16.0
 omni_attenuation = 2.0
 
-[node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("4_g03kv")]
+[node name="ToonOutline" parent="." unique_id=775616513 node_paths=PackedStringArray("sun") instance=ExtResource("4_g03kv")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
-visible = false
 material_override = SubResource("ShaderMaterial_i8cpb")
+sun = NodePath("../Sun")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("6_jib5a")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.021873474, 0, 0.0063757896)
