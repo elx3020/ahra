@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bgn000qvd6ff4"]
 
-[ext_resource type="Shader" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
+[ext_resource type="Shader" uid="uid://bwsun6toiq6jj" path="res://demo/enviroment/forest.gdshader" id="1_forest"]
 
 [resource]
 resource_name = "bark"
@@ -8,9 +8,19 @@ render_priority = 0
 shader = ExtResource("1_forest")
 shader_parameter/pattern = 1
 shader_parameter/base_color = Color(0.3822, 0.29017, 0.30786, 1)
+shader_parameter/side_color = Color(0.725, 0.512, 0.516, 1)
+shader_parameter/top_threshold = 0.48
+shader_parameter/side_threshold = -0.22
 shader_parameter/shade_power = 0.21
 shader_parameter/roughness = 1.0
+shader_parameter/emission = Color(1, 1, 1, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/noise_scale = 5.0
+shader_parameter/noise_detail = 2.0
+shader_parameter/warp = 0.751
+shader_parameter/cutout = 0.6
 shader_parameter/cell_scale = 2.15
 shader_parameter/cell_detail = 0
 shader_parameter/cell_manhattan = true
+shader_parameter/facet = 0.552
 shader_parameter/ramp_end = 0.96375

@@ -24,7 +24,7 @@ shader_parameter/line_color = Color(0.07, 0.05, 0.08, 1)
 shader_parameter/line_width = 2.2
 shader_parameter/surface_tint = 0.25
 shader_parameter/show_silhouette = false
-shader_parameter/silhouette_antialias = true
+shader_parameter/silhouette_antialias = false
 shader_parameter/silhouette_width = 1.5
 shader_parameter/silhouette_threshold = 0.15
 shader_parameter/show_edges = true
@@ -34,7 +34,7 @@ shader_parameter/edge_threshold = 0.03000000072648
 shader_parameter/highlight_color = Color(1, 0.95, 0.85, 1)
 shader_parameter/shadow_color = Color(0.41529533, 0.61086035, 0.42115426, 1)
 shader_parameter/show_details = false
-shader_parameter/detail_antialias = true
+shader_parameter/detail_antialias = false
 shader_parameter/detail_width = 0.6
 shader_parameter/detail_threshold = 0.12
 shader_parameter/detail_ignore_shading = 0.85
@@ -60,7 +60,7 @@ albedo_color = Color(0.42, 0.42, 0.45, 1)
 environment = SubResource("env")
 
 [node name="Camera" type="Camera3D" parent="." unique_id=314350963]
-transform = Transform3D(0.70710677, -0.5043442, 0.4956177, 0, 0.70090926, 0.71325046, -0.70710677, -0.5043442, 0.4956177, 13.545, 29.04, 21.026)
+transform = Transform3D(0.70710677, -0.5043442, 0.4956177, 0, 0.70090926, 0.71325046, -0.70710677, -0.5043442, 0.4956177, 13.544998, 29.04, 21.025997)
 projection = 1
 current = true
 size = 20.0
@@ -87,7 +87,6 @@ omni_attenuation = 2.0
 
 [node name="ToonOutline" parent="." unique_id=775616513 instance=ExtResource("1_akto7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.029253006, 0)
-visible = false
 material_override = SubResource("ShaderMaterial_i8cpb")
 
 [node name="forest" parent="." unique_id=473403532 instance=ExtResource("3_dkaou")]
