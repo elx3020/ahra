@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 6
+const SECTIONS := 7
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 const BRUTE := preload("res://enemy/brute/brute.tscn")
@@ -20,7 +20,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env, _test_steps, _test_slam]
+	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env, _test_steps, _test_slam, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -239,6 +239,27 @@ func _test_slam() -> void:
 		spaced = spaced and absi(hits[i][0] - hits[i - 1][0] - 195) <= 3 # 3.25 s cycle = 195 frames
 	_check(spaced, "a crusher slams once per cycle: never on its slow rise or on load (%d)" % hits.size())
 	_check(hits.all(func(h: Array) -> bool: return absf(h[1].y - 1.0) < 0.1), "it slams at the bottom")
+	sections += 1
+
+
+func _test_demo() -> void:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://demo/shake/shake.tscn").instantiate()
+	root.add_child(area)
+	current_scene = area
+	await _wait(10)
+	var brute := area.get_node_or_null(^"Bays/Brute/Brute")
+	_check(brute is Enemy and brute.step_shake > 0.0, "demo: a brute with step shake")
+	var storm := area.get_node_or_null(^"Bays/Storm/Storm")
+	_check(storm != null and storm.profile.shake > 0.0, "demo: a storm zone")
+	var hits := [0]
+	for c in area.get_node(^"Bays/Crushers").find_children("*", "AnimatableBody3D", true, false):
+		if c.has_signal(&"slammed"):
+			c.slammed.connect(func(_at: Vector3) -> void: hits[0] += 1)
+	await _wait(240)
+	_check(hits[0] >= 2, "demo: the crushers slam (%d)" % hits[0])
 	sections += 1
 
 
