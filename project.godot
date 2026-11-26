@@ -8,6 +8,10 @@
 
 config_version=5
 
+[ahra]
+
+animation/disable_squash_tilt=true
+
 [application]
 
 config/name="AHRA"

@@ -791,6 +791,8 @@ func _animate(delta: float) -> void:
 				off.x = sin(t * 60.0) * 0.03 # shiver
 			if hp < 0.34:
 				tilt = -0.3 # slumped
+	if ProjectSettings.get_setting("ahra/animation/disable_squash_tilt", false):
+		sc = Vector3.ONE; off = Vector3.ZERO; tilt = 0.0
 	var k := 1.0 - exp(-15.0 * delta)
 	_visual.position = _visual_base + off
 	_visual.scale = _visual.scale.lerp(sc, k)

@@ -770,6 +770,8 @@ func _animate(delta: float) -> void:
 		&"death_fall": sc = Vector3(0.6, 1.5, 0.6)
 		&"death_drown": tilt = 1.4
 		&"death_hit": sc = Vector3(1.3, 0.35, 1.3); tilt = -1.2
+	if ProjectSettings.get_setting("ahra/animation/disable_squash_tilt", false):
+		sc = Vector3.ONE; off = 0.0; tilt = 0.0
 	var k := 1.0 - exp(-15.0 * delta)
 	_visual.position = _visual_base + up_direction * off
 	_visual.scale = _visual.scale.lerp(sc, k)
