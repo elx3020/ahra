@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 2
+const SECTIONS := 3
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -19,7 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule, _test_camera]
+	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -115,6 +115,19 @@ func _test_camera() -> void:
 	_area()
 	await _wait(2)
 	_check(CameraShake.layers.is_empty(), "a new area starts with no shake")
+	sections += 1
+
+
+func _test_hit() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	CameraShake.clear()
+	p.damage(10.0)
+	_check(CameraShake.layers.size() == 1 and CameraShake.layers[0].feel == CameraShake.Feel.JOLT
+		and is_equal_approx(CameraShake.layers[0].strength, clampf(0.3 + 10.0 / p.max_hp(), 0.3, 1.0)), "a hit adds a JOLT scaled by damage")
+	p.damage(10.0)
+	_check(CameraShake.layers.size() == 1, "no new shake during i-frames")
 	sections += 1
 
 

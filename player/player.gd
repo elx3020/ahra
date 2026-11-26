@@ -639,6 +639,7 @@ func remove_env(e: EnvProfile) -> void:
 func damage(amount: float, from: Variant = null) -> void:
 	if amount <= 0.0 or invuln > 0.0 or state_name in [&"death", &"puppet"]:
 		return
+	CameraShake.add(CameraShake.Feel.JOLT, clampf(0.3 + amount / max_hp(), 0.3, 1.0)) # the killing hit too
 	drop_held()
 	health = maxf(health - amount, 0.0)
 	if health <= 0.0:
