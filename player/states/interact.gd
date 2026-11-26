@@ -15,6 +15,6 @@ func enter(_prev: StringName) -> void:
 func physics(delta: float) -> StringName:
 	p.move_ground(Vector3.ZERO, 0.0, delta)
 	p.apply_gravity(delta)
-	p.move_and_slide()
+	p.slide()
 	_t -= delta
 	return &"idle" if _t <= 0.0 else &""

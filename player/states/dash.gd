@@ -22,7 +22,7 @@ func physics(delta: float) -> StringName:
 	if p.wants_jump():
 		p.do_jump()
 		return &"jump"
-	p.move_and_slide()
+	p.slide()
 	_t -= delta
 	if _t > 0.0:
 		return &""

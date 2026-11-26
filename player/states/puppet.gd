@@ -15,5 +15,5 @@ func physics(delta: float) -> StringName:
 	p.anim = &"walk" if dir != Vector3.ZERO else &"puppet"
 	p.move_ground(dir, p.walk_speed, delta)
 	p.apply_gravity(delta)
-	p.move_and_slide()
+	p.slide()
 	return &""

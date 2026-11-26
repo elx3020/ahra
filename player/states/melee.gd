@@ -21,7 +21,7 @@ func physics(delta: float) -> StringName:
 	else:
 		p.move_air(p.move_input(), delta)
 	p.apply_gravity(delta)
-	p.move_and_slide()
+	p.slide()
 	if not _done and _t >= p.melee_time * 0.4:
 		_done = true
 		p.register_attack(p.melee_hit() > 0)

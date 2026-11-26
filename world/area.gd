@@ -9,7 +9,7 @@ extends Node3D
 
 const FOV := 10.0 ## degrees: narrow enough to read as isometric
 const CLIP := 40.0 ## the near plane sits this far from the player, toward the camera
-const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing) | J/LMB melee | K/RMB shoot | R carry / put down | T throw\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
+const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing) | J/LMB melee | K/RMB shoot | R carry / put down | T throw | V bullet time\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
 
 @export var bounds_center := Vector3.ZERO
 @export var bounds_radius := 200.0 ## farther than this from bounds_center = fall death

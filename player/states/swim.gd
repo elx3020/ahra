@@ -25,7 +25,7 @@ func physics(delta: float) -> StringName:
 		p.global_position -= p.up_direction * (p.float_depth - depth)
 		p.set_vspeed(0.0)
 	p.move_planar(p.move_input(), p.swim_speed * m, p.swim_accel, delta)
-	p.move_and_slide()
+	p.slide()
 
 	if at_surface and p.jump_buffer > 0.0:
 		p.jump_buffer = 0.0

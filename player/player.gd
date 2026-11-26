@@ -84,11 +84,18 @@ const SHOOT_STATES: Array[StringName] = [&"idle", &"walk", &"run", &"jump", &"sw
 @export var throw_speed := 12.0 ## x clamp(10 / weight, 0.3, 1.5)
 @export var hold_height := 1.5 ## carried weight's centre above the body centre
 @export var push_strength := 6.0 ## walking into a weight pushes it at walk speed * push_strength / weight (at most x1)
+@export_group("Bullet time")
+@export var bullet_capacity := 4.0 ## the meter, in seconds of bullet time (on the player's clock)
+@export var bullet_refill := 0.5 ## meter seconds regained per second while off (empty to full in 8 s)
+@export_range(0.05, 1.0) var bullet_scale := 0.3 ## the world's speed while on; the player keeps full speed
+@export var bullet_min := 0.5 ## the meter needed to turn it on, so an empty meter doesn't flicker it
 @export_group("")
 @export var ambient: EnvProfile ## environment used outside of any EnvZone
 @export var progression := StatMods.new() ## permanent % bonuses earned in play; this is what gets saved
 
 var health := 0.0
+var bullet_meter := 0.0 ## bullet time left, seconds (full at start)
+var bullet_on := false ## the world runs at bullet_scale (SlowMo), the player at full speed
 var stamina := 0.0
 var oxygen := 0.0
 var exhausted := false
@@ -153,6 +160,7 @@ func _ready() -> void:
 	health = max_hp()
 	stamina = max_sp()
 	oxygen = max_o2()
+	bullet_meter = bullet_capacity
 	checkpoint = global_position
 	add_to_group(&"player") # enemies find their target through this group
 	platform_on_leave = PLATFORM_ON_LEAVE_DO_NOTHING # the jump state carries it instead (see carry)
@@ -171,6 +179,7 @@ func change_state(next: StringName) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	delta /= SlowMo.bullet # the player's clock: bullet time is divided out, hit-stops and slow areas still slow it
 	if is_on_floor():
 		coyote = coyote_time
 		air_dashes_left = air_dashes
@@ -182,6 +191,7 @@ func _physics_process(delta: float) -> void:
 	shoot_cd -= delta
 	invuln -= delta
 	_tick_stats(delta)
+	_tick_bullet(delta)
 	if Input.is_action_just_pressed(&"shoot") and shoot_cd <= 0.0 and state_name in SHOOT_STATES and held == null:
 		shoot()
 
@@ -350,11 +360,35 @@ func deep_water() -> bool:
 	return water_depth() > float_depth
 
 
+## Bullet time: the button toggles it (on only from bullet_min up), the meter drains while on and
+## refills while off, and death or a cutscene / locked talk (puppet) ends it.
+func _tick_bullet(delta: float) -> void:
+	var blocked := state_name in [&"death", &"puppet"]
+	if Input.is_action_just_pressed(&"bullet_time"):
+		bullet_on = not bullet_on and bullet_meter >= bullet_min and not blocked
+	if bullet_on:
+		bullet_meter = maxf(bullet_meter - delta, 0.0)
+		bullet_on = bullet_meter > 0.0 and not blocked
+	else:
+		bullet_meter = minf(bullet_meter + bullet_refill * delta, bullet_capacity)
+	SlowMo.bullet_target = bullet_scale if bullet_on else 1.0
+
+
+## move_and_slide on the player's clock. move_and_slide moves by the engine's (scaled) physics
+## step, so the velocity is lifted out of bullet time for the move and put back after.
+## ponytail: a weight the player pushes (WeightBody.push_from) moves on world time, so in bullet
+## time the player outpaces the box it pushes; scale push_from's speed by SlowMo.bullet if it matters.
+func slide() -> void:
+	velocity /= SlowMo.bullet
+	move_and_slide()
+	velocity *= SlowMo.bullet
+
+
 ## Shared move + transitions for idle/walk/run. Returns the next state or &"".
 func ground_step(dir: Vector3, speed: float, delta: float) -> StringName:
 	move_ground(dir, speed, delta)
 	apply_gravity(delta)
-	move_and_slide()
+	slide()
 	if wants_jump():
 		if deep_water(): # jump on the bottom = start swimming up
 			jump_buffer = 0.0
@@ -740,7 +774,8 @@ func debug_text() -> String:
 		state_name, anim, env.resource_name if env.resource_name else "ambient",
 		health, " (invulnerable)" if invuln > 0.0 else "", mood * 100,
 		stamina, " (exhausted %.1fs)" % exhaust_t if exhausted else "", oxygen,
-		gravity_dir, velocity.length()] + _stats_text()
+		gravity_dir, velocity.length()] \
+		+ "\nbullet %.1f / %.1f s%s" % [bullet_meter, bullet_capacity, " (on)" if bullet_on else ""] + _stats_text()
 
 
 func _stats_text() -> String:

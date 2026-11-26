@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
 ## Optional filter: `-- rules bullet` runs only those sections.
 
-const SECTIONS := 4
+const SECTIONS := 5
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -20,7 +20,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	ProjectSettings.set_setting(SlowMo.DISABLE, false)
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area]
+	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area, _test_bullet]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -295,6 +295,124 @@ func _test_area() -> void:
 	sections += 1
 
 
+## Bullet time: V slows the world to 0.3 while the player keeps full speed; a meter limits it.
+func _test_bullet() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var w: Node = root.get_node("World")
+	var base := await _walk(p, w)
+	await _tap(&"bullet_time")
+	await _wait(20)
+	_check(p.bullet_on and absf(Engine.time_scale - 0.3) < 0.01, "V turns bullet time on: the world at 0.3 (%.3f)" % Engine.time_scale)
+	var on := await _walk(p, w)
+	_check(absf(on[1] / base[1] - 0.3) < 0.01, "World.time advances 0.3× per tick (%.3f)" % (on[1] / base[1]))
+	_check(absf(on[0] / base[0] - 1.0) < 0.1, "the player walks at full speed (%.2f×)" % (on[0] / base[0]))
+	var m0: float = p.bullet_meter
+	await _wait(60)
+	_check(absf(m0 - p.bullet_meter - 1.0) < 0.1, "the meter drains a second per second (%.2f)" % (m0 - p.bullet_meter))
+	_check(p.get_node(^"GaugeLayer/Gauges/Bullet").visible, "its gauge shows")
+
+	p.bullet_meter = p.bullet_capacity
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.036) < 0.004, "a hit in bullet time dips to 0.12 × 0.3 (%.3f)" % Engine.time_scale)
+	await _until_no_stop()
+
+	Input.action_press(&"move_right")
+	await _wait(30)
+	paused = true
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0, "paused: full speed (menus)")
+	paused = false
+	var worst := 0.0
+	for i in 3:
+		var q := p.global_position
+		await physics_frame
+		worst = maxf(worst, p.global_position.distance_to(q))
+	Input.action_release(&"move_right")
+	_check(worst <= base[0] * 1.15, "unpausing doesn't speed the player up (%.3f vs %.3f per tick)" % [worst, base[0]])
+	await _wait(30)
+
+	p.bullet_meter = p.bullet_capacity
+	var box: Node3D = load("res://puzzle/box.tscn").instantiate()
+	box.position = p.global_position + p.facing * 0.9 # before entering the tree (see _enemy)
+	a.add_child(box)
+	await _wait(20)
+	_check(p.lift(), "the player lifts a box")
+	Input.action_press(&"move_right")
+	await _wait(30)
+	var hold := p.global_position + p.up_direction * p.hold_height
+	_check(p.held != null and p.held.global_position.distance_to(hold) < 0.05, "a carried box keeps up in bullet time")
+	Input.action_release(&"move_right")
+	p.put_down()
+	await _wait(10)
+
+	await _tap(&"bullet_time")
+	await _wait(20)
+	_check(not p.bullet_on and Engine.time_scale == 1.0, "V again turns it off")
+	var m1: float = p.bullet_meter
+	await _wait(60)
+	_check(absf(p.bullet_meter - m1 - 0.5) < 0.1, "the meter refills half a second per second (%.2f)" % (p.bullet_meter - m1))
+
+	Input.action_press(&"bullet_time")
+	var flips := 0
+	var was: bool = p.bullet_on
+	for i in 30:
+		await physics_frame
+		if p.bullet_on != was:
+			flips += 1
+			was = p.bullet_on
+	Input.action_release(&"bullet_time")
+	_check(flips == 1 and p.bullet_on, "a held button (the trigger) toggles once (%d)" % flips)
+	p.bullet_meter = 0.05
+	await _wait(10)
+	_check(not p.bullet_on, "an empty meter ends it")
+	p.bullet_meter = 0.3
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(not p.bullet_on, "it won't start below bullet_min")
+
+	p.bullet_meter = p.bullet_capacity
+	await _tap(&"bullet_time")
+	await _wait(2)
+	p.die(&"hit")
+	await _wait(2)
+	_check(not p.bullet_on and SlowMo.bullet_target == 1.0, "death ends it")
+	p.respawn()
+	await _wait(20)
+	_check(Engine.time_scale == 1.0, "the respawn is at full speed")
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(p.bullet_on, "(on again)")
+	p.change_state(&"puppet")
+	await _wait(2)
+	_check(not p.bullet_on, "a cutscene or locked talk ends it")
+	p.change_state(&"idle")
+	await _wait(20)
+
+	var track: Node3D = _track([Vector3(0, 0, 0), Vector3(30, 0, 0)], [[0, 1, true, 0, 4.0, 0.0, 0.0]])
+	track.position = Vector3(-15, 3, 12)
+	track.add_child(_platform())
+	a.add_child(track)
+	await _wait(10)
+	var deck: Node3D = track.find_children("*", "AnimatableBody3D", true, false)[0]
+	p.teleport(deck.global_position + Vector3(0, 1.3, 0))
+	await _wait(30)
+	p.bullet_meter = p.bullet_capacity
+	await _tap(&"bullet_time")
+	await _wait(20)
+	var fv := p.floor_velocity.slide(p.up_direction).length()
+	await _tap(&"jump")
+	await _wait(2)
+	_check(fv > 3.0 and absf(p.carry.length() - fv * SlowMo.bullet) < 0.15 * fv * SlowMo.bullet,
+		"jumping off a moving platform in bullet time carries its real speed (%.2f, platform %.2f × %.2f)" % [p.carry.length(), fv, SlowMo.bullet])
+	await _tap(&"bullet_time")
+	sections += 1
+
+
 # --- building -----------------------------------------------------------------------
 
 ## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
@@ -334,6 +452,38 @@ func _enemy(at: Vector3) -> Enemy:
 	e.set_physics_process(false)
 	e.health = 100.0
 	return e
+
+
+## A track along `points` with sequences [start, end, round_trip, trips, speed, start_wait, end_wait].
+func _track(points: Array, sequences: Array) -> Node3D:
+	var track: Node3D = load("res://world/platform_track_instance.gd").new()
+	var line := Path3D.new()
+	line.curve = Curve3D.new()
+	for v: Vector3 in points:
+		line.curve.add_point(v)
+	track.add_child(line)
+	for q: Array in sequences:
+		var seq: Resource = load("res://world/platform_sequence.gd").new()
+		seq.start_anchor = q[0]
+		seq.end_anchor = q[1]
+		seq.round_trip = q[2]
+		seq.trips = q[3]
+		seq.speed = q[4]
+		seq.start_wait = q[5]
+		seq.end_wait = q[6]
+		track.sequences.append(seq)
+	return track
+
+
+## A 3 × 0.5 × 3 platform body.
+func _platform() -> Node3D:
+	var deck: Node3D = load("res://world/moving_platform.gd").new()
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(3, 0.5, 3)
+	cs.shape = box
+	deck.add_child(cs)
+	return deck
 
 
 ## An EnvZone (box 30 × 4 × 30) at `at` whose profile slows time to `scale`.
