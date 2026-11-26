@@ -410,6 +410,8 @@ func _test_bullet() -> void:
 	_check(fv > 3.0 and absf(p.carry.length() - fv * SlowMo.bullet) < 0.15 * fv * SlowMo.bullet,
 		"jumping off a moving platform in bullet time carries its real speed (%.2f, platform %.2f × %.2f)" % [p.carry.length(), fv, SlowMo.bullet])
 	await _tap(&"bullet_time")
+	await _wait(2) # the press is read a frame later: let this player take it, not the next section's
+	_check(not p.bullet_on, "(off at the end)")
 	sections += 1
 
 
