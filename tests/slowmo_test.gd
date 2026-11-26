@@ -126,6 +126,21 @@ func _test_rules() -> void:
 	_check(Engine.time_scale < 1.0, "unpaused tree: the stop resumes")
 	await _until_full_speed()
 	_check(Engine.time_scale == 1.0, "and ends")
+	# the driver's real step is the engine's own frame step, unscaled: smooth (no wall-clock
+	# jitter in the camera follow) and right under --fixed-fps and Movie Maker
+	var errs: Array[float] = []
+	var applied := [Engine.time_scale] # the scale this frame's delta was scaled by
+	var probe := func() -> void:
+		errs.append(absf(SlowMo.real_delta - root.get_process_delta_time() / applied[0]))
+		applied[0] = Engine.time_scale
+	process_frame.connect(probe)
+	SlowMo.add(SlowMo.Feel.HIT)
+	for i in 30:
+		await process_frame
+	process_frame.disconnect(probe)
+	errs.pop_front()
+	_check(errs.max() < 1e-6, "the driver's real step is the engine's frame step, unscaled (worst %.7f s off)" % errs.max())
+	await _until_full_speed()
 	sections += 1
 
 
@@ -412,6 +427,23 @@ func _test_bullet() -> void:
 	await _tap(&"bullet_time")
 	await _wait(2) # the press is read a frame later: let this player take it, not the next section's
 	_check(not p.bullet_on, "(off at the end)")
+
+	var pull := InputEventJoypadMotion.new()
+	pull.axis = JOY_AXIS_TRIGGER_LEFT
+	pull.axis_value = 0.35
+	Input.parse_input_event(pull)
+	await _wait(3)
+	_check(not p.bullet_on, "a light trigger pull doesn't toggle it")
+	pull.axis_value = 1.0
+	Input.parse_input_event(pull)
+	await _wait(3)
+	_check(p.bullet_on, "a full pull does")
+	pull.axis_value = 0.0
+	Input.parse_input_event(pull)
+	await _wait(2)
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(not p.bullet_on, "(off again)")
 	sections += 1
 
 

@@ -16,7 +16,6 @@ var npcs := {}
 var fade_rect: ColorRect ## the black full-screen overlay fade() tweens
 
 var _fade_tween: Tween
-var _last_usec := 0 ## the driver's last real-time reading
 var spawn: StringName ## marker the next area puts the player at (set by SceneDoor)
 ## channel key ("area:name", see Channels) -> state, changed by PlatformSwitches, read by tracks:
 ##   t0: last change, drive: [drive of starts-off, of starts-on platforms] at t0,
@@ -53,10 +52,10 @@ func _ready() -> void:
 
 ## Applies SlowMo every frame. process_frame fires while the tree is paused too, so World keeps
 ## its pausable process mode (`time` stops with the tree) and a pause still resets the scale to 1.
+## The real step is the engine's own frame step (smoothed, and fixed under --fixed-fps / Movie
+## Maker, unlike a wall clock), unscaled: Engine.time_scale here is still the scale it ran at.
 func _scale_time() -> void:
-	var now := Time.get_ticks_usec()
-	var real := minf((now - _last_usec) / 1e6, 0.1) if _last_usec else 0.0 # a load hitch doesn't skip a stop
-	_last_usec = now
+	var real := minf(get_process_delta_time() / Engine.time_scale, 0.1) # a load hitch doesn't skip a stop
 	Engine.time_scale = SlowMo.update(real, get_tree().paused)
 
 
