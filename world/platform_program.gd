@@ -331,6 +331,8 @@ func _sync_copies() -> void:
 			c.name = "%s%d" % [plat.name, i + 1]
 			c.color = plat.color
 			c.surface = plat.surface
+			c.slam_shake = plat.slam_shake
+			c.slam_speed = plat.slam_speed
 			c.transform = plat.transform
 			for cs in plat.shapes():
 				var dup: CollisionShape3D = cs.duplicate()

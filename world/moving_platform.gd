@@ -18,17 +18,20 @@ signal slammed(at: Vector3) ## a hard stop after fast motion (slam_shake set): f
 		color = v
 		_paint()
 @export var surface: EnvProfile ## optional: environment applied while touching the platform
-@export_group("Slam")
+@export_group("Slam", "slam_") # the prefix ends the group before the Shapes rows
 @export_range(0.0, 1.0) var slam_shake := 0.0 ## camera shake when it stops hard (a crusher hitting bottom), 0 = none
 @export var slam_speed := 5.0 ## m/s: a stop from at least this fast is a slam
 
 var _mat := StandardMaterial3D.new()
 var _seen := [null, null] ## ShapeSet.refresh state
+const TELEPORT_SPEED := 100.0 ## m/s: a frame faster than this is a jump (World.time skip), not motion
+
 var _warmup := 2 ## physics frames with collision off while the body travels from the scene origin to its place
 var _warm: Array[CollisionShape3D] = [] ## the shapes switched off for the warmup
 var _last_pos := Vector3.ZERO ## _slam: position last physics frame
 var _fast_frames := 0 ## _slam: frames in a row at slam_speed or more
 var _measuring := false ## _slam: _last_pos is set
+var _easing := false ## _slam: one in-between frame seen after a fast run (a stroke ending part-way through a frame)
 
 
 func _ready() -> void:
@@ -65,20 +68,31 @@ func _physics_process(delta: float) -> void:
 
 
 ## A stop to under a quarter of slam_speed, after 3+ frames at slam_speed or more, shakes the camera
-## where the platform stopped. Speed is measured from its own motion, so any track or circuit works.
-## ponytail: needing 3 fast frames is what ignores a one-frame jump (a World.time skip); a stroke
-## shorter than 0.05 s never slams.
+## where the platform stopped. One in-between frame may come first: a stroke rarely ends on a frame
+## boundary, so its last frame covers only part of a frame's travel; two in a row is an eased stop.
+## Speed is measured from the platform's own motion, so any track or circuit works.
+## ponytail: needing 3 fast frames, and TELEPORT_SPEED, are what ignore a World.time skip; a
+## stroke shorter than 0.05 s never slams.
 func _slam(delta: float) -> void:
 	var speed := global_position.distance_to(_last_pos) / delta if _measuring else 0.0
 	_measuring = true
 	_last_pos = global_position
+	if speed > TELEPORT_SPEED:
+		_fast_frames = 0
+		_easing = false
+		return
 	if speed >= slam_speed:
 		_fast_frames += 1
+		_easing = false
+		return
+	if speed >= 0.25 * slam_speed and _fast_frames >= 3 and not _easing:
+		_easing = true # the stroke's last part-frame: the stop comes next
 		return
 	if speed < 0.25 * slam_speed and _fast_frames >= 3:
 		CameraShake.add(CameraShake.Feel.SLAM, slam_shake, global_position)
 		slammed.emit(global_position)
 	_fast_frames = 0
+	_easing = false
 
 
 ## The CollisionShape3D children that have a shape.

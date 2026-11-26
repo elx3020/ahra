@@ -223,6 +223,26 @@ func _test_slam() -> void:
 	pl.global_position += Vector3(0, 2, 0)
 	await _wait(5)
 	_check(slams.size() == 1, "a one-frame jump (clock skip) then still: no slam")
+	var fast: Array = []
+	fast.resize(10)
+	fast.fill(-0.2)
+	var n := slams.size()
+	await _stroke(pl, fast + [-0.05])
+	_check(slams.size() == n + 1, "a stroke ending part-way through a frame still slams")
+	n = slams.size()
+	await _stroke(pl, fast + [-0.05, -0.05])
+	_check(slams.size() == n, "an eased stop (two slower frames) doesn't slam")
+	n = slams.size()
+	await _stroke(pl, fast + [3.0])
+	_check(slams.size() == n, "a jump faster than 100 m/s (clock skip) mid-stroke resets: no slam")
+	var rows := pl.get_property_list()
+	var group := {}
+	for r: Dictionary in rows:
+		if r.name == "shapes/add":
+			break
+		if r.usage & PROPERTY_USAGE_GROUP:
+			group = r
+	_check(group.is_empty() or (group.hint_string != "" and not "shapes/add".begins_with(group.hint_string)), "the inspector's Shapes rows aren't inside the Slam group")
 	pl.queue_free()
 	# a crusher: fast down 3 m at 12 m/s, 0.5 s wait; up at 2 m/s, 1 s wait; start over (cycle 3.25 s)
 	var crusher: Node3D = _track([Vector3(0, 4, 0), Vector3(0, 1, 0)], [[0, 1, false, 1, 12.0, 0.0, 0.5], [1, 0, false, 1, 2.0, 0.0, 1.0]])
@@ -239,7 +259,29 @@ func _test_slam() -> void:
 		spaced = spaced and absi(hits[i][0] - hits[i - 1][0] - 195) <= 3 # 3.25 s cycle = 195 frames
 	_check(spaced, "a crusher slams once per cycle: never on its slow rise or on load (%d)" % hits.size())
 	_check(hits.all(func(h: Array) -> bool: return absf(h[1].y - 1.0) < 0.1), "it slams at the bottom")
+	crusher.queue_free()
+	var pair: Node3D = _track([Vector3(0, 4, 0), Vector3(0, 1, 0)], [[0, 1, false, 1, 12.0, 0.0, 0.5], [1, 0, false, 1, 2.0, 0.0, 1.0]])
+	pair.position = Vector3(5, 0, -5)
+	pair.platforms = 2
+	var first: Node3D = _platform()
+	first.slam_shake = 0.6
+	pair.add_child(first)
+	a.add_child(pair)
+	await _wait(2)
+	var slammed_by := {}
+	for r: Node in pair._riders:
+		r.slammed.connect(func(_at: Vector3) -> void: slammed_by[r] = true)
+	await _wait(220) # over one cycle
+	_check(pair._riders.size() == 2 and slammed_by.size() == 2, "platform copies (platforms = 2) each slam (%d)" % slammed_by.size())
 	sections += 1
+
+
+## Moves `pl` by each y step, one per physics frame, then lets it stand still for 5 frames.
+func _stroke(pl: Node3D, steps: Array) -> void:
+	for dy: float in steps:
+		pl.global_position += Vector3(0, dy, 0)
+		await physics_frame
+	await _wait(5)
 
 
 func _test_demo() -> void:
