@@ -19,7 +19,7 @@ enum Temp { COLD, MILD, HOT }
 @export_range(0.0, 1.0) var shake := 0.0 ## camera shake while the player is in it (a storm), see CameraShake
 
 
-## Blend overlapping zones on top of a base: stat % add up (same rule as progression),
+## Blend overlapping zones on top of a base: stat % add up (same rule as progression), shake overlaps,
 ## wind and drag add, gravity multiplies, water if any, temperature = last non-mild.
 static func combine(base: EnvProfile, layers: Array[EnvProfile]) -> EnvProfile:
 	var out := EnvProfile.new()
@@ -31,6 +31,7 @@ static func combine(base: EnvProfile, layers: Array[EnvProfile]) -> EnvProfile:
 		out.wind += e.wind
 		out.drag += e.drag
 		out.gravity_mult *= e.gravity_mult
+		out.shake = 1.0 - (1.0 - out.shake) * (1.0 - e.shake) # CameraShake's overlap rule
 		out.water = out.water or e.water
 		if e.temperature != Temp.MILD:
 			out.temperature = e.temperature

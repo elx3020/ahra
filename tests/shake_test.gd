@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 3
+const SECTIONS := 4
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -19,7 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit]
+	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -128,6 +128,32 @@ func _test_hit() -> void:
 		and is_equal_approx(CameraShake.layers[0].strength, clampf(0.3 + 10.0 / p.max_hp(), 0.3, 1.0)), "a hit adds a JOLT scaled by damage")
 	p.damage(10.0)
 	_check(CameraShake.layers.size() == 1, "no new shake during i-frames")
+	sections += 1
+
+
+func _test_env() -> void:
+	var s1 := EnvProfile.new()
+	s1.shake = 0.5
+	var s2 := EnvProfile.new()
+	s2.shake = 0.5
+	_check(is_equal_approx(EnvProfile.combine(EnvProfile.new(), [s1, s2]).shake, 0.75), "overlapping zones merge by the overlap rule")
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var storm := EnvProfile.new()
+	storm.shake = 0.3
+	var z: Node3D = load("res://world/env_zone.gd").new()
+	z.profile = storm
+	z.position = Vector3(0, 1, 0)
+	a.add_child(z)
+	var box := BoxShape3D.new()
+	box.size = Vector3(6, 4, 6)
+	z.add_shape(box) # after add_child, as enemy_test's _zone does
+	await _wait(45)
+	_check(is_equal_approx(CameraShake.sustained_level, 0.3), "in a storm zone the sustained level reaches its shake")
+	p.teleport(Vector3(12, 1, 0))
+	await _wait(40)
+	_check(CameraShake.sustained_level == 0.0, "after leaving it eases back to 0 within ~0.5 s")
 	sections += 1
 
 
