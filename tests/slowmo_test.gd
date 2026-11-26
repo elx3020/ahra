@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
 ## Optional filter: `-- rules bullet` runs only those sections.
 
-const SECTIONS := 2
+const SECTIONS := 3
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -20,7 +20,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	ProjectSettings.set_setting(SlowMo.DISABLE, false)
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rules, _test_hits]
+	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -210,6 +210,48 @@ func _test_hits() -> void:
 	_check(p.jump_buffer > 0.0 or p.vspeed() > 0.0, "a jump pressed during a stop still registers")
 	Input.action_release(&"jump")
 	await _until_full_speed()
+	sections += 1
+
+
+## The camera follow, the shake and the fade run on real time; a new area starts at full speed.
+func _test_realtime() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var cam: Camera3D = a.get_node("Camera")
+	var w: Node = root.get_node("World")
+
+	SlowMo.add(SlowMo.Feel.KILL)
+	CameraShake.clear()
+	p.damage(10.0) # its HURT is dropped (the KILL runs), its JOLT isn't
+	var t0 := Time.get_ticks_usec()
+	await _wait(10)
+	var real := (Time.get_ticks_usec() - t0) / 1e6
+	var jolt := CameraShake.layers.filter(func(l: Dictionary) -> bool: return l.feel == CameraShake.Feel.JOLT)
+	_check(jolt.size() == 1 and absf(jolt[0].age - real) < 0.05, "the hurt shake ages in real time during a stop (%.3f s in %.3f s)" % [jolt[0].age if jolt else -1.0, real])
+
+	await _until_full_speed()
+	await _wait(60) # the knockback and the follow settle
+	SlowMo.add(SlowMo.Feel.KILL)
+	var before := cam.global_position
+	p.teleport(p.global_position + Vector3(3, 0, 0))
+	await _wait(15)
+	_check(cam.global_position.distance_to(before) > 2.0, "the camera follows in real time during a stop (%.2f m of 3)" % cam.global_position.distance_to(before))
+
+	await _until_full_speed()
+	SlowMo.add(SlowMo.Feel.KILL)
+	w.fade(1.0, 0.15)
+	await _wait(15) # 0.25 s real; on game time only ~0.08 s pass
+	_check(w.fade_rect.color.a == 1.0, "a fade runs in real time during a stop (alpha %.2f)" % w.fade_rect.color.a)
+	w.fade(0.0, 0.0)
+
+	await _until_full_speed()
+	SlowMo.add(SlowMo.Feel.KILL)
+	SlowMo.bullet_target = 0.3
+	_area()
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0 and SlowMo.stop.is_empty(), "a new area starts at full speed")
 	sections += 1
 
 

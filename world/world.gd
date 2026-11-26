@@ -103,6 +103,7 @@ func fade(to_alpha: float, duration := 0.4) -> void:
 		fade_rect.color.a = to_alpha
 		return
 	_fade_tween = create_tween()
+	_fade_tween.set_ignore_time_scale(true) # GUI: never slowed by SlowMo
 	_fade_tween.tween_property(fade_rect, "color:a", to_alpha, duration)
 	await _fade_tween.finished
 

@@ -29,6 +29,7 @@ func _ready() -> void:
 	var spawn: Node3D = get_node_or_null(String(World.spawn)) if World.spawn else null
 	World.spawn = &""
 	CameraShake.clear() # no shake carries across a scene change
+	SlowMo.clear() # nor a hit-stop or bullet time
 	if spawn:
 		player.teleport(spawn.global_position)
 		player.checkpoint = spawn.global_position
@@ -50,13 +51,17 @@ func _ready() -> void:
 	_restore_weights()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	# The camera runs on real time: it keeps up with a full-speed player in bullet time, and a hit
+	# shake plays at full speed during a hit-stop. Not `delta / Engine.time_scale`: that is wrong in
+	# a frame where SlowMo just changed the scale.
+	var real := SlowMo.real_delta
 	var target := player.get_global_transform_interpolated().origin + cam.global_basis.z * cam_distance
 	if cam.global_position.distance_to(target) > 8.0: # snap after teleports
 		cam.global_position = target
 	else:
-		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * delta))
-	_shake(delta)
+		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * real))
+	_shake(real)
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
 	for n in get_tree().get_nodes_in_group(&"weight"):
