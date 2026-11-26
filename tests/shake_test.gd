@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 5
+const SECTIONS := 6
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 const BRUTE := preload("res://enemy/brute/brute.tscn")
@@ -20,7 +20,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env, _test_steps]
+	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env, _test_steps, _test_slam]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -203,6 +203,45 @@ func _fresh_thump() -> bool:
 	return CameraShake.layers.any(func(l: Dictionary) -> bool: return l.feel == CameraShake.Feel.THUMP and l.age == 0.0)
 
 
+func _test_slam() -> void:
+	var a := _area()
+	await _wait(30)
+	# a body moved by hand: fast for 10 frames, then stopped = one slam; a 2 m one-frame jump then still = none
+	var pl: Node3D = _platform()
+	pl.slam_shake = 0.6
+	pl.position = Vector3(5, 3, 0)
+	a.add_child(pl)
+	var slams := []
+	pl.slammed.connect(func(at: Vector3) -> void: slams.append(at))
+	await _wait(5)
+	for i in 10:
+		pl.global_position += Vector3(0, -0.2, 0) # 12 m/s
+		await physics_frame
+	await _wait(5)
+	_check(slams.size() == 1, "a hard stop after fast motion is one slam")
+	_check(CameraShake.layers.any(func(l: Dictionary) -> bool: return l.feel == CameraShake.Feel.SLAM), "a slam shakes the camera")
+	pl.global_position += Vector3(0, 2, 0)
+	await _wait(5)
+	_check(slams.size() == 1, "a one-frame jump (clock skip) then still: no slam")
+	pl.queue_free()
+	# a crusher: fast down 3 m at 12 m/s, 0.5 s wait; up at 2 m/s, 1 s wait; start over (cycle 3.25 s)
+	var crusher: Node3D = _track([Vector3(0, 4, 0), Vector3(0, 1, 0)], [[0, 1, false, 1, 12.0, 0.0, 0.5], [1, 0, false, 1, 2.0, 0.0, 1.0]])
+	crusher.position = Vector3(-5, 0, -5)
+	var body: Node3D = _platform()
+	body.slam_shake = 0.6
+	crusher.add_child(body)
+	a.add_child(crusher)
+	var hits := []
+	body.slammed.connect(func(at: Vector3) -> void: hits.append([Engine.get_physics_frames(), at]))
+	await _wait(500) # over 2.5 cycles: 2 or 3 slams depending on the phase it loads at
+	var spaced := hits.size() >= 2
+	for i in range(1, hits.size()):
+		spaced = spaced and absi(hits[i][0] - hits[i - 1][0] - 195) <= 3 # 3.25 s cycle = 195 frames
+	_check(spaced, "a crusher slams once per cycle: never on its slow rise or on load (%d)" % hits.size())
+	_check(hits.all(func(h: Array) -> bool: return absf(h[1].y - 1.0) < 0.1), "it slams at the bottom")
+	sections += 1
+
+
 # --- building -----------------------------------------------------------------------
 
 ## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
@@ -232,6 +271,35 @@ func _area() -> Node3D:
 	root.add_child(area)
 	current_scene = area
 	return area
+
+
+## A track along `points` with sequences [start, end, round_trip, trips, speed, start_wait, end_wait].
+func _track(points: Array, sequences: Array) -> Node3D:
+	var track: Node3D = load("res://world/platform_track_instance.gd").new()
+	var line := Path3D.new()
+	line.curve = Curve3D.new()
+	for v: Vector3 in points:
+		line.curve.add_point(v)
+	track.add_child(line)
+	for q: Array in sequences:
+		var seq: Resource = load("res://world/platform_sequence.gd").new()
+		seq.start_anchor = q[0]
+		seq.end_anchor = q[1]
+		seq.round_trip = q[2]
+		seq.trips = q[3]
+		seq.speed = q[4]
+		seq.start_wait = q[5]
+		seq.end_wait = q[6]
+		track.sequences.append(seq)
+	return track
+
+
+func _platform() -> Node3D:
+	var rider: Node3D = load("res://world/moving_platform.gd").new()
+	var cs := CollisionShape3D.new()
+	cs.shape = BoxShape3D.new()
+	rider.add_child(cs)
+	return rider
 
 
 # --- waiting and checking -----------------------------------------------------------
