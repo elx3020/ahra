@@ -14,6 +14,7 @@ animation/disable_squash_tilt=true
 camera/disable_shake=false
 camera/shake_slide=true
 camera/shake_tilt=false
+time/disable_hit_stop=false
 
 [application]
 

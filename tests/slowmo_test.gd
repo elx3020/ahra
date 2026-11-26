@@ -1,0 +1,150 @@
+extends SceneTree
+## Headless suite for slow motion (world/slow_mo.gd: hit-stops, slow areas, bullet time).
+## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
+## Optional filter: `-- rules bullet` runs only those sections.
+
+const SECTIONS := 1
+
+var fails := 0
+var sections := 0
+
+
+func _initialize() -> void:
+	_run()
+
+
+func _run() -> void:
+	await process_frame # the tree isn't running yet during _initialize
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+	var only := OS.get_cmdline_user_args()
+	var all: Array[Callable] = [_test_rules]
+	var ran := 0
+	for t in all:
+		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
+			ran += 1
+			SlowMo.clear()
+			Engine.time_scale = 1.0
+			paused = false
+			await t.call()
+	SlowMo.clear()
+	_check(sections == ran and (not only.is_empty() or ran == SECTIONS), "all %d sections ran (%d)" % [ran, sections])
+	print("SLOWMO: ", "OK" if fails == 0 else "%d FAILED" % fails)
+	quit(fails)
+
+
+## SlowMo's rules, with explicit deltas. No await between an add and its updates: the World driver
+## ages the stop on every real frame.
+func _test_rules() -> void:
+	var n := SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	_check(SlowMo.stops == n + 1, "a HIT starts a stop")
+	_check(_near(SlowMo.update(0.0, false), 0.12), "a HIT slows the world to 0.12")
+	_check(_near(SlowMo.update(0.06, false), 0.12), "it holds 0.12 through its hold")
+	var mid := SlowMo.update(0.03, false) # 0.09 s: inside the ramp
+	_check(mid > 0.12 and mid < 1.0, "then eases back (%.3f)" % mid)
+	SlowMo.update(0.04, false) # 0.13 s: past hold 0.07 + ramp 0.05
+	_check(SlowMo.stop.is_empty() and SlowMo.update(0.0, false) == 1.0, "it is over after hold + ramp")
+
+	SlowMo.clear()
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.stop.feel == SlowMo.Feel.KILL and SlowMo.stops == n + 1, "a stronger feel in the same frame replaces the stop")
+	SlowMo.add(SlowMo.Feel.SHOT)
+	_check(SlowMo.stop.feel == SlowMo.Feel.KILL, "a weaker one in the same frame doesn't")
+
+	SlowMo.clear()
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	await physics_frame
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.stop.feel == SlowMo.Feel.HIT and SlowMo.stops == n + 1, "a later one is dropped while the stop runs")
+
+	SlowMo.clear()
+	SlowMo.area = 0.5
+	SlowMo.add(SlowMo.Feel.HIT)
+	_check(_near(SlowMo.update(0.0, false), 0.06), "a stop in a 0.5 area multiplies: 0.06")
+	_check(_near(SlowMo.update(0.13, false), 0.5) and SlowMo.stop.is_empty(), "and lasts the same real time")
+
+	SlowMo.clear()
+	SlowMo.area = 0.05
+	SlowMo.bullet_target = 0.3
+	SlowMo.update(0.5, false)
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.update(0.0, false) == SlowMo.MIN_SCALE, "the product never goes under MIN_SCALE")
+
+	SlowMo.clear()
+	SlowMo.bullet_target = 0.3
+	var half := SlowMo.update(0.05, false)
+	_check(half > 0.3 and half < 1.0, "bullet time eases in (%.3f after 0.05 s)" % half)
+	SlowMo.update(0.1, false)
+	_check(_near(SlowMo.update(0.1, false), 0.3) and _near(SlowMo.bullet, 0.3), "and settles at its target within ~0.15 s")
+
+	SlowMo.clear()
+	ProjectSettings.set_setting(SlowMo.DISABLE, true)
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.area = 0.5
+	_check(SlowMo.stops == n and _near(SlowMo.update(0.0, false), 0.5), "the toggle stops hit-stops, not areas")
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+
+	SlowMo.clear()
+	SlowMo.add(SlowMo.Feel.HIT)
+	var age: float = SlowMo.stop.age
+	_check(SlowMo.update(0.05, true) == 1.0 and SlowMo.bullet == 1.0 and SlowMo.stop.age == age, "paused: scale 1, the stop doesn't age")
+	_check(_near(SlowMo.update(0.0, false), 0.12), "unpaused: the stop carries on")
+	SlowMo.clear()
+	SlowMo.bullet_target = 0.3
+	SlowMo.update(0.5, false)
+	SlowMo.update(0.05, true)
+	_check(SlowMo.bullet == 1.0, "paused: no bullet factor in the scale")
+	SlowMo.update(0.0, false)
+	_check(_near(SlowMo.bullet, 0.3), "unpaused: bullet time is back at once, no re-ease")
+
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.area = 0.5
+	SlowMo.clear()
+	_check(SlowMo.stop.is_empty() and SlowMo.area == 1.0 and SlowMo.bullet_target == 1.0 and SlowMo.bullet == 1.0, "clear resets everything")
+
+	# the World driver
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.12) < 0.01, "World applies the scale (%.3f)" % Engine.time_scale)
+	_check(root.get_node("World").debug_text().contains("time ×"), "World's debug text shows the scale")
+	paused = true
+	age = SlowMo.stop.age
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0 and SlowMo.stop.age == age, "paused tree: scale 1 and the stop frozen")
+	paused = false
+	await process_frame
+	await process_frame
+	_check(Engine.time_scale < 1.0, "unpaused tree: the stop resumes")
+	await _until_full_speed()
+	_check(Engine.time_scale == 1.0, "and ends")
+	sections += 1
+
+
+# --- waiting and checking -----------------------------------------------------------
+
+## Waits (real time, at most 1 s) until no slow-down is left.
+func _until_full_speed() -> void:
+	var t0 := Time.get_ticks_msec()
+	while Engine.time_scale != 1.0 and Time.get_ticks_msec() - t0 < 1000:
+		await physics_frame
+
+
+func _wait(frames: int) -> void:
+	for i in frames:
+		await physics_frame
+
+
+func _near(a: float, b: float) -> bool:
+	return absf(a - b) < 0.001
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("  ok   " if ok else "  FAIL ") + what)
+	if not ok:
+		fails += 1
