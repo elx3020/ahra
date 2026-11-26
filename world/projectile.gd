@@ -45,7 +45,10 @@ func _finish(target: Object) -> void:
 	set_physics_process(false)
 	var landed := false
 	if target is Enemy:
-		landed = (target as Enemy).hit(damage, push, global_position)
+		var e := target as Enemy
+		landed = e.hit(damage, push, global_position)
+		if landed and is_instance_valid(source) and source is Player:
+			SlowMo.add(SlowMo.Feel.KILL if e.state_name == &"death" else SlowMo.Feel.SHOT)
 	elif target is Player:
 		(target as Player).damage(damage, global_position)
 	elif target and target.has_method(&"shot"): # an EnergySwitch (by method: it reaches World)

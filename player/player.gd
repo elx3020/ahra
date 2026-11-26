@@ -411,6 +411,7 @@ func find_swing_point() -> SwingPoint:
 # --- attacks -------------------------------------------------------------------
 
 ## The melee swing's hit check: every enemy in a sphere in front. Returns how many hits landed.
+## One hit-stop per swing, however many it hits (KILL if any of them died).
 func melee_hit() -> int:
 	var sphere := SphereShape3D.new()
 	sphere.radius = melee_radius
@@ -420,12 +421,16 @@ func melee_hit() -> int:
 	q.exclude = [get_rid()]
 	var seen: Array[Enemy] = []
 	var landed := 0
+	var killed := false
 	for r: Dictionary in get_world_3d().direct_space_state.intersect_shape(q, 16):
 		var e := r.collider as Enemy
 		if e and e not in seen:
 			seen.append(e)
 			if e.hit(melee_damage, melee_push, global_position):
 				landed += 1
+				killed = killed or e.state_name == &"death"
+	if landed > 0:
+		SlowMo.add(SlowMo.Feel.KILL if killed else SlowMo.Feel.HIT)
 	return landed
 
 
@@ -640,6 +645,7 @@ func damage(amount: float, from: Variant = null) -> void:
 	if amount <= 0.0 or invuln > 0.0 or state_name in [&"death", &"puppet"]:
 		return
 	CameraShake.add(CameraShake.Feel.JOLT, clampf(0.3 + amount / max_hp(), 0.3, 1.0)) # the killing hit too
+	SlowMo.add(SlowMo.Feel.KILL if amount >= health else SlowMo.Feel.HURT)
 	drop_held()
 	health = maxf(health - amount, 0.0)
 	if health <= 0.0:

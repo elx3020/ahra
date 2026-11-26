@@ -10,6 +10,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	ProjectSettings.set_setting(SlowMo.DISABLE, true) # suites count physics frames; tests/slowmo_test.gd covers the stops
 	var demo: Node = load("res://demo/demo.tscn").instantiate()
 	root.add_child(demo)
 	var p: Player = demo.get_node("Player")

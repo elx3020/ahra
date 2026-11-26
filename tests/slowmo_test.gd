@@ -3,10 +3,13 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
 ## Optional filter: `-- rules bullet` runs only those sections.
 
-const SECTIONS := 1
+const SECTIONS := 2
+const PLAYER := preload("res://player/player.tscn")
+const ENEMY := preload("res://enemy/enemy.tscn")
 
 var fails := 0
 var sections := 0
+var area: Node3D
 
 
 func _initialize() -> void:
@@ -17,7 +20,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	ProjectSettings.set_setting(SlowMo.DISABLE, false)
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rules]
+	var all: Array[Callable] = [_test_rules, _test_hits]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -126,7 +129,145 @@ func _test_rules() -> void:
 	sections += 1
 
 
+## The hooks: player hurt, melee swings, player shots.
+func _test_hits() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var side := p.facing.cross(p.up_direction)
+	var front := p.global_position + p.facing * p.melee_reach
+	var e1 := _enemy(front + side * 0.3)
+	var e2 := _enemy(front - side * 0.3)
+	await _wait(2)
+	var n := SlowMo.stops
+	await _tap(&"attack")
+	await _until_stop(n)
+	_check(SlowMo.stops == n + 1 and SlowMo.stop.get("feel") == SlowMo.Feel.HIT, "a swing into two enemies plays one HIT")
+	_check(e1.health < 100.0 and e2.health < 100.0, "both enemies were hit")
+	await _until_full_speed()
+	_check(Engine.time_scale == 1.0, "and the world is back at full speed")
+
+	await _wait(30) # melee cooldown
+	e1.health = 0.1
+	e1.invuln = 0.0
+	e2.invuln = 0.0
+	n = SlowMo.stops
+	await _tap(&"attack")
+	await _until_stop(n)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.KILL, "a killing swing plays KILL")
+	await _until_full_speed()
+
+	p.damage(10.0)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.HURT, "the player hurt plays HURT")
+	await _until_full_speed()
+	p.invuln = 0.0
+	p.damage(p.health + 1.0)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.KILL, "the player killed plays KILL")
+	await _until_full_speed()
+	p.respawn()
+	await _wait(10)
+
+	e1.queue_free()
+	e2.queue_free()
+	var e3 := _enemy(p.global_position + p.facing * 4.0)
+	await _wait(2)
+	n = SlowMo.stops
+	var b := p.shoot()
+	for i in 60:
+		if SlowMo.stops != n or not is_instance_valid(b):
+			break
+		await physics_frame
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.SHOT, "a player shot hitting an enemy plays SHOT")
+	await _until_full_speed()
+
+	p.invuln = 0.0
+	var enemy_shot: Node3D = p.PROJECTILE.instantiate()
+	a.add_child(enemy_shot)
+	enemy_shot.setup(p.global_position + Vector3(5, 0, 0), Vector3.LEFT, 5.0, 0.0, e3)
+	enemy_shot._finish(p)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.HURT, "an enemy shot hurting the player plays HURT, not SHOT")
+	await _until_full_speed()
+
+	var target := Node3D.new()
+	var s := GDScript.new()
+	s.source_code = "extends Node3D\nfunc shot() -> void:\n\tpass\n"
+	s.reload()
+	target.set_script(s)
+	n = SlowMo.stops
+	var switch_shot: Node3D = p.PROJECTILE.instantiate()
+	a.add_child(switch_shot)
+	switch_shot.setup(p.global_position + Vector3(5, 0, 0), Vector3.LEFT, 5.0, 0.0, p)
+	switch_shot._finish(target)
+	_check(SlowMo.stops == n, "a shot at an energy switch plays no stop")
+	target.free()
+
+	while not p.is_on_floor() or p.state_name != &"idle":
+		await physics_frame
+	SlowMo.add(SlowMo.Feel.HIT)
+	await physics_frame
+	Input.action_press(&"jump")
+	await _wait(2) # physics_frame fires before the nodes run: the press is read one frame later
+	_check(p.jump_buffer > 0.0 or p.vspeed() > 0.0, "a jump pressed during a stop still registers")
+	Input.action_release(&"jump")
+	await _until_full_speed()
+	sections += 1
+
+
+# --- building -----------------------------------------------------------------------
+
+## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
+func _area() -> Node3D:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://world/area.gd").new()
+	var floor := CSGBox3D.new()
+	floor.size = Vector3(60, 1, 60)
+	floor.position = Vector3(0, -0.5, 0)
+	floor.use_collision = true
+	area.add_child(floor)
+	var p: Player = PLAYER.instantiate()
+	p.name = "Player"
+	p.position = Vector3(0, 1, 0)
+	area.add_child(p)
+	var cam := Camera3D.new()
+	cam.name = "Camera"
+	area.add_child(cam)
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"
+	var label := Label.new()
+	label.name = "Label"
+	hud.add_child(label)
+	area.add_child(hud)
+	root.add_child(area)
+	current_scene = area
+	return area
+
+
+## An enemy at `at` that never acts on its own (the hits come from the test).
+func _enemy(at: Vector3) -> Enemy:
+	var e: Enemy = ENEMY.instantiate()
+	e.position = at # before entering the tree: added at the origin, it overlaps the player there and Jolt flings it
+	area.add_child(e)
+	e.set_physics_process(false)
+	e.health = 100.0
+	return e
+
+
 # --- waiting and checking -----------------------------------------------------------
+
+func _tap(action: StringName) -> void:
+	Input.action_press(action)
+	await physics_frame
+	Input.action_release(action)
+
+
+## Waits (at most 60 physics frames) until a stop starts after `n` had started.
+func _until_stop(n: int) -> void:
+	for i in 60:
+		if SlowMo.stops != n:
+			return
+		await physics_frame
 
 ## Waits (real time, at most 1 s) until no slow-down is left.
 func _until_full_speed() -> void:
