@@ -1,0 +1,626 @@
+extends SceneTree
+## Headless suite for slow motion (world/slow_mo.gd: hit-stops, slow areas, bullet time).
+## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
+## Optional filter: `-- rules bullet` runs only those sections.
+
+const SECTIONS := 6
+const PLAYER := preload("res://player/player.tscn")
+const ENEMY := preload("res://enemy/enemy.tscn")
+
+var fails := 0
+var sections := 0
+var area: Node3D
+
+
+func _initialize() -> void:
+	_run()
+
+
+func _run() -> void:
+	await process_frame # the tree isn't running yet during _initialize
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+	var only := OS.get_cmdline_user_args()
+	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area, _test_bullet, _test_demo]
+	var ran := 0
+	for t in all:
+		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
+			ran += 1
+			SlowMo.clear()
+			Engine.time_scale = 1.0
+			paused = false
+			await t.call()
+	SlowMo.clear()
+	_check(sections == ran and (not only.is_empty() or ran == SECTIONS), "all %d sections ran (%d)" % [ran, sections])
+	print("SLOWMO: ", "OK" if fails == 0 else "%d FAILED" % fails)
+	quit(fails)
+
+
+## SlowMo's rules, with explicit deltas. No await between an add and its updates: the World driver
+## ages the stop on every real frame.
+func _test_rules() -> void:
+	var n := SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	_check(SlowMo.stops == n + 1, "a HIT starts a stop")
+	_check(_near(SlowMo.update(0.0, false), 0.12), "a HIT slows the world to 0.12")
+	_check(_near(SlowMo.update(0.06, false), 0.12), "it holds 0.12 through its hold")
+	var mid := SlowMo.update(0.03, false) # 0.09 s: inside the ramp
+	_check(mid > 0.12 and mid < 1.0, "then eases back (%.3f)" % mid)
+	SlowMo.update(0.04, false) # 0.13 s: past hold 0.07 + ramp 0.05
+	_check(SlowMo.stop.is_empty() and SlowMo.update(0.0, false) == 1.0, "it is over after hold + ramp")
+
+	SlowMo.clear()
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.stop.feel == SlowMo.Feel.KILL and SlowMo.stops == n + 1, "a stronger feel in the same frame replaces the stop")
+	SlowMo.add(SlowMo.Feel.SHOT)
+	_check(SlowMo.stop.feel == SlowMo.Feel.KILL, "a weaker one in the same frame doesn't")
+
+	SlowMo.clear()
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	await physics_frame
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.stop.feel == SlowMo.Feel.HIT and SlowMo.stops == n + 1, "a later one is dropped while the stop runs")
+
+	SlowMo.clear()
+	SlowMo.area = 0.5
+	SlowMo.add(SlowMo.Feel.HIT)
+	_check(_near(SlowMo.update(0.0, false), 0.06), "a stop in a 0.5 area multiplies: 0.06")
+	_check(_near(SlowMo.update(0.13, false), 0.5) and SlowMo.stop.is_empty(), "and lasts the same real time")
+
+	SlowMo.clear()
+	SlowMo.area = 0.05
+	SlowMo.bullet_target = 0.3
+	SlowMo.update(0.5, false)
+	SlowMo.add(SlowMo.Feel.KILL)
+	_check(SlowMo.update(0.0, false) == SlowMo.MIN_SCALE, "the product never goes under MIN_SCALE")
+
+	SlowMo.clear()
+	SlowMo.bullet_target = 0.3
+	var half := SlowMo.update(0.05, false)
+	_check(half > 0.3 and half < 1.0, "bullet time eases in (%.3f after 0.05 s)" % half)
+	SlowMo.update(0.1, false)
+	_check(_near(SlowMo.update(0.1, false), 0.3) and _near(SlowMo.bullet, 0.3), "and settles at its target within ~0.15 s")
+
+	SlowMo.clear()
+	ProjectSettings.set_setting(SlowMo.DISABLE, true)
+	n = SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.area = 0.5
+	_check(SlowMo.stops == n and _near(SlowMo.update(0.0, false), 0.5), "the toggle stops hit-stops, not areas")
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+
+	SlowMo.clear()
+	SlowMo.add(SlowMo.Feel.HIT)
+	var age: float = SlowMo.stop.age
+	_check(SlowMo.update(0.05, true) == 1.0 and SlowMo.bullet == 1.0 and SlowMo.stop.age == age, "paused: scale 1, the stop doesn't age")
+	_check(_near(SlowMo.update(0.0, false), 0.12), "unpaused: the stop carries on")
+	SlowMo.clear()
+	SlowMo.bullet_target = 0.3
+	SlowMo.update(0.5, false)
+	SlowMo.update(0.05, true)
+	_check(SlowMo.bullet == 1.0, "paused: no bullet factor in the scale")
+	SlowMo.update(0.0, false)
+	_check(_near(SlowMo.bullet, 0.3), "unpaused: bullet time is back at once, no re-ease")
+
+	SlowMo.add(SlowMo.Feel.HIT)
+	SlowMo.area = 0.5
+	SlowMo.clear()
+	_check(SlowMo.stop.is_empty() and SlowMo.area == 1.0 and SlowMo.bullet_target == 1.0 and SlowMo.bullet == 1.0, "clear resets everything")
+
+	# the World driver
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.12) < 0.01, "World applies the scale (%.3f)" % Engine.time_scale)
+	_check(root.get_node("World").debug_text().contains("time ×"), "World's debug text shows the scale")
+	paused = true
+	age = SlowMo.stop.age
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0 and SlowMo.stop.age == age, "paused tree: scale 1 and the stop frozen")
+	paused = false
+	await process_frame
+	await process_frame
+	_check(Engine.time_scale < 1.0, "unpaused tree: the stop resumes")
+	await _until_full_speed()
+	_check(Engine.time_scale == 1.0, "and ends")
+	# the driver's real step is the engine's own frame step, unscaled: smooth (no wall-clock
+	# jitter in the camera follow) and right under --fixed-fps and Movie Maker
+	var errs: Array[float] = []
+	var applied := [Engine.time_scale] # the scale this frame's delta was scaled by
+	var probe := func() -> void:
+		errs.append(absf(SlowMo.real_delta - root.get_process_delta_time() / applied[0]))
+		applied[0] = Engine.time_scale
+	process_frame.connect(probe)
+	SlowMo.add(SlowMo.Feel.HIT)
+	for i in 30:
+		await process_frame
+	process_frame.disconnect(probe)
+	errs.pop_front()
+	_check(errs.max() < 1e-6, "the driver's real step is the engine's frame step, unscaled (worst %.7f s off)" % errs.max())
+	await _until_full_speed()
+	sections += 1
+
+
+## The hooks: player hurt, melee swings, player shots.
+func _test_hits() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var side := p.facing.cross(p.up_direction)
+	var front := p.global_position + p.facing * p.melee_reach
+	var e1 := _enemy(front + side * 0.3)
+	var e2 := _enemy(front - side * 0.3)
+	await _wait(2)
+	var n := SlowMo.stops
+	await _tap(&"attack")
+	await _until_stop(n)
+	_check(SlowMo.stops == n + 1 and SlowMo.stop.get("feel") == SlowMo.Feel.HIT, "a swing into two enemies plays one HIT")
+	_check(e1.health < 100.0 and e2.health < 100.0, "both enemies were hit")
+	await _until_full_speed()
+	_check(Engine.time_scale == 1.0, "and the world is back at full speed")
+
+	await _wait(30) # melee cooldown
+	e1.health = 0.1
+	e1.invuln = 0.0
+	e2.invuln = 0.0
+	n = SlowMo.stops
+	await _tap(&"attack")
+	await _until_stop(n)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.KILL, "a killing swing plays KILL")
+	await _until_full_speed()
+
+	p.damage(10.0)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.HURT, "the player hurt plays HURT")
+	await _until_full_speed()
+	p.invuln = 0.0
+	p.damage(p.health + 1.0)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.KILL, "the player killed plays KILL")
+	await _until_full_speed()
+	p.respawn()
+	await _wait(10)
+
+	e1.queue_free()
+	e2.queue_free()
+	var e3 := _enemy(p.global_position + p.facing * 4.0)
+	await _wait(2)
+	n = SlowMo.stops
+	var b := p.shoot()
+	for i in 60:
+		if SlowMo.stops != n or not is_instance_valid(b):
+			break
+		await physics_frame
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.SHOT, "a player shot hitting an enemy plays SHOT")
+	await _until_full_speed()
+
+	p.invuln = 0.0
+	var enemy_shot: Node3D = p.PROJECTILE.instantiate()
+	a.add_child(enemy_shot)
+	enemy_shot.setup(p.global_position + Vector3(5, 0, 0), Vector3.LEFT, 5.0, 0.0, e3)
+	enemy_shot._finish(p)
+	_check(SlowMo.stop.get("feel") == SlowMo.Feel.HURT, "an enemy shot hurting the player plays HURT, not SHOT")
+	await _until_full_speed()
+
+	var target := Node3D.new()
+	var s := GDScript.new()
+	s.source_code = "extends Node3D\nfunc shot() -> void:\n\tpass\n"
+	s.reload()
+	target.set_script(s)
+	n = SlowMo.stops
+	var switch_shot: Node3D = p.PROJECTILE.instantiate()
+	a.add_child(switch_shot)
+	switch_shot.setup(p.global_position + Vector3(5, 0, 0), Vector3.LEFT, 5.0, 0.0, p)
+	switch_shot._finish(target)
+	_check(SlowMo.stops == n, "a shot at an energy switch plays no stop")
+	target.free()
+
+	while not p.is_on_floor() or p.state_name != &"idle":
+		await physics_frame
+	SlowMo.add(SlowMo.Feel.HIT)
+	await physics_frame
+	Input.action_press(&"jump")
+	await _wait(2) # physics_frame fires before the nodes run: the press is read one frame later
+	_check(p.jump_buffer > 0.0 or p.vspeed() > 0.0, "a jump pressed during a stop still registers")
+	Input.action_release(&"jump")
+	await _until_full_speed()
+	sections += 1
+
+
+## The camera follow, the shake and the fade run on real time; a new area starts at full speed.
+func _test_realtime() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var cam: Camera3D = a.get_node("Camera")
+	var w: Node = root.get_node("World")
+
+	SlowMo.add(SlowMo.Feel.KILL)
+	CameraShake.clear()
+	p.damage(10.0) # its HURT is dropped (the KILL runs), its JOLT isn't
+	var t0 := Time.get_ticks_usec()
+	await _wait(10)
+	var real := (Time.get_ticks_usec() - t0) / 1e6
+	var jolt := CameraShake.layers.filter(func(l: Dictionary) -> bool: return l.feel == CameraShake.Feel.JOLT)
+	_check(jolt.size() == 1 and absf(jolt[0].age - real) < 0.05, "the hurt shake ages in real time during a stop (%.3f s in %.3f s)" % [jolt[0].age if jolt else -1.0, real])
+
+	await _until_full_speed()
+	await _wait(60) # the knockback and the follow settle
+	SlowMo.add(SlowMo.Feel.KILL)
+	var before := cam.global_position
+	p.teleport(p.global_position + Vector3(3, 0, 0))
+	await _wait(15)
+	_check(cam.global_position.distance_to(before) > 2.0, "the camera follows in real time during a stop (%.2f m of 3)" % cam.global_position.distance_to(before))
+
+	await _until_full_speed()
+	SlowMo.add(SlowMo.Feel.KILL)
+	w.fade(1.0, 0.15)
+	await _wait(15) # 0.25 s real; on game time only ~0.08 s pass
+	_check(w.fade_rect.color.a == 1.0, "a fade runs in real time during a stop (alpha %.2f)" % w.fade_rect.color.a)
+	w.fade(0.0, 0.0)
+
+	await _until_full_speed()
+	SlowMo.add(SlowMo.Feel.KILL)
+	SlowMo.bullet_target = 0.3
+	_area()
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0 and SlowMo.stop.is_empty(), "a new area starts at full speed")
+	sections += 1
+
+
+## Slow areas: an EnvZone with time_scale slows the whole game, the player too, while it's inside.
+func _test_area() -> void:
+	var s1 := EnvProfile.new()
+	s1.time_scale = 0.5
+	var s2 := EnvProfile.new()
+	s2.time_scale = 0.5
+	_check(is_equal_approx(EnvProfile.combine(EnvProfile.new(), [s1, s2]).time_scale, 0.25), "overlapping slow profiles multiply")
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var w: Node = root.get_node("World")
+	var out := await _walk(p, w)
+	_slow_zone(p.global_position, 0.5)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.5) < 0.01, "in a 0.5 zone the world runs at 0.5 (%.3f)" % Engine.time_scale)
+	var inside := await _walk(p, w)
+	_check(absf(inside[1] / out[1] - 0.5) < 0.01, "World.time advances half as much per tick (%.3f)" % (inside[1] / out[1]))
+	_check(absf(inside[0] / out[0] - 0.5) < 0.05, "the player walks half as far per tick (%.3f)" % (inside[0] / out[0]))
+
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.06) < 0.005, "a hit inside it dips to 0.12 × 0.5 (%.3f)" % Engine.time_scale)
+	await _until_no_stop()
+	ProjectSettings.set_setting(SlowMo.DISABLE, true)
+	var n := SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	_check(SlowMo.stops == n and absf(Engine.time_scale - 0.5) < 0.01, "the toggle leaves the area slow")
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+
+	_slow_zone(p.global_position, 0.5)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.25) < 0.01, "two overlapping zones give 0.25 (%.3f)" % Engine.time_scale)
+	p.teleport(Vector3(-22, 1, -22))
+	await _wait(5)
+	_check(Engine.time_scale == 1.0, "leaving restores full speed")
+	sections += 1
+
+
+## Bullet time: V slows the world to 0.3 while the player keeps full speed; a meter limits it.
+func _test_bullet() -> void:
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var w: Node = root.get_node("World")
+	var base := await _walk(p, w)
+	await _tap(&"bullet_time")
+	await _wait(20)
+	_check(p.bullet_on and absf(Engine.time_scale - 0.3) < 0.01, "V turns bullet time on: the world at 0.3 (%.3f)" % Engine.time_scale)
+	var on := await _walk(p, w)
+	_check(absf(on[1] / base[1] - 0.3) < 0.01, "World.time advances 0.3× per tick (%.3f)" % (on[1] / base[1]))
+	_check(absf(on[0] / base[0] - 1.0) < 0.1, "the player walks at full speed (%.2f×)" % (on[0] / base[0]))
+	var m0: float = p.bullet_meter
+	await _wait(60)
+	_check(absf(m0 - p.bullet_meter - 1.0) < 0.1, "the meter drains a second per second (%.2f)" % (m0 - p.bullet_meter))
+	_check(p.get_node(^"GaugeLayer/Gauges/Bullet").visible, "its gauge shows")
+
+	p.bullet_meter = p.bullet_capacity
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.036) < 0.004, "a hit in bullet time dips to 0.12 × 0.3 (%.3f)" % Engine.time_scale)
+	await _until_no_stop()
+
+	Input.action_press(&"move_right")
+	await _wait(30)
+	paused = true
+	for i in 3:
+		await process_frame
+	_check(Engine.time_scale == 1.0, "paused: full speed (menus)")
+	paused = false
+	var worst := 0.0
+	for i in 3:
+		var q := p.global_position
+		await physics_frame
+		worst = maxf(worst, p.global_position.distance_to(q))
+	Input.action_release(&"move_right")
+	_check(worst <= base[0] * 1.15, "unpausing doesn't speed the player up (%.3f vs %.3f per tick)" % [worst, base[0]])
+	await _wait(30)
+
+	p.bullet_meter = p.bullet_capacity
+	var box: Node3D = load("res://puzzle/box.tscn").instantiate()
+	box.position = p.global_position + p.facing * 0.9 # before entering the tree (see _enemy)
+	a.add_child(box)
+	await _wait(20)
+	_check(p.lift(), "the player lifts a box")
+	Input.action_press(&"move_right")
+	await _wait(30)
+	var hold := p.global_position + p.up_direction * p.hold_height
+	_check(p.held != null and p.held.global_position.distance_to(hold) < 0.05, "a carried box keeps up in bullet time")
+	Input.action_release(&"move_right")
+	p.put_down()
+	await _wait(10)
+
+	await _tap(&"bullet_time")
+	await _wait(20)
+	_check(not p.bullet_on and Engine.time_scale == 1.0, "V again turns it off")
+	var m1: float = p.bullet_meter
+	await _wait(60)
+	_check(absf(p.bullet_meter - m1 - 0.5) < 0.1, "the meter refills half a second per second (%.2f)" % (p.bullet_meter - m1))
+
+	Input.action_press(&"bullet_time")
+	var flips := 0
+	var was: bool = p.bullet_on
+	for i in 30:
+		await physics_frame
+		if p.bullet_on != was:
+			flips += 1
+			was = p.bullet_on
+	Input.action_release(&"bullet_time")
+	_check(flips == 1 and p.bullet_on, "a held button (the trigger) toggles once (%d)" % flips)
+	p.bullet_meter = 0.05
+	await _wait(10)
+	_check(not p.bullet_on, "an empty meter ends it")
+	p.bullet_meter = 0.3
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(not p.bullet_on, "it won't start below bullet_min")
+
+	p.bullet_meter = p.bullet_capacity
+	await _tap(&"bullet_time")
+	await _wait(2)
+	p.die(&"hit")
+	await _wait(2)
+	_check(not p.bullet_on and SlowMo.bullet_target == 1.0, "death ends it")
+	p.respawn()
+	await _wait(20)
+	_check(Engine.time_scale == 1.0, "the respawn is at full speed")
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(p.bullet_on, "(on again)")
+	p.change_state(&"puppet")
+	await _wait(2)
+	_check(not p.bullet_on, "a cutscene or locked talk ends it")
+	p.change_state(&"idle")
+	await _wait(20)
+
+	var track: Node3D = _track([Vector3(0, 0, 0), Vector3(30, 0, 0)], [[0, 1, true, 0, 4.0, 0.0, 0.0]])
+	track.position = Vector3(-15, 3, 12)
+	track.add_child(_platform())
+	a.add_child(track)
+	await _wait(10)
+	var deck: Node3D = track.find_children("*", "AnimatableBody3D", true, false)[0]
+	p.teleport(deck.global_position + Vector3(0, 1.3, 0))
+	await _wait(30)
+	p.bullet_meter = p.bullet_capacity
+	await _tap(&"bullet_time")
+	await _wait(20)
+	var fv := p.floor_velocity.slide(p.up_direction).length()
+	await _tap(&"jump")
+	await _wait(2)
+	_check(fv > 3.0 and absf(p.carry.length() - fv * SlowMo.bullet) < 0.15 * fv * SlowMo.bullet,
+		"jumping off a moving platform in bullet time carries its real speed (%.2f, platform %.2f × %.2f)" % [p.carry.length(), fv, SlowMo.bullet])
+	await _tap(&"bullet_time")
+	await _wait(2) # the press is read a frame later: let this player take it, not the next section's
+	_check(not p.bullet_on, "(off at the end)")
+
+	var pull := InputEventJoypadMotion.new()
+	pull.axis = JOY_AXIS_TRIGGER_LEFT
+	pull.axis_value = 0.35
+	Input.parse_input_event(pull)
+	await _wait(3)
+	_check(not p.bullet_on, "a light trigger pull doesn't toggle it")
+	pull.axis_value = 1.0
+	Input.parse_input_event(pull)
+	await _wait(3)
+	_check(p.bullet_on, "a full pull does")
+	pull.axis_value = 0.0
+	Input.parse_input_event(pull)
+	await _wait(2)
+	await _tap(&"bullet_time")
+	await _wait(2)
+	_check(not p.bullet_on, "(off again)")
+	sections += 1
+
+
+## The demo scene: three bays, the slow zone slows, key 9 flips the hit-stop toggle.
+func _test_demo() -> void:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://demo/slowmo/slowmo.tscn").instantiate()
+	root.add_child(area)
+	current_scene = area
+	await _wait(10)
+	var hits := area.get_node(^"Bays/Hits")
+	_check(hits.find_children("*", "Enemy", true, false).size() >= 2, "demo: enemies to hit")
+	var zone := area.get_node(^"Bays/SlowArea/Zone")
+	_check(zone.profile.time_scale == 0.4, "demo: a 0.4 slow zone")
+	var bullet := area.get_node(^"Bays/BulletTime")
+	_check(not bullet.find_children("*", "Enemy", true, false).is_empty()
+		and bullet.find_children("*", "AnimatableBody3D", true, false).any(func(n: Node) -> bool: return n.has_signal(&"slammed")),
+		"demo: the bullet time bay has enemies and crushers")
+	var p: Player = area.get_node(^"Player")
+	p.teleport(zone.global_position)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.4) < 0.01, "demo: standing in the slow zone gives 0.4 (%.3f)" % Engine.time_scale)
+	p.teleport(area.get_node(^"Bays/Hits/Start").global_position)
+	await _wait(5)
+	var key := InputEventKey.new()
+	key.keycode = KEY_9
+	key.pressed = true
+	var was: bool = ProjectSettings.get_setting(SlowMo.DISABLE)
+	area._unhandled_input(key)
+	_check(ProjectSettings.get_setting(SlowMo.DISABLE) != was, "demo: key 9 flips the hit-stop toggle")
+	area._unhandled_input(key)
+	await _wait(120)
+	sections += 1
+
+
+# --- building -----------------------------------------------------------------------
+
+## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
+func _area() -> Node3D:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://world/area.gd").new()
+	var floor := CSGBox3D.new()
+	floor.size = Vector3(60, 1, 60)
+	floor.position = Vector3(0, -0.5, 0)
+	floor.use_collision = true
+	area.add_child(floor)
+	var p: Player = PLAYER.instantiate()
+	p.name = "Player"
+	p.position = Vector3(0, 1, 0)
+	area.add_child(p)
+	var cam := Camera3D.new()
+	cam.name = "Camera"
+	area.add_child(cam)
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"
+	var label := Label.new()
+	label.name = "Label"
+	hud.add_child(label)
+	area.add_child(hud)
+	root.add_child(area)
+	current_scene = area
+	return area
+
+
+## An enemy at `at` that never acts on its own (the hits come from the test).
+func _enemy(at: Vector3) -> Enemy:
+	var e: Enemy = ENEMY.instantiate()
+	e.position = at # before entering the tree: added at the origin, it overlaps the player there and Jolt flings it
+	area.add_child(e)
+	e.set_physics_process(false)
+	e.health = 100.0
+	return e
+
+
+## A track along `points` with sequences [start, end, round_trip, trips, speed, start_wait, end_wait].
+func _track(points: Array, sequences: Array) -> Node3D:
+	var track: Node3D = load("res://world/platform_track_instance.gd").new()
+	var line := Path3D.new()
+	line.curve = Curve3D.new()
+	for v: Vector3 in points:
+		line.curve.add_point(v)
+	track.add_child(line)
+	for q: Array in sequences:
+		var seq: Resource = load("res://world/platform_sequence.gd").new()
+		seq.start_anchor = q[0]
+		seq.end_anchor = q[1]
+		seq.round_trip = q[2]
+		seq.trips = q[3]
+		seq.speed = q[4]
+		seq.start_wait = q[5]
+		seq.end_wait = q[6]
+		track.sequences.append(seq)
+	return track
+
+
+## A 3 × 0.5 × 3 platform body.
+func _platform() -> Node3D:
+	var deck: Node3D = load("res://world/moving_platform.gd").new()
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(3, 0.5, 3)
+	cs.shape = box
+	deck.add_child(cs)
+	return deck
+
+
+## An EnvZone (box 30 × 4 × 30) at `at` whose profile slows time to `scale`.
+func _slow_zone(at: Vector3, scale: float) -> Node3D:
+	var prof := EnvProfile.new()
+	prof.time_scale = scale
+	var z: Node3D = load("res://world/env_zone.gd").new()
+	z.profile = prof
+	z.position = at
+	area.add_child(z)
+	var box := BoxShape3D.new()
+	box.size = Vector3(30, 4, 30)
+	z.add_shape(box) # after add_child, as enemy_test's _zone does
+	return z
+
+
+# --- waiting and checking -----------------------------------------------------------
+
+## Walks right for 40 physics frames. Returns [mean displacement per tick, mean World.time step]
+## over the last 10, then stops.
+func _walk(p: Player, w: Node) -> Array:
+	Input.action_press(&"move_right")
+	await _wait(30)
+	var p0 := p.global_position
+	var t0: float = w.time
+	await _wait(10)
+	var r := [p.global_position.distance_to(p0) / 10.0, (w.time - t0) / 10.0]
+	Input.action_release(&"move_right")
+	await _wait(30)
+	return r
+
+
+## Waits (real time, at most 1 s) until no hit-stop runs.
+func _until_no_stop() -> void:
+	var t0 := Time.get_ticks_msec()
+	while not SlowMo.stop.is_empty() and Time.get_ticks_msec() - t0 < 1000:
+		await physics_frame
+
+
+func _tap(action: StringName) -> void:
+	Input.action_press(action)
+	await physics_frame
+	Input.action_release(action)
+
+
+## Waits (at most 60 physics frames) until a stop starts after `n` had started.
+func _until_stop(n: int) -> void:
+	for i in 60:
+		if SlowMo.stops != n:
+			return
+		await physics_frame
+
+## Waits (real time, at most 1 s) until no slow-down is left.
+func _until_full_speed() -> void:
+	var t0 := Time.get_ticks_msec()
+	while Engine.time_scale != 1.0 and Time.get_ticks_msec() - t0 < 1000:
+		await physics_frame
+
+
+func _wait(frames: int) -> void:
+	for i in frames:
+		await physics_frame
+
+
+func _near(a: float, b: float) -> bool:
+	return absf(a - b) < 0.001
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("  ok   " if ok else "  FAIL ") + what)
+	if not ok:
+		fails += 1

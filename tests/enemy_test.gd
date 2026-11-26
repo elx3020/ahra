@@ -22,6 +22,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
+	ProjectSettings.set_setting(SlowMo.DISABLE, true) # suites count physics frames; tests/slowmo_test.gd covers the stops
 	# optional filter: `-- pursuit swing_fly` runs only those sections
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_core, _test_pursuit, _test_combat, _test_attack_flee, _test_jump_dash,

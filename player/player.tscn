@@ -39,6 +39,13 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="bar_bullet"]
+bg_color = Color(0.8, 0.45, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
 [node name="Player" type="CharacterBody3D" unique_id=1602617663]
 script = ExtResource("1_player")
 
@@ -82,6 +89,16 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_styles/background = SubResource("bar_bg")
 theme_override_styles/fill = SubResource("bar_oxygen")
+max_value = 1.0
+step = 0.001
+show_percentage = false
+
+[node name="Bullet" type="ProgressBar" parent="GaugeLayer/Gauges"]
+custom_minimum_size = Vector2(64, 8)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("bar_bg")
+theme_override_styles/fill = SubResource("bar_bullet")
 max_value = 1.0
 step = 0.001
 show_percentage = false

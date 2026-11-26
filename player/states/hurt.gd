@@ -14,6 +14,6 @@ func enter(_prev: StringName) -> void:
 func physics(delta: float) -> StringName:
 	p.move_planar(Vector3.ZERO, 0.0, 8.0, delta)
 	p.apply_gravity(delta)
-	p.move_and_slide()
+	p.slide()
 	_t -= delta
 	return p.recover_state() if _t <= 0.0 else &""

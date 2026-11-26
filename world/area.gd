@@ -9,7 +9,7 @@ extends Node3D
 
 const FOV := 10.0 ## degrees: narrow enough to read as isometric
 const CLIP := 40.0 ## the near plane sits this far from the player, toward the camera
-const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing) | J/LMB melee | K/RMB shoot | R carry / put down | T throw\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
+const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down | Q dash | E interact | F grab (hold, swing) | J/LMB melee | K/RMB shoot | R carry / put down | T throw | V bullet time\n1/2 damage/heal | 3/4 register hit/miss (mood) | 5 level up (+10% all stats) | 6 reset progression\n[ ] warp between bays | Backspace back to bay start\n\n"
 
 @export var bounds_center := Vector3.ZERO
 @export var bounds_radius := 200.0 ## farther than this from bounds_center = fall death
@@ -29,6 +29,7 @@ func _ready() -> void:
 	var spawn: Node3D = get_node_or_null(String(World.spawn)) if World.spawn else null
 	World.spawn = &""
 	CameraShake.clear() # no shake carries across a scene change
+	SlowMo.clear() # nor a hit-stop or bullet time
 	if spawn:
 		player.teleport(spawn.global_position)
 		player.checkpoint = spawn.global_position
@@ -50,13 +51,18 @@ func _ready() -> void:
 	_restore_weights()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	# The camera runs on real time: it keeps up with a full-speed player in bullet time, and a hit
+	# shake plays at full speed during a hit-stop. Not `delta / Engine.time_scale`: that is wrong in
+	# a frame where SlowMo just changed the scale.
+	var real := SlowMo.real_delta
 	var target := player.get_global_transform_interpolated().origin + cam.global_basis.z * cam_distance
 	if cam.global_position.distance_to(target) > 8.0: # snap after teleports
 		cam.global_position = target
 	else:
-		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * delta))
-	_shake(delta)
+		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * real))
+	_shake(real)
+	SlowMo.area = player.env.time_scale if player.env else 1.0 # a slow place slows the whole game
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
 	for n in get_tree().get_nodes_in_group(&"weight"):

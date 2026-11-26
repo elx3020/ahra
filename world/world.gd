@@ -47,6 +47,16 @@ func _ready() -> void:
 	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(fade_rect)
 	add_child(layer)
+	get_tree().process_frame.connect(_scale_time)
+
+
+## Applies SlowMo every frame. process_frame fires while the tree is paused too, so World keeps
+## its pausable process mode (`time` stops with the tree) and a pause still resets the scale to 1.
+## The real step is the engine's own frame step (smoothed, and fixed under --fixed-fps / Movie
+## Maker, unlike a wall clock), unscaled: Engine.time_scale here is still the scale it ran at.
+func _scale_time() -> void:
+	var real := minf(get_process_delta_time() / Engine.time_scale, 0.1) # a load hitch doesn't skip a stop
+	Engine.time_scale = SlowMo.update(real, get_tree().paused)
 
 
 func _physics_process(delta: float) -> void:
@@ -92,6 +102,7 @@ func fade(to_alpha: float, duration := 0.4) -> void:
 		fade_rect.color.a = to_alpha
 		return
 	_fade_tween = create_tween()
+	_fade_tween.set_ignore_time_scale(true) # GUI: never slowed by SlowMo
 	_fade_tween.tween_property(fade_rect, "color:a", to_alpha, duration)
 	await _fade_tween.finished
 
@@ -280,4 +291,4 @@ func debug_text() -> String:
 		if switch_on(id):
 			on.append(id.get_slice(":", 1) + (" (locked)" if switches[id].get("locked", false) else ""))
 	return "\nchannels:" + (out if out else " none") + "\nflags: " + (", ".join(pairs) if pairs else "none") \
-		+ "\nswitches: " + (", ".join(on) + " on" if on else "none on")
+		+ "\nswitches: " + (", ".join(on) + " on" if on else "none on") + "\ntime ×%.2f" % Engine.time_scale

@@ -24,7 +24,7 @@ func physics(delta: float) -> StringName:
 	var target := (up * -i.y + side * i.x) * p.climb_speed * p.mult(&"climb")
 	target += p.env.wind.slide(_n) * p.wind_response_ground - up * slip
 	p.velocity = p.velocity.slide(_n).move_toward(target, p.climb_accel * delta) - _n * 2.0
-	p.move_and_slide()
+	p.slide()
 
 	if p.jump_buffer > 0.0:
 		p.jump_buffer = 0.0

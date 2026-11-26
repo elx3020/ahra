@@ -28,6 +28,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
+	ProjectSettings.set_setting(SlowMo.DISABLE, true) # suites count physics frames; tests/slowmo_test.gd covers the stops
 	world = root.get_node("World")
 	var only := OS.get_cmdline_user_args()
 	var all: Array[Callable] = [_test_world, _test_weight, _test_carry, _test_gravity, _test_plate, _test_door, _test_energy, _test_dispenser, _test_memory, _test_demo]
