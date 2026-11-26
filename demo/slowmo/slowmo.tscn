@@ -1,0 +1,284 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/slowmo/slowmo.gd" id="area"]
+[ext_resource type="Script" path="res://world/env_profile.gd" id="env"]
+[ext_resource type="Script" path="res://world/env_zone.gd" id="env_zone"]
+[ext_resource type="Script" path="res://world/kill_zone.gd" id="kill"]
+[ext_resource type="Script" path="res://world/moving_platform.gd" id="platform"]
+[ext_resource type="Script" path="res://world/platform_sequence.gd" id="sequence"]
+[ext_resource type="Script" path="res://world/platform_track_instance.gd" id="track"]
+[ext_resource type="Script" path="res://puzzle/dispenser.gd" id="dispenser"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="player"]
+[ext_resource type="PackedScene" path="res://enemy/runner/runner.tscn" id="runner"]
+[ext_resource type="PackedScene" path="res://enemy/brute/brute.tscn" id="brute"]
+[ext_resource type="PackedScene" path="res://puzzle/ball.tscn" id="ball"]
+
+[sub_resource type="Environment" id="world_env"]
+background_mode = 1
+background_color = Color(0.11, 0.12, 0.15, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.62, 0.7, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="StandardMaterial3D" id="m_floor"]
+albedo_color = Color(0.42, 0.42, 0.45, 1)
+
+[sub_resource type="StandardMaterial3D" id="m_block"]
+albedo_color = Color(0.28, 0.28, 0.32, 1)
+
+[sub_resource type="BoxShape3D" id="void_box"]
+size = Vector3(240, 2, 120)
+
+[sub_resource type="Resource" id="slow"]
+resource_name = "Slow"
+script = ExtResource("env")
+time_scale = 0.4
+
+[sub_resource type="BoxShape3D" id="slow_box"]
+size = Vector3(12, 4, 12)
+
+[sub_resource type="Resource" id="shuttle"]
+script = ExtResource("sequence")
+round_trip = true
+trips = 0
+speed = 3.0
+start_wait = 0.5
+end_wait = 0.5
+
+[sub_resource type="Curve3D" id="shuttle_line"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+
+[sub_resource type="BoxShape3D" id="deck_box"]
+size = Vector3(2, 0.5, 2)
+
+[sub_resource type="Resource" id="slam_down"]
+script = ExtResource("sequence")
+speed = 12.0
+start_wait = 0.0
+end_wait = 0.5
+
+[sub_resource type="Resource" id="slam_up"]
+script = ExtResource("sequence")
+start_anchor = 1
+end_anchor = 0
+speed = 2.0
+start_wait = 0.0
+end_wait = 1.0
+
+[sub_resource type="Curve3D" id="stroke"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 4.5, 0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0),
+"tilts": PackedFloat32Array(0, 0)
+}
+
+[sub_resource type="BoxShape3D" id="crusher_box"]
+size = Vector3(2, 1, 2)
+
+[node name="SlowMo" type="Node3D"]
+script = ExtResource("area")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("world_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="."]
+projection = 1
+current = true
+size = 16.0
+far = 500.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="HUD"]
+offset_left = 12.0
+offset_top = 8.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+
+[node name="Player" parent="." instance=ExtResource("player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 1, 7)
+
+[node name="Void" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -14, 0)
+script = ExtResource("kill")
+color = Color(1, 0, 0, 0.06)
+
+[node name="Box" type="CollisionShape3D" parent="Void"]
+shape = SubResource("void_box")
+
+[node name="Floor" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(72, 1, 24)
+material = SubResource("m_floor")
+
+[node name="Bays" type="Node3D" parent="."]
+
+[node name="Hits" type="Node3D" parent="Bays"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/Hits"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 7)
+
+[node name="Label" type="Label3D" parent="Bays/Hits"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -6)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "HIT-STOP
+melee (J) or shoot (K): the world dips for a moment
+a kill holds longer | 1: get hurt | 9: on / off"
+font_size = 56
+outline_size = 14
+
+[node name="RunnerA" parent="Bays/Hits" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1, -2)
+
+[node name="RunnerB" parent="Bays/Hits" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1, -2)
+
+[node name="Brute" parent="Bays/Hits" instance=ExtResource("brute")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -4)
+
+[node name="SlowArea" type="Node3D" parent="Bays"]
+
+[node name="Start" type="Marker3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9)
+
+[node name="Label" type="Label3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -7)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "SLOW AREA (EnvProfile.time_scale 0.4)
+walk in: everything slows, you too
+a hit inside dips below it"
+font_size = 56
+outline_size = 14
+
+[node name="Zone" type="Area3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+script = ExtResource("env_zone")
+profile = SubResource("slow")
+color = Color(0.6, 0.4, 1, 0.08)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/SlowArea/Zone"]
+shape = SubResource("slow_box")
+
+[node name="Shuttle" type="Node3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 3)
+script = ExtResource("track")
+sequences = Array[ExtResource("sequence")]([SubResource("shuttle")])
+
+[node name="Path" type="Path3D" parent="Bays/SlowArea/Shuttle"]
+curve = SubResource("shuttle_line")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/SlowArea/Shuttle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 0)
+script = ExtResource("platform")
+color = Color(0.35, 0.5, 0.6, 1)
+
+[node name="Box" type="CollisionShape3D" parent="Bays/SlowArea/Shuttle/Platform"]
+shape = SubResource("deck_box")
+
+[node name="Ramp" type="CSGBox3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.34202015, 0, -0.34202015, 0.9396926, 2.5, 1.6, -2.5)
+use_collision = true
+size = Vector3(3, 0.3, 8)
+material = SubResource("m_block")
+
+[node name="Dispenser" type="Node3D" parent="Bays/SlowArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 3.6, 0.8)
+script = ExtResource("dispenser")
+weight_scene = ExtResource("ball")
+count = 3
+respawn_delay = 1.0
+
+[node name="BulletTime" type="Node3D" parent="Bays"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 0)
+
+[node name="Start" type="Marker3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9)
+
+[node name="Label" type="Label3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, -7)
+pixel_size = 0.01
+billboard = 1
+no_depth_test = true
+text = "BULLET TIME (V / left trigger)
+the world at 0.3, you at full speed
+the violet bar drains; V again stops it"
+font_size = 56
+outline_size = 14
+
+[node name="RunnerA" parent="Bays/BulletTime" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 0)
+
+[node name="RunnerB" parent="Bays/BulletTime" instance=ExtResource("runner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, 0)
+
+[node name="AnvilA" type="CSGBox3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.5, 4)
+use_collision = true
+size = Vector3(2.4, 1, 2.4)
+material = SubResource("m_block")
+
+[node name="AnvilB" type="CSGBox3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.5, 4)
+use_collision = true
+size = Vector3(2.4, 1, 2.4)
+material = SubResource("m_block")
+
+[node name="CrusherA" type="Node3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 4)
+script = ExtResource("track")
+sequences = Array[ExtResource("sequence")]([SubResource("slam_down"), SubResource("slam_up")])
+
+[node name="Path" type="Path3D" parent="Bays/BulletTime/CrusherA"]
+curve = SubResource("stroke")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/BulletTime/CrusherA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
+script = ExtResource("platform")
+color = Color(0.6, 0.35, 0.3, 1)
+slam_shake = 0.6
+
+[node name="Box" type="CollisionShape3D" parent="Bays/BulletTime/CrusherA/Platform"]
+shape = SubResource("crusher_box")
+
+[node name="CrusherB" type="Node3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 4)
+script = ExtResource("track")
+sequences = Array[ExtResource("sequence")]([SubResource("slam_down"), SubResource("slam_up")])
+offset = 1.6
+
+[node name="Path" type="Path3D" parent="Bays/BulletTime/CrusherB"]
+curve = SubResource("stroke")
+
+[node name="Platform" type="AnimatableBody3D" parent="Bays/BulletTime/CrusherB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
+script = ExtResource("platform")
+color = Color(0.6, 0.35, 0.3, 1)
+slam_shake = 0.6
+
+[node name="Box" type="CollisionShape3D" parent="Bays/BulletTime/CrusherB/Platform"]
+shape = SubResource("crusher_box")
+
+[node name="Ramp" type="CSGBox3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.34202015, 0, -0.34202015, 0.9396926, 0, 1.6, -6)
+use_collision = true
+size = Vector3(3, 0.3, 8)
+material = SubResource("m_block")
+
+[node name="Dispenser" type="Node3D" parent="Bays/BulletTime"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, -2.7)
+script = ExtResource("dispenser")
+weight_scene = ExtResource("ball")
+count = 3
+respawn_delay = 1.0

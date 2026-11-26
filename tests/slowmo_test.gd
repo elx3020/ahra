@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
 ## Optional filter: `-- rules bullet` runs only those sections.
 
-const SECTIONS := 5
+const SECTIONS := 6
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -20,7 +20,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	ProjectSettings.set_setting(SlowMo.DISABLE, false)
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area, _test_bullet]
+	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area, _test_bullet, _test_demo]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -410,6 +410,40 @@ func _test_bullet() -> void:
 	_check(fv > 3.0 and absf(p.carry.length() - fv * SlowMo.bullet) < 0.15 * fv * SlowMo.bullet,
 		"jumping off a moving platform in bullet time carries its real speed (%.2f, platform %.2f × %.2f)" % [p.carry.length(), fv, SlowMo.bullet])
 	await _tap(&"bullet_time")
+	sections += 1
+
+
+## The demo scene: three bays, the slow zone slows, key 9 flips the hit-stop toggle.
+func _test_demo() -> void:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://demo/slowmo/slowmo.tscn").instantiate()
+	root.add_child(area)
+	current_scene = area
+	await _wait(10)
+	var hits := area.get_node(^"Bays/Hits")
+	_check(hits.find_children("*", "Enemy", true, false).size() >= 2, "demo: enemies to hit")
+	var zone := area.get_node(^"Bays/SlowArea/Zone")
+	_check(zone.profile.time_scale == 0.4, "demo: a 0.4 slow zone")
+	var bullet := area.get_node(^"Bays/BulletTime")
+	_check(not bullet.find_children("*", "Enemy", true, false).is_empty()
+		and bullet.find_children("*", "AnimatableBody3D", true, false).any(func(n: Node) -> bool: return n.has_signal(&"slammed")),
+		"demo: the bullet time bay has enemies and crushers")
+	var p: Player = area.get_node(^"Player")
+	p.teleport(zone.global_position)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.4) < 0.01, "demo: standing in the slow zone gives 0.4 (%.3f)" % Engine.time_scale)
+	p.teleport(area.get_node(^"Bays/Hits/Start").global_position)
+	await _wait(5)
+	var key := InputEventKey.new()
+	key.keycode = KEY_9
+	key.pressed = true
+	var was: bool = ProjectSettings.get_setting(SlowMo.DISABLE)
+	area._unhandled_input(key)
+	_check(ProjectSettings.get_setting(SlowMo.DISABLE) != was, "demo: key 9 flips the hit-stop toggle")
+	area._unhandled_input(key)
+	await _wait(120)
 	sections += 1
 
 
