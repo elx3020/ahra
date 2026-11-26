@@ -10,10 +10,7 @@ config_version=5
 
 [ahra]
 
-animation/disable_squash_tilt=true
-camera/disable_shake=false
 camera/shake_slide=true
-camera/shake_tilt=false
 
 [application]
 
