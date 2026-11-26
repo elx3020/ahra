@@ -3,7 +3,7 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/slowmo_test.gd
 ## Optional filter: `-- rules bullet` runs only those sections.
 
-const SECTIONS := 3
+const SECTIONS := 4
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
@@ -20,7 +20,7 @@ func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	ProjectSettings.set_setting(SlowMo.DISABLE, false)
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime]
+	var all: Array[Callable] = [_test_rules, _test_hits, _test_realtime, _test_area]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -255,6 +255,46 @@ func _test_realtime() -> void:
 	sections += 1
 
 
+## Slow areas: an EnvZone with time_scale slows the whole game, the player too, while it's inside.
+func _test_area() -> void:
+	var s1 := EnvProfile.new()
+	s1.time_scale = 0.5
+	var s2 := EnvProfile.new()
+	s2.time_scale = 0.5
+	_check(is_equal_approx(EnvProfile.combine(EnvProfile.new(), [s1, s2]).time_scale, 0.25), "overlapping slow profiles multiply")
+	var a := _area()
+	await _wait(30)
+	var p: Player = a.get_node("Player")
+	var w: Node = root.get_node("World")
+	var out := await _walk(p, w)
+	_slow_zone(p.global_position, 0.5)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.5) < 0.01, "in a 0.5 zone the world runs at 0.5 (%.3f)" % Engine.time_scale)
+	var inside := await _walk(p, w)
+	_check(absf(inside[1] / out[1] - 0.5) < 0.01, "World.time advances half as much per tick (%.3f)" % (inside[1] / out[1]))
+	_check(absf(inside[0] / out[0] - 0.5) < 0.05, "the player walks half as far per tick (%.3f)" % (inside[0] / out[0]))
+
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	await process_frame
+	_check(absf(Engine.time_scale - 0.06) < 0.005, "a hit inside it dips to 0.12 × 0.5 (%.3f)" % Engine.time_scale)
+	await _until_no_stop()
+	ProjectSettings.set_setting(SlowMo.DISABLE, true)
+	var n := SlowMo.stops
+	SlowMo.add(SlowMo.Feel.HIT)
+	await process_frame
+	_check(SlowMo.stops == n and absf(Engine.time_scale - 0.5) < 0.01, "the toggle leaves the area slow")
+	ProjectSettings.set_setting(SlowMo.DISABLE, false)
+
+	_slow_zone(p.global_position, 0.5)
+	await _wait(30)
+	_check(absf(Engine.time_scale - 0.25) < 0.01, "two overlapping zones give 0.25 (%.3f)" % Engine.time_scale)
+	p.teleport(Vector3(-22, 1, -22))
+	await _wait(5)
+	_check(Engine.time_scale == 1.0, "leaving restores full speed")
+	sections += 1
+
+
 # --- building -----------------------------------------------------------------------
 
 ## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
@@ -296,7 +336,42 @@ func _enemy(at: Vector3) -> Enemy:
 	return e
 
 
+## An EnvZone (box 30 × 4 × 30) at `at` whose profile slows time to `scale`.
+func _slow_zone(at: Vector3, scale: float) -> Node3D:
+	var prof := EnvProfile.new()
+	prof.time_scale = scale
+	var z: Node3D = load("res://world/env_zone.gd").new()
+	z.profile = prof
+	z.position = at
+	area.add_child(z)
+	var box := BoxShape3D.new()
+	box.size = Vector3(30, 4, 30)
+	z.add_shape(box) # after add_child, as enemy_test's _zone does
+	return z
+
+
 # --- waiting and checking -----------------------------------------------------------
+
+## Walks right for 40 physics frames. Returns [mean displacement per tick, mean World.time step]
+## over the last 10, then stops.
+func _walk(p: Player, w: Node) -> Array:
+	Input.action_press(&"move_right")
+	await _wait(30)
+	var p0 := p.global_position
+	var t0: float = w.time
+	await _wait(10)
+	var r := [p.global_position.distance_to(p0) / 10.0, (w.time - t0) / 10.0]
+	Input.action_release(&"move_right")
+	await _wait(30)
+	return r
+
+
+## Waits (real time, at most 1 s) until no hit-stop runs.
+func _until_no_stop() -> void:
+	var t0 := Time.get_ticks_msec()
+	while not SlowMo.stop.is_empty() and Time.get_ticks_msec() - t0 < 1000:
+		await physics_frame
+
 
 func _tap(action: StringName) -> void:
 	Input.action_press(action)

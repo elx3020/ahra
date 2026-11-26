@@ -62,6 +62,7 @@ func _process(_delta: float) -> void:
 	else:
 		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * real))
 	_shake(real)
+	SlowMo.area = player.env.time_scale if player.env else 1.0 # a slow place slows the whole game
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
 	for n in get_tree().get_nodes_in_group(&"weight"):
