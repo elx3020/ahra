@@ -20,15 +20,20 @@ const HELP := "WASD move | Shift run | Space jump / swim up | C/Ctrl swim down |
 @onready var hud: Label = $HUD/Label
 @onready var bays: Array = $Bays.get_children() if has_node(^"Bays") else []
 var cam_distance := 0.0
+## The camera's rotation without shake. ponytail: code that rotates the camera sets this, not the
+## camera: _process puts the shake's roll on top of it every frame.
+var _steady_basis := Basis.IDENTITY
 
 
 func _ready() -> void:
 	var spawn: Node3D = get_node_or_null(String(World.spawn)) if World.spawn else null
 	World.spawn = &""
+	CameraShake.clear() # no shake carries across a scene change
 	if spawn:
 		player.teleport(spawn.global_position)
 		player.checkpoint = spawn.global_position
 	cam.rotation_degrees = Vector3(-35.264, 45.0, 0.0) # true isometric
+	_steady_basis = cam.global_basis
 	cam_distance = cam.size * 0.5 / tan(deg_to_rad(FOV * 0.5))
 	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	cam.fov = FOV
@@ -51,6 +56,7 @@ func _process(delta: float) -> void:
 		cam.global_position = target
 	else:
 		cam.global_position = cam.global_position.lerp(target, 1.0 - exp(-8.0 * delta))
+	_shake(delta)
 	if player.global_position.distance_to(bounds_center) > bounds_radius:
 		player.die(&"fall") # lost in the sky (flipped gravity) or past the void
 	for n in get_tree().get_nodes_in_group(&"weight"):
@@ -59,6 +65,21 @@ func _process(delta: float) -> void:
 			w.destroy()
 	var bay := "bay: %s\n" % bays[_bay()].name if bays else ""
 	hud.text = help() + bay + player.debug_text() + World.debug_text()
+
+
+## Camera shake on its own layer: the slide goes into the built-in view offsets (the camera node
+## doesn't move, so the follow above and any zoom never meet it), the tilt onto _steady_basis.
+func _shake(delta: float) -> void:
+	var s := CameraShake.update(delta, player.get_global_transform_interpolated().origin, player.env.shake if player.env else 0.0)
+	var h := view_height()
+	cam.h_offset = s.x * h
+	cam.v_offset = s.y * h
+	cam.global_basis = _steady_basis * Basis(Vector3.BACK, s.z)
+
+
+## Height of the view at the player, from the camera's live fov: shakes read the same at any zoom.
+func view_height() -> float:
+	return 2.0 * cam.global_position.distance_to(player.global_position) * tan(deg_to_rad(cam.fov) * 0.5)
 
 
 ## Remembers every weight's place, gravity and pose (World.bodies), so the area finds them where

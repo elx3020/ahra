@@ -254,7 +254,7 @@ func raw_input() -> Vector2:
 
 func cam_basis() -> Basis:
 	var cam := get_viewport().get_camera_3d()
-	return cam.global_basis if cam else Basis.IDENTITY
+	return CameraShake.steady(cam.global_basis) if cam else Basis.IDENTITY # without the shake's roll
 
 
 ## Stick input mapped onto the current walking plane, camera-relative.

@@ -15,6 +15,8 @@ enum Temp { COLD, MILD, HOT }
 ## Acceleration, always applied. Along the walking plane it pushes the player
 ## (on ground and in air, see Player.wind_response_*); along up it is lift.
 @export var wind := Vector3.ZERO
+@export_group("Camera")
+@export_range(0.0, 1.0) var shake := 0.0 ## camera shake while the player is in it (a storm), see CameraShake
 
 
 ## Blend overlapping zones on top of a base: stat % add up (same rule as progression),

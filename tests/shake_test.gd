@@ -3,12 +3,13 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 1
+const SECTIONS := 2
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
 
 var fails := 0
 var sections := 0
+var area: Node3D
 
 
 func _initialize() -> void:
@@ -18,7 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule]
+	var all: Array[Callable] = [_test_rule, _test_camera]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -75,6 +76,77 @@ func _test_rule() -> void:
 	ProjectSettings.set_setting(CameraShake.SLIDE, true)
 	ProjectSettings.set_setting(CameraShake.DISABLE, false)
 	sections += 1
+
+
+func _test_camera() -> void:
+	var a := _area()
+	await _wait(120) # let the follow settle fully
+	var p: Player = a.get_node("Player")
+	var cam: Camera3D = a.get_node("Camera")
+	var rest := cam.global_position
+	var iso := Basis.from_euler(Vector3(deg_to_rad(-35.264), deg_to_rad(45.0), 0.0))
+	CameraShake.add(CameraShake.Feel.JOLT, 1.0)
+	var moved := false
+	for i in 8:
+		await process_frame
+		moved = moved or absf(cam.h_offset) + absf(cam.v_offset) > 0.0
+	_check(moved and cam.global_position.is_equal_approx(rest), "slide lives in the offsets; the camera doesn't drift")
+	ProjectSettings.set_setting(CameraShake.DISABLE, true)
+	await process_frame
+	_check(cam.h_offset == 0.0 and cam.v_offset == 0.0, "master off mid-shake: offsets back to exactly 0")
+	ProjectSettings.set_setting(CameraShake.DISABLE, false)
+	ProjectSettings.set_setting(CameraShake.TILT, true)
+	CameraShake.add(CameraShake.Feel.JOLT, 1.0)
+	var tilted := false
+	for i in 8:
+		await process_frame
+		if not cam.global_basis.is_equal_approx(iso):
+			tilted = true
+			_check(p.cam_basis().is_equal_approx(iso), "movement reads the steady basis while tilted")
+			break
+	_check(tilted, "tilt on: the camera rolls")
+	ProjectSettings.set_setting(CameraShake.TILT, false)
+	await process_frame
+	_check(cam.global_basis.is_equal_approx(iso), "tilt off: back to the iso basis")
+	var h: float = a.view_height()
+	cam.fov *= 2.0
+	_check(absf(a.view_height() / h - tan(deg_to_rad(cam.fov) / 2) / tan(deg_to_rad(cam.fov / 4))) < 0.01, "zoom: the view height follows the live fov")
+	CameraShake.add(CameraShake.Feel.JOLT, 1.0)
+	_area()
+	await _wait(2)
+	_check(CameraShake.layers.is_empty(), "a new area starts with no shake")
+	sections += 1
+
+
+# --- building -----------------------------------------------------------------------
+
+## A bare GameArea (floor, Player at (0, 1, 0), Camera, HUD/Label) as the current scene; frees the last one.
+func _area() -> Node3D:
+	if area:
+		root.remove_child(area)
+		area.queue_free()
+	area = load("res://world/area.gd").new()
+	var floor := CSGBox3D.new()
+	floor.size = Vector3(40, 1, 40)
+	floor.position = Vector3(0, -0.5, 0)
+	floor.use_collision = true
+	area.add_child(floor)
+	var p: Player = PLAYER.instantiate()
+	p.name = "Player"
+	p.position = Vector3(0, 1, 0)
+	area.add_child(p)
+	var cam := Camera3D.new()
+	cam.name = "Camera"
+	area.add_child(cam)
+	var hud := CanvasLayer.new()
+	hud.name = "HUD"
+	var label := Label.new()
+	label.name = "Label"
+	hud.add_child(label)
+	area.add_child(hud)
+	root.add_child(area)
+	current_scene = area
+	return area
 
 
 # --- waiting and checking -----------------------------------------------------------
