@@ -12,7 +12,7 @@ extends CharacterBody3D
 ## move them to a shared base class once a third kind of body appears.
 
 signal died(cause: StringName)
-signal cue(name: StringName) ## one-shot presentation events (sound, VFX); gameplay never waits on them
+signal cue(name: StringName) ## one-shot presentation events (sound, VFX, `step` per stride); gameplay never waits on them
 signal puppet_arrived
 
 enum Ability { JUMP = 1, DASH = 2, FLY = 4, RUN = 8, CLIMB = 16, SWIM = 32, SWING = 64 }
@@ -77,6 +77,9 @@ const MIN_KNOCK := 1.0 ## knockback slower than this (m/s) doesn't move the enem
 @export_group("Look")
 @export var color := Color(0.85, 0.25, 0.2)
 @export var show_debug := true ## state and stats on a label above the enemy
+@export_group("Shake")
+@export_range(0.0, 1.0) var step_shake := 0.0 ## camera shake per footstep (heavy enemies), 0 = none
+@export var stride := 1.4 ## metres walked per footstep (`step` cue)
 
 var health := 0.0
 var stamina := 0.0
@@ -107,6 +110,8 @@ var _still := 0.0 ## moving_on: seconds since then
 var _excl: Array[RID] = [] ## cast's exclude list, rebuilt once per physics frame
 var _excl_frame := -1
 var _label: Label3D
+var _step_from := Vector3.ZERO ## _footsteps: where the enemy was last physics frame
+var _strode := 0.0 ## _footsteps: metres walked since the last step
 
 var states: Dictionary[StringName, EnemyState] = {
 	&"idle": preload("states/idle.gd").new(),
@@ -146,6 +151,7 @@ func _ready() -> void:
 	oxygen = max_oxygen
 	mood = base_mood
 	home = global_position
+	_step_from = global_position
 	add_to_group(&"enemy")
 	env = EnvProfile.combine(EnvProfile.new(), _envs)
 	var body := get_node_or_null(^"Visual/Body") as MeshInstance3D
@@ -185,11 +191,28 @@ func _physics_process(delta: float) -> void:
 	WeightBody.push_from(self, weight, run_speed)
 	if next:
 		change_state(next)
+	_footsteps()
 	_fall_damage()
 	_orient(delta)
 	_animate(delta)
 	if _label:
 		_label.text = debug_text()
+
+
+## A `step` cue every `stride` metres walked on the floor, and a camera THUMP when step_shake is set.
+## Counted from distance, not from the animation, so it works with any (or no) animation.
+## ponytail: a frame that moves more than 2 m is a teleport and counts nothing; a 120 m/s dash would too.
+func _footsteps() -> void:
+	var moved := (global_position - _step_from).slide(up_direction).length()
+	_step_from = global_position
+	if not is_on_floor() or moved > 2.0:
+		return
+	_strode += moved
+	if _strode >= stride:
+		_strode -= stride
+		if step_shake > 0.0:
+			CameraShake.add(CameraShake.Feel.THUMP, step_shake, global_position)
+		cue.emit(&"step")
 
 
 func _tick_stats(delta: float) -> void:

@@ -3,9 +3,10 @@ extends SceneTree
 ## Run: Godot_console.exe --headless --path . -s res://tests/shake_test.gd
 ## Optional filter: `-- rule camera` runs only those sections.
 
-const SECTIONS := 4
+const SECTIONS := 5
 const PLAYER := preload("res://player/player.tscn")
 const ENEMY := preload("res://enemy/enemy.tscn")
+const BRUTE := preload("res://enemy/brute/brute.tscn")
 
 var fails := 0
 var sections := 0
@@ -19,7 +20,7 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame # the tree isn't running yet during _initialize
 	var only := OS.get_cmdline_user_args()
-	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env]
+	var all: Array[Callable] = [_test_rule, _test_camera, _test_hit, _test_env, _test_steps]
 	var ran := 0
 	for t in all:
 		if only.is_empty() or t.get_method().trim_prefix("_test_") in only:
@@ -155,6 +156,51 @@ func _test_env() -> void:
 	await _wait(40)
 	_check(CameraShake.sustained_level == 0.0, "after leaving it eases back to 0 within ~0.5 s")
 	sections += 1
+
+
+func _test_steps() -> void:
+	var a := _area()
+	await _wait(30)
+	var brute: Enemy = BRUTE.instantiate()
+	brute.show_debug = false
+	brute.position = Vector3(-8, 1, 0)
+	a.add_child(brute)
+	var steps := [0, 0] # step cues, step cues with a fresh THUMP layer
+	brute.cue.connect(func(n: StringName) -> void:
+		if n == &"step":
+			steps[0] += 1
+			if _fresh_thump():
+				steps[1] += 1)
+	await _wait(10) # settle on the floor
+	var start := brute.global_position
+	var before: int = steps[0]
+	await _wait(150)
+	var walked := (brute.global_position - start).slide(Vector3.UP).length()
+	_check(steps[0] - before > 0 and absi(steps[0] - before - int(walked / brute.stride)) <= 1,
+		"about one step cue per stride walked (%d over %.1f m)" % [steps[0] - before, walked])
+	_check(steps[1] == steps[0], "every step near the player adds a THUMP")
+	before = steps[0]
+	brute.global_position += Vector3(0, 0, 6)
+	await _wait(2)
+	_check(steps[0] - before <= 1, "a teleport doesn't fire a burst of steps")
+	brute.queue_free()
+	var light: Enemy = ENEMY.instantiate() # plain enemy: step_shake 0
+	light.show_debug = false
+	light.position = Vector3(8, 1, 0)
+	a.add_child(light)
+	var light_steps := [0, 0]
+	light.cue.connect(func(n: StringName) -> void:
+		if n == &"step":
+			light_steps[0] += 1
+			if _fresh_thump():
+				light_steps[1] += 1)
+	await _wait(120)
+	_check(light_steps[0] > 0 and light_steps[1] == 0, "step_shake 0: steps but no shake")
+	sections += 1
+
+
+func _fresh_thump() -> bool:
+	return CameraShake.layers.any(func(l: Dictionary) -> bool: return l.feel == CameraShake.Feel.THUMP and l.age == 0.0)
 
 
 # --- building -----------------------------------------------------------------------

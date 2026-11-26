@@ -73,6 +73,7 @@ includes the run-up from where the probe saw the gap, so the widest gap an enemy
 | Costs | `run_cost`, `fly_cost` (per second), `dash_cost`, `attack_cost` |
 | Attack | `attack_damage`, `attack_windup`, `attack_recover`, `attack_reach` |
 | Look | `color` (tints the placeholder body), `show_debug` (state and stats on a label) |
+| Shake | `step_shake` (camera shake per footstep, 0 = none: heavy enemies such as `enemy/brute/brute.tscn`), `stride` (metres per footstep) |
 
 Walking is the baseline and isn't an ability. A FLY enemy doesn't walk: it hovers (over water,
 above the surface) and only touches the ground when stunned. Flyers measure `attack_range` and
@@ -157,7 +158,8 @@ The player sets `p.anim` the same way, and it gained `melee`.
 ### `cue` names
 
 `attack_windup`, `attack`, `hurt`, `stun`, `jump`, `land`, `dash`, `swing`, `blocked`, `death`,
-plus the burrower's `burrow_in` and `surface`.
+`step` (every `stride` metres walked on the floor, from distance, not the animation), plus the
+burrower's `burrow_in` and `surface`.
 
 ### Animations
 

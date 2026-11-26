@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://enemy/enemy.tscn" id="1_base"]
+
+[node name="Brute" instance=ExtResource("1_base")]
+weight = 40.0
+max_health = 150.0
+walk_speed = 1.8
+attack_damage = 20.0
+attack_windup = 0.6
+step_shake = 0.35
+stride = 1.6
+color = Color(0.35, 0.3, 0.4, 1)
