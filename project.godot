@@ -13,6 +13,7 @@ config_version=5
 camera/shake_slide=true
 camera/shake_tilt=false
 time/disable_hit_stop=false
+animation/disable_squash_tilt=true
 
 [application]
 

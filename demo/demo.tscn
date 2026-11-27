@@ -230,6 +230,7 @@ size = 20.0
 far = 500.0
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1169301797]
+visible = false
 
 [node name="Label" type="Label" parent="HUD" unique_id=273191684]
 offset_left = 12.0
@@ -348,7 +349,7 @@ billboard = 1
 no_depth_test = true
 text = "MUD (back lane)
 slow, tiring, weak jump/dash
-front lane = normal"
+"
 font_size = 56
 outline_size = 14
 
@@ -371,7 +372,7 @@ billboard = 1
 no_depth_test = true
 text = "ICE (back lane)
 slippery: low control
-front lane = normal"
+"
 font_size = 56
 outline_size = 14
 
@@ -433,7 +434,7 @@ no_depth_test = true
 text = "UNDERWATER
 hold Space = swim up, hold C/Ctrl = swim down
 Space at the surface = leap out
-watch the oxygen bar (drowning)"
+oxygen bar (drowning)"
 font_size = 56
 outline_size = 14
 
